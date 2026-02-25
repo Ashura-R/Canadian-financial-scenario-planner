@@ -1,12 +1,37 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef, useState, useMemo } from 'react';
 import { useScenario, useUpdateScenario } from '../store/ScenarioContext';
 import { TimelineCell } from '../components/LeftPanel/TimelineTable/TimelineCell';
 import { RowGroup } from '../components/LeftPanel/TimelineTable/RowGroup';
-import type { YearData } from '../types/scenario';
+import { getScheduledAmount } from '../engine/index';
+import type { YearData, ScheduledItem } from '../types/scenario';
 
 type YDKey = keyof YearData;
 
 interface FillState { key: YDKey; pct: boolean }
+
+/** Compute what each schedule would provide per year/field (non-conditional only) */
+function buildScheduleOverlay(
+  schedules: ScheduledItem[],
+  years: YearData[],
+  inflationRate: number
+): Map<number, Map<string, number>> {
+  const overlay = new Map<number, Map<string, number>>();
+  for (let i = 0; i < years.length; i++) {
+    const yd = years[i];
+    const fieldMap = new Map<string, number>();
+    for (const s of schedules) {
+      if (yd.year < s.startYear) continue;
+      if (s.endYear !== undefined && yd.year > s.endYear) continue;
+      // Include both conditional and non-conditional for display purposes
+      const field = s.field;
+      if (!fieldMap.has(field)) {
+        fieldMap.set(field, getScheduledAmount(s, yd.year, inflationRate));
+      }
+    }
+    if (fieldMap.size > 0) overlay.set(i, fieldMap);
+  }
+  return overlay;
+}
 
 export function TimelinePage() {
   const { activeScenario, activeComputed } = useScenario();
@@ -17,6 +42,13 @@ export function TimelinePage() {
   // Fill-all state: which row is in "fill all years" mode
   const [fillRow, setFillRow] = useState<FillState | null>(null);
   const [fillVal, setFillVal] = useState('');
+
+  const schedules = activeScenario?.scheduledItems ?? [];
+  const inflRate = activeScenario?.assumptions.inflationRate ?? 0;
+  const scheduleOverlay = useMemo(
+    () => activeScenario ? buildScheduleOverlay(schedules, activeScenario.years, inflRate) : new Map(),
+    [schedules, activeScenario?.years, inflRate]
+  );
 
   if (!activeScenario) return null;
 
@@ -122,6 +154,7 @@ export function TimelinePage() {
         {years.map((yd, i) => {
           const warns = warningFields(i);
           const displayVal = opts.computedFn ? opts.computedFn(i) : (yd[key] as number ?? 0);
+          const schedVal = scheduleOverlay.get(i)?.get(key as string);
           return (
             <td key={yd.year} className="py-0.5 px-0.5" style={{ minWidth: YEAR_WIDTH }}>
               {opts.readOnly || opts.computedFn ? (
@@ -140,6 +173,7 @@ export function TimelinePage() {
                   hasWarning={warns.has(key as string)}
                   hasOverride={key.endsWith('Override') && displayVal !== 0}
                   readOnly={opts.readOnly}
+                  scheduledValue={schedVal}
                 />
               )}
             </td>

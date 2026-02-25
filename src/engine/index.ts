@@ -54,7 +54,7 @@ function buildConditionContext(computed: ComputedYear, rawYd: YearData): Record<
 }
 
 /** Calculate growth-adjusted amount for a scheduled item */
-function getScheduledAmount(item: ScheduledItem, year: number, inflationRate: number): number {
+export function getScheduledAmount(item: ScheduledItem, year: number, inflationRate: number): number {
   const yearsElapsed = year - item.startYear;
   if (yearsElapsed <= 0) return item.amount;
   const rate = item.growthType === 'inflation' ? inflationRate : (item.growthRate ?? 0);

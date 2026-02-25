@@ -9,9 +9,10 @@ interface Props {
   hasOverride?: boolean;
   dimmed?: boolean;
   onNext?: () => void;
+  scheduledValue?: number; // value from a schedule rule (shown in blue when raw is 0)
 }
 
-export function TimelineCell({ value, onChange, readOnly, pct, hasWarning, hasOverride, dimmed, onNext }: Props) {
+export function TimelineCell({ value, onChange, readOnly, pct, hasWarning, hasOverride, dimmed, onNext, scheduledValue }: Props) {
   const [editing, setEditing] = useState(false);
   const [raw, setRaw] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
@@ -19,6 +20,11 @@ export function TimelineCell({ value, onChange, readOnly, pct, hasWarning, hasOv
   useEffect(() => {
     if (editing) inputRef.current?.select();
   }, [editing]);
+
+  const hasSchedule = scheduledValue !== undefined && scheduledValue !== 0;
+  const isScheduleFilling = hasSchedule && value === 0;
+  const isUserOverride = hasSchedule && value !== 0;
+  const displayValue = isScheduleFilling ? scheduledValue : value;
 
   function fmt(v: number) {
     if (pct) return (v * 100).toFixed(0) + '%';
@@ -30,7 +36,8 @@ export function TimelineCell({ value, onChange, readOnly, pct, hasWarning, hasOv
   function startEdit() {
     if (readOnly) return;
     setEditing(true);
-    setRaw(pct ? (value * 100).toFixed(0) : String(Math.round(value)));
+    const editVal = isScheduleFilling ? scheduledValue : value;
+    setRaw(pct ? (editVal * 100).toFixed(0) : String(Math.round(editVal)));
   }
 
   function commit() {
@@ -39,12 +46,18 @@ export function TimelineCell({ value, onChange, readOnly, pct, hasWarning, hasOv
     setEditing(false);
   }
 
+  function undoOverride(e: React.MouseEvent) {
+    e.stopPropagation();
+    onChange(0);
+  }
+
   const baseCls = [
-    'w-full text-right text-[10px] px-1 py-px rounded transition-colors select-none',
+    'w-full text-right text-[10px] px-1 py-px rounded transition-colors select-none relative group',
     readOnly ? 'cursor-default' : 'cursor-pointer',
-    dimmed ? 'text-slate-400' : 'text-slate-700',
+    isScheduleFilling ? 'text-blue-600' : isUserOverride ? 'text-slate-900 font-medium' : dimmed ? 'text-slate-400' : 'text-slate-700',
     hasWarning ? 'bg-red-50 text-red-600' : '',
     hasOverride && !hasWarning ? 'bg-blue-50' : '',
+    isScheduleFilling && !hasWarning ? 'bg-blue-50/40' : '',
     !readOnly && !hasWarning ? 'hover:bg-slate-100' : '',
   ].join(' ');
 
@@ -66,10 +79,26 @@ export function TimelineCell({ value, onChange, readOnly, pct, hasWarning, hasOv
   }
 
   return (
-    <div className={baseCls} onClick={startEdit} title={hasWarning ? '⚠ Validation warning' : hasOverride ? 'EOY Override active' : undefined}>
+    <div className={baseCls} onClick={startEdit} title={
+      hasWarning ? '⚠ Validation warning'
+      : isScheduleFilling ? '⚡ From schedule rule — click to override'
+      : isUserOverride ? '✎ Manual override — click ✕ to revert to schedule'
+      : hasOverride ? 'EOY Override active'
+      : undefined
+    }>
       {hasWarning && <span className="mr-0.5 text-red-500">!</span>}
-      {hasOverride && !hasWarning && <span className="mr-0.5 text-blue-500">↗</span>}
-      {fmt(value)}
+      {hasOverride && !hasWarning && !isUserOverride && <span className="mr-0.5 text-blue-500">↗</span>}
+      {isScheduleFilling && !hasWarning && <span className="mr-0.5 text-blue-400">⚡</span>}
+      {fmt(displayValue)}
+      {isUserOverride && !readOnly && (
+        <button
+          className="absolute -top-0.5 -right-0.5 hidden group-hover:flex items-center justify-center w-3 h-3 rounded-full bg-slate-400 hover:bg-red-500 text-white text-[7px] leading-none transition-colors"
+          onClick={undoOverride}
+          title="Revert to schedule value"
+        >
+          ×
+        </button>
+      )}
     </div>
   );
 }
