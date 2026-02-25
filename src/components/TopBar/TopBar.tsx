@@ -3,9 +3,9 @@ import type { Page } from '../PageNav/PageNav';
 
 const PAGE_TABS: { id: Page; label: string }[] = [
   { id: 'overview', label: 'Overview' },
+  { id: 'timeline', label: 'Timeline' },
   { id: 'tax-detail', label: 'Tax Detail' },
   { id: 'accounts', label: 'Accounts' },
-  { id: 'timeline', label: 'Timeline' },
   { id: 'scheduling', label: 'Scheduling' },
   { id: 'assumptions', label: 'Settings' },
 ];

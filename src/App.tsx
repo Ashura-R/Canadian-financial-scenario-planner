@@ -12,7 +12,7 @@ import { AssumptionsPage } from './pages/AssumptionsPage';
 import type { Page } from './components/PageNav/PageNav';
 
 const PAGE_STORAGE_KEY = 'cdn-tax-active-page';
-const VALID_PAGES: Page[] = ['overview', 'tax-detail', 'accounts', 'timeline', 'scheduling', 'assumptions'];
+const VALID_PAGES: Page[] = ['overview', 'timeline', 'tax-detail', 'accounts', 'scheduling', 'assumptions'];
 
 function loadPage(): Page {
   try {

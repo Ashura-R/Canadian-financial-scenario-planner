@@ -9,22 +9,57 @@ interface Props {
   hasOverride?: boolean;
   dimmed?: boolean;
   onNext?: () => void;
-  scheduledValue?: number; // value from a schedule rule (shown in blue when raw is 0)
+  scheduledValue?: number;
+  // Grid navigation props
+  isFocused?: boolean;
+  isSelected?: boolean;
+  isEditing?: boolean;
+  initialEditKey?: string | null;
+  onCellClick?: (shiftKey: boolean) => void;
+  onCellDblClick?: () => void;
+  onEditCommit?: (direction: 'down' | 'right', value?: number) => void;
+  onEditCancel?: () => void;
 }
 
-export function TimelineCell({ value, onChange, readOnly, pct, hasWarning, hasOverride, dimmed, onNext, scheduledValue }: Props) {
-  const [editing, setEditing] = useState(false);
+export const TimelineCell = React.memo(function TimelineCell({
+  value, onChange, readOnly, pct, hasWarning, hasOverride, dimmed,
+  onNext, scheduledValue,
+  isFocused, isSelected, isEditing, initialEditKey,
+  onCellClick, onCellDblClick, onEditCommit, onEditCancel,
+}: Props) {
+  const [localEditing, setLocalEditing] = useState(false);
   const [raw, setRaw] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const committedRef = useRef(false);
 
-  useEffect(() => {
-    if (editing) inputRef.current?.select();
-  }, [editing]);
+  // Determine if we're in grid-nav mode (parent controls editing) or legacy mode
+  const gridMode = onCellClick !== undefined;
+  const editing = gridMode ? (isEditing ?? false) : localEditing;
 
   const hasSchedule = scheduledValue !== undefined && scheduledValue !== 0;
   const isScheduleFilling = hasSchedule && value === 0;
   const isUserOverride = hasSchedule && value !== 0;
   const displayValue = isScheduleFilling ? scheduledValue : value;
+
+  // When parent-controlled editing starts, populate raw and focus
+  useEffect(() => {
+    if (gridMode && isEditing) {
+      committedRef.current = false;
+      if (initialEditKey) {
+        setRaw(initialEditKey);
+      } else {
+        const editVal = isScheduleFilling ? scheduledValue : value;
+        setRaw(pct ? (editVal * 100).toFixed(0) : String(Math.round(editVal)));
+      }
+      // Focus after render
+      requestAnimationFrame(() => inputRef.current?.focus());
+    }
+  }, [isEditing, gridMode]);
+
+  // Legacy mode: select on local edit start
+  useEffect(() => {
+    if (!gridMode && localEditing) inputRef.current?.select();
+  }, [localEditing, gridMode]);
 
   function fmt(v: number) {
     if (pct) return (v * 100).toFixed(0) + '%';
@@ -35,20 +70,41 @@ export function TimelineCell({ value, onChange, readOnly, pct, hasWarning, hasOv
 
   function startEdit() {
     if (readOnly) return;
-    setEditing(true);
+    setLocalEditing(true);
     const editVal = isScheduleFilling ? scheduledValue : value;
     setRaw(pct ? (editVal * 100).toFixed(0) : String(Math.round(editVal)));
   }
 
-  function commit() {
+  /** Parse and apply the edit, returning the final numeric value (or undefined if invalid) */
+  function commit(): number | undefined {
     const n = parseFloat(raw.replace(/[$,%\s,]/g, ''));
-    if (!isNaN(n)) onChange(pct ? n / 100 : n);
-    setEditing(false);
+    if (!isNaN(n)) {
+      const final = pct ? n / 100 : n;
+      onChange(final);
+      if (!gridMode) setLocalEditing(false);
+      return final;
+    }
+    if (!gridMode) setLocalEditing(false);
+    return undefined;
   }
 
   function undoOverride(e: React.MouseEvent) {
     e.stopPropagation();
     onChange(0);
+  }
+
+  function handleClick(e: React.MouseEvent) {
+    if (gridMode) {
+      onCellClick?.(e.shiftKey);
+    } else {
+      startEdit();
+    }
+  }
+
+  function handleDblClick() {
+    if (gridMode) {
+      onCellDblClick?.();
+    }
   }
 
   const baseCls = [
@@ -59,6 +115,9 @@ export function TimelineCell({ value, onChange, readOnly, pct, hasWarning, hasOv
     hasOverride && !hasWarning ? 'bg-blue-50' : '',
     isScheduleFilling && !hasWarning ? 'bg-blue-50/40' : '',
     !readOnly && !hasWarning ? 'hover:bg-slate-100' : '',
+    // Grid navigation visual styles
+    isFocused ? 'ring-2 ring-blue-500 ring-inset !rounded' : '',
+    isSelected && !isFocused ? 'bg-blue-100' : '',
   ].join(' ');
 
   if (editing) {
@@ -68,24 +127,67 @@ export function TimelineCell({ value, onChange, readOnly, pct, hasWarning, hasOv
         className="w-full text-right text-[10px] px-1 py-px bg-blue-50 border border-blue-400 rounded outline-none text-slate-800"
         value={raw}
         onChange={e => setRaw(e.target.value)}
-        onBlur={commit}
+        onBlur={() => {
+          if (gridMode) {
+            if (!committedRef.current) {
+              committedRef.current = true;
+              const val = commit();
+              onEditCommit?.('down', val);
+            }
+          } else {
+            commit();
+          }
+        }}
         onKeyDown={e => {
-          if (e.key === 'Enter') { commit(); onNext?.(); }
-          if (e.key === 'Tab') { e.preventDefault(); commit(); onNext?.(); }
-          if (e.key === 'Escape') setEditing(false);
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            if (gridMode) {
+              committedRef.current = true;
+              const val = commit();
+              onEditCommit?.('down', val);
+            } else {
+              commit();
+              onNext?.();
+            }
+          }
+          if (e.key === 'Tab') {
+            e.preventDefault();
+            if (gridMode) {
+              committedRef.current = true;
+              const val = commit();
+              onEditCommit?.('right', val);
+            } else {
+              commit();
+              onNext?.();
+            }
+          }
+          if (e.key === 'Escape') {
+            e.preventDefault();
+            if (gridMode) {
+              committedRef.current = true;
+              onEditCancel?.();
+            } else {
+              setLocalEditing(false);
+            }
+          }
         }}
       />
     );
   }
 
   return (
-    <div className={baseCls} onClick={startEdit} title={
-      hasWarning ? '⚠ Validation warning'
-      : isScheduleFilling ? '⚡ From schedule rule — click to override'
-      : isUserOverride ? '✎ Manual override — click ✕ to revert to schedule'
-      : hasOverride ? 'EOY Override active'
-      : undefined
-    }>
+    <div
+      className={baseCls}
+      onClick={handleClick}
+      onDoubleClick={handleDblClick}
+      title={
+        hasWarning ? '⚠ Validation warning'
+        : isScheduleFilling ? '⚡ From schedule rule — click to override'
+        : isUserOverride ? '✎ Manual override — click ✕ to revert to schedule'
+        : hasOverride ? 'EOY Override active'
+        : undefined
+      }
+    >
       {hasWarning && <span className="mr-0.5 text-red-500">!</span>}
       {hasOverride && !hasWarning && !isUserOverride && <span className="mr-0.5 text-blue-500">↗</span>}
       {isScheduleFilling && !hasWarning && <span className="mr-0.5 text-blue-400">⚡</span>}
@@ -101,4 +203,4 @@ export function TimelineCell({ value, onChange, readOnly, pct, hasWarning, hasOv
       )}
     </div>
   );
-}
+});
