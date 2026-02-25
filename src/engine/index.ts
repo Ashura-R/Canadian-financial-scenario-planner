@@ -58,6 +58,29 @@ function buildConditionContext(computed: ComputedYear, rawYd: YearData): Record<
   };
 }
 
+/** Resolve a dynamic max reference to a numeric cap value */
+function resolveMaxRef(
+  ref: string,
+  computed: ComputedYear,
+  prevBalances: OpeningBalances,
+  assumptions: Scenario['assumptions'],
+  fhsaContribLifetime: number,
+  fhsaUnusedRoom: number,
+): number {
+  switch (ref) {
+    case 'rrspRoom': return computed.rrspUnusedRoom;
+    case 'tfsaRoom': return computed.tfsaUnusedRoom + computed.tfsaRoomGenerated;
+    case 'fhsaRoom': return assumptions.fhsaAnnualLimit + Math.min(fhsaUnusedRoom, assumptions.fhsaAnnualLimit);
+    case 'fhsaLifetimeRoom': return Math.max(0, assumptions.fhsaLifetimeLimit - fhsaContribLifetime);
+    case 'rrspBalance': return prevBalances.rrsp;
+    case 'tfsaBalance': return prevBalances.tfsa;
+    case 'fhsaBalance': return prevBalances.fhsa;
+    case 'nonRegBalance': return prevBalances.nonReg;
+    case 'savingsBalance': return prevBalances.savings;
+    default: return Infinity;
+  }
+}
+
 /** Calculate growth-adjusted amount for a scheduled item */
 export function getScheduledAmount(item: ScheduledItem, year: number, inflationRate: number): number {
   const yearsElapsed = year - item.startYear;
@@ -72,7 +95,11 @@ function applySchedules(
   schedules: ScheduledItem[],
   inflationRate: number,
   prevComputed: ComputedYear | null,
-  conditionalOnly: boolean
+  conditionalOnly: boolean,
+  prevBalances?: OpeningBalances,
+  assumptions?: Scenario['assumptions'],
+  fhsaContribLifetime?: number,
+  fhsaUnusedRoom?: number,
 ): YearData {
   const result = { ...yd };
   for (const s of schedules) {
@@ -81,7 +108,8 @@ function applySchedules(
 
     const hasConditions = s.conditions && s.conditions.length > 0;
     const isPercentage = s.amountType === 'percentage';
-    const needsComputed = hasConditions || isPercentage;
+    const hasMaxRef = !!s.amountMaxRef;
+    const needsComputed = hasConditions || isPercentage || hasMaxRef;
 
     // In first pass, skip items needing computed context. In second pass, only process those.
     if (conditionalOnly && !needsComputed) continue;
@@ -116,6 +144,14 @@ function applySchedules(
       // Apply min/max caps
       if (s.amountMin !== undefined && s.amountMin > 0) amount = Math.max(amount, s.amountMin);
       if (s.amountMax !== undefined && s.amountMax > 0) amount = Math.min(amount, s.amountMax);
+      // Apply dynamic max ref cap
+      if (hasMaxRef && prevComputed && prevBalances && assumptions) {
+        const dynamicMax = resolveMaxRef(
+          s.amountMaxRef!, prevComputed, prevBalances, assumptions,
+          fhsaContribLifetime ?? 0, fhsaUnusedRoom ?? 0,
+        );
+        amount = Math.min(amount, Math.max(0, dynamicMax));
+      }
       (result as any)[field] = amount;
     }
   }
@@ -127,7 +163,7 @@ function hasConditionalSchedules(schedules: ScheduledItem[], year: number): bool
   return schedules.some(s => {
     if (year < s.startYear) return false;
     if (s.endYear !== undefined && year > s.endYear) return false;
-    return (s.conditions && s.conditions.length > 0) || s.amountType === 'percentage';
+    return (s.conditions && s.conditions.length > 0) || s.amountType === 'percentage' || !!s.amountMaxRef;
   });
 }
 
@@ -143,6 +179,7 @@ function computeOneYear(
   tfsaRoomGenerated: number,
   inflationFactor: number,
   returnOverrides: ReturnOverrides | undefined,
+  fhsaDisposed: boolean = false,
 ): {
   computed: ComputedYear;
   newCapitalLossCF: number;
@@ -192,7 +229,10 @@ function computeOneYear(
 
   const retirementIncome: RetirementIncome = { cppBenefitIncome, oasIncome };
 
-  const warnings = validateYear(ydEffective, assumptions, rrspUnusedRoom, fhsaContribLifetime, capitalLossCF, tfsaUnusedRoom + tfsaRoomGenerated);
+  const warnings = validateYear(
+    ydEffective, assumptions, rrspUnusedRoom, fhsaContribLifetime, capitalLossCF,
+    tfsaUnusedRoom + tfsaRoomGenerated, prevBalances, isRRIF, fhsaDisposed, fhsaUnusedRoom,
+  );
 
   const lossCFBeforeApply = capitalLossCF + ydEffective.capitalLossesRealized;
   const lossApplied = Math.min(ydEffective.capitalLossApplied, lossCFBeforeApply);
@@ -354,21 +394,24 @@ export function compute(scenario: Scenario): ComputedScenario {
     const tfsaRoomGenerated = assumptions.tfsaAnnualLimit + prevYearTfsaWithdrawals;
 
     // Pass 1: Apply non-conditional scheduled items
-    const ydPass1 = applySchedules(ydWithFHSA, schedules, assumptions.inflationRate, null, false);
+    const ydPass1 = applySchedules(ydWithFHSA, schedules, assumptions.inflationRate, null, false,
+      prevBalances, assumptions, fhsaContribLifetime, fhsaUnusedRoom);
 
     const pass1 = computeOneYear(
       ydPass1, assumptions, prevBalances,
       capitalLossCF, rrspUnusedRoom, fhsaContribLifetime, fhsaUnusedRoom,
       tfsaUnusedRoom, tfsaRoomGenerated,
-      inflationFactor, returnOverrides,
+      inflationFactor, returnOverrides, fhsaDisposed,
     );
 
     // Pass 2: Check if conditional schedules apply, if so recompute
     let finalResult = pass1;
     if (hasConditionalSchedules(schedules, rawYd.year)) {
-      const ydPass2 = applySchedules(ydWithFHSA, schedules, assumptions.inflationRate, pass1.computed, true);
+      const ydPass2 = applySchedules(ydWithFHSA, schedules, assumptions.inflationRate, pass1.computed, true,
+        prevBalances, assumptions, fhsaContribLifetime, fhsaUnusedRoom);
       // Merge: apply non-conditional again on the base, then conditional on top
-      const ydMerged = applySchedules(ydPass2, schedules, assumptions.inflationRate, null, false);
+      const ydMerged = applySchedules(ydPass2, schedules, assumptions.inflationRate, null, false,
+        prevBalances, assumptions, fhsaContribLifetime, fhsaUnusedRoom);
 
       // Check if anything changed
       const pass1Keys = Object.keys(ydPass1) as (keyof YearData)[];
@@ -382,7 +425,7 @@ export function compute(scenario: Scenario): ComputedScenario {
           ydMerged, assumptions, prevBalances,
           capitalLossCF, rrspUnusedRoom, fhsaContribLifetime, fhsaUnusedRoom,
           tfsaUnusedRoom, tfsaRoomGenerated,
-          inflationFactor, returnOverrides,
+          inflationFactor, returnOverrides, fhsaDisposed,
         );
       }
     }

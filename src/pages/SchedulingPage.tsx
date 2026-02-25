@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useScenario, useUpdateScenario } from '../store/ScenarioContext';
-import type { ScheduledItem, ScheduledField, ScheduleCondition, ConditionField, ConditionOperator, AmountReference } from '../types/scenario';
+import type { ScheduledItem, ScheduledField, ScheduleCondition, ConditionField, ConditionOperator, AmountReference, AmountMaxReference } from '../types/scenario';
 
 const SCHEDULED_FIELD_OPTIONS: { value: ScheduledField; label: string; group: string }[] = [
   { value: 'employmentIncome', label: 'Employment Income', group: 'Income' },
@@ -72,6 +72,18 @@ const REFERENCE_FIELDS: { value: AmountReference; label: string; group: string }
   { value: 'savingsEOY', label: 'Savings Balance', group: 'Accounts' },
   { value: 'rrspUnusedRoom', label: 'RRSP Unused Room', group: 'Room' },
   { value: 'tfsaUnusedRoom', label: 'TFSA Unused Room', group: 'Room' },
+];
+
+const MAX_REF_OPTIONS: { value: AmountMaxReference; label: string; group: string }[] = [
+  { value: 'rrspRoom', label: 'RRSP Room', group: 'Contribution Room' },
+  { value: 'tfsaRoom', label: 'TFSA Room', group: 'Contribution Room' },
+  { value: 'fhsaRoom', label: 'FHSA Room (Annual)', group: 'Contribution Room' },
+  { value: 'fhsaLifetimeRoom', label: 'FHSA Lifetime Room', group: 'Contribution Room' },
+  { value: 'rrspBalance', label: 'RRSP Balance', group: 'Account Balance' },
+  { value: 'tfsaBalance', label: 'TFSA Balance', group: 'Account Balance' },
+  { value: 'fhsaBalance', label: 'FHSA Balance', group: 'Account Balance' },
+  { value: 'nonRegBalance', label: 'Non-Reg Balance', group: 'Account Balance' },
+  { value: 'savingsBalance', label: 'Savings Balance', group: 'Account Balance' },
 ];
 
 const OPERATORS: { value: ConditionOperator; label: string }[] = [
@@ -222,7 +234,7 @@ export function SchedulingPage() {
                   const condCount = item.conditions?.length ?? 0;
                   const isExpanded = expandedId === item.id;
                   const isPct = item.amountType === 'percentage';
-                  const hasCaps = (item.amountMin !== undefined && item.amountMin > 0) || (item.amountMax !== undefined && item.amountMax > 0);
+                  const hasCaps = (item.amountMin !== undefined && item.amountMin > 0) || (item.amountMax !== undefined && item.amountMax > 0) || !!item.amountMaxRef;
                   const settingsCount = condCount + (hasCaps ? 1 : 0);
 
                   return (
@@ -409,11 +421,33 @@ export function SchedulingPage() {
                                   />
                                   <span className="text-[9px] text-slate-400">Computed amount won't exceed this</span>
                                 </div>
-                                {isPct && (
+                                <div className="flex items-center gap-3 mt-2">
+                                  <label className="text-[10px] text-slate-500 w-8">Limit</label>
+                                  <select
+                                    className={`${cellBase} text-left w-40`}
+                                    value={item.amountMaxRef ?? ''}
+                                    onChange={e => updateItem(item.id, { amountMaxRef: (e.target.value || undefined) as AmountMaxReference | undefined })}
+                                  >
+                                    <option value="">None (no dynamic cap)</option>
+                                    {(() => {
+                                      const groups = [...new Set(MAX_REF_OPTIONS.map(o => o.group))];
+                                      return groups.map(g => (
+                                        <optgroup key={g} label={g}>
+                                          {MAX_REF_OPTIONS.filter(o => o.group === g).map(o => (
+                                            <option key={o.value} value={o.value}>{o.label}</option>
+                                          ))}
+                                        </optgroup>
+                                      ));
+                                    })()}
+                                  </select>
+                                  <span className="text-[9px] text-slate-400">Cap amount to this computed limit each year</span>
+                                </div>
+                                {(isPct || item.amountMaxRef) && (
                                   <div className="mt-2 text-[9px] text-emerald-600 bg-emerald-50 rounded px-2 py-1 border border-emerald-100">
-                                    This rule computes: {(item.amount * 100).toFixed(1)}% of {REFERENCE_FIELDS.find(r => r.value === item.amountReference)?.label ?? item.amountReference}
+                                    {isPct && <>This rule computes: {(item.amount * 100).toFixed(1)}% of {REFERENCE_FIELDS.find(r => r.value === item.amountReference)?.label ?? item.amountReference}</>}
                                     {item.amountMax ? `, capped at $${item.amountMax.toLocaleString()}` : ''}
                                     {item.amountMin ? `, min $${item.amountMin.toLocaleString()}` : ''}
+                                    {item.amountMaxRef ? `${isPct ? ', ' : 'Capped to '}${MAX_REF_OPTIONS.find(r => r.value === item.amountMaxRef)?.label ?? item.amountMaxRef}` : ''}
                                   </div>
                                 )}
                               </div>

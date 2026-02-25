@@ -13,6 +13,18 @@ export type ConditionField =
 // Reference fields for percentage-based scheduled amounts
 export type AmountReference = ConditionField;
 
+// Dynamic max cap references — cap amount to a computed limit
+export type AmountMaxReference =
+  | 'rrspRoom'        // available RRSP contribution room
+  | 'tfsaRoom'        // available TFSA contribution room
+  | 'fhsaRoom'        // available FHSA contribution room (annual + carry-forward)
+  | 'fhsaLifetimeRoom' // remaining FHSA lifetime room
+  | 'rrspBalance'     // current RRSP balance (for withdrawals)
+  | 'tfsaBalance'     // current TFSA balance (for withdrawals)
+  | 'fhsaBalance'     // current FHSA balance (for withdrawals)
+  | 'nonRegBalance'   // current Non-Reg balance (for withdrawals)
+  | 'savingsBalance'; // current Savings balance (for withdrawals)
+
 export interface ScheduleCondition {
   field: ConditionField;
   operator: ConditionOperator;
@@ -138,6 +150,7 @@ export interface ScheduledItem {
   amountReference?: AmountReference;       // reference field for percentage mode
   amountMin?: number;                      // floor on computed amount (optional)
   amountMax?: number;                      // cap on computed amount (optional)
+  amountMaxRef?: AmountMaxReference;       // dynamic cap from computed limit (optional)
   conditions?: ScheduleCondition[];
   growthRate?: number;             // annual % increase on base amount (or on the percentage itself)
   growthType?: 'fixed' | 'inflation'; // grow by growthRate or by assumption's inflation rate
