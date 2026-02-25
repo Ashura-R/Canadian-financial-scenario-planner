@@ -126,7 +126,7 @@ function loadViewMode(): ViewMode {
   } catch { return 'nominal'; }
 }
 
-export function OverviewPage() {
+export function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const { activeComputed, activeScenario } = useScenario();
   const [viewMode, setViewModeRaw] = useState<ViewMode>(loadViewMode);
   function setViewMode(v: ViewMode) {
@@ -176,7 +176,17 @@ export function OverviewPage() {
         {/* Warnings banner */}
         {warnings.length > 0 && (
           <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3">
-            <div className="text-xs font-semibold text-red-700 mb-1">Validation Issues ({warnings.length})</div>
+            <div className="flex items-center justify-between mb-1">
+              <div className="text-xs font-semibold text-red-700">Validation Issues ({warnings.length})</div>
+              {onNavigate && (
+                <button
+                  onClick={() => onNavigate('scheduling')}
+                  className="text-[11px] text-red-600 hover:text-red-800 underline underline-offset-2 transition-colors"
+                >
+                  View all in Scheduling
+                </button>
+              )}
+            </div>
             <ul className="text-xs text-red-600 space-y-0.5">
               {warnings.slice(0, 5).map((w, i) => <li key={i}>- {w.message}</li>)}
               {warnings.length > 5 && <li className="text-slate-500">...and {warnings.length - 5} more</li>}

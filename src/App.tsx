@@ -37,7 +37,7 @@ export default function App() {
         <TopBar onCompare={() => setCompareOpen(true)} page={page} onPageChange={setPage} />
         <ScenarioBar onCompare={() => setCompareOpen(true)} />
         <div className={`flex-1 min-h-0 overflow-hidden ${isSettings ? '' : 'page-scale'}`}>
-          {page === 'overview' && <OverviewPage />}
+          {page === 'overview' && <OverviewPage onNavigate={setPage} />}
           {page === 'tax-detail' && <TaxDetailPage />}
           {page === 'accounts' && <AccountsPage />}
           {page === 'timeline' && <TimelinePage />}
