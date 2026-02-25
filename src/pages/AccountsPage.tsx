@@ -356,7 +356,10 @@ function AllYearsView({ years, rawYears, openingBalances }: {
 
 export function AccountsPage() {
   const { activeComputed, activeScenario } = useScenario();
-  const [viewMode, setViewMode] = useState<'single' | 'all'>('single');
+  const [viewMode, setViewModeRaw] = useState<'single' | 'all'>(() => {
+    try { const v = localStorage.getItem('cdn-tax-accounts-view'); return v === 'all' ? 'all' : 'single'; } catch { return 'single'; }
+  });
+  function setViewMode(v: 'single' | 'all') { setViewModeRaw(v); try { localStorage.setItem('cdn-tax-accounts-view', v); } catch {} }
 
   if (!activeComputed || !activeScenario) {
     return <div className="p-8 text-slate-400 text-sm">No scenario data.</div>;

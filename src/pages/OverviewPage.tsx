@@ -75,7 +75,10 @@ function getYoYCols(real: boolean): { label: string; fn: (y: ComputedYear) => st
 
 export function OverviewPage() {
   const { activeComputed, activeScenario } = useScenario();
-  const [realMode, setRealMode] = useState(false);
+  const [realMode, setRealModeRaw] = useState(() => {
+    try { return localStorage.getItem('cdn-tax-real-mode') === '1'; } catch { return false; }
+  });
+  function setRealMode(v: boolean) { setRealModeRaw(v); try { localStorage.setItem('cdn-tax-real-mode', v ? '1' : '0'); } catch {} }
   const [chartRange, setChartRange] = useState<ChartRange>('all');
 
   if (!activeComputed || !activeScenario) {

@@ -4,6 +4,7 @@ import { TimelineCell } from '../components/LeftPanel/TimelineTable/TimelineCell
 import { RowGroup } from '../components/LeftPanel/TimelineTable/RowGroup';
 import { getScheduledAmount } from '../engine/index';
 import type { YearData, ScheduledItem } from '../types/scenario';
+import type { ComputedYear } from '../types/computed';
 
 type YDKey = keyof YearData;
 
@@ -20,25 +21,61 @@ function loadBanding(): boolean {
   try { return localStorage.getItem(BAND_STORAGE_KEY) === '1'; } catch { return false; }
 }
 
-/** Compute what each schedule would provide per year/field (fixed-amount non-conditional only; percentage rules show 0 as hint) */
+/** Get a reference value from computed year for percentage schedule calculations */
+function getRefFromComputed(ref: string, cy: ComputedYear): number {
+  switch (ref) {
+    case 'grossIncome': return cy.waterfall.grossIncome;
+    case 'netTaxableIncome': return cy.tax.netTaxableIncome;
+    case 'afterTaxIncome': return cy.waterfall.afterTaxIncome;
+    case 'netCashFlow': return cy.waterfall.netCashFlow;
+    case 'netWorth': return cy.accounts.netWorth;
+    case 'totalIncomeTax': return cy.tax.totalIncomeTax;
+    case 'employmentIncome': return cy.waterfall.grossIncome; // approximation
+    case 'selfEmploymentIncome': return 0;
+    case 'rrspEOY': return cy.accounts.rrspEOY;
+    case 'tfsaEOY': return cy.accounts.tfsaEOY;
+    case 'fhsaEOY': return cy.accounts.fhsaEOY;
+    case 'nonRegEOY': return cy.accounts.nonRegEOY;
+    case 'savingsEOY': return cy.accounts.savingsEOY;
+    case 'rrspUnusedRoom': return cy.rrspUnusedRoom;
+    case 'tfsaUnusedRoom': return cy.tfsaUnusedRoom;
+    default: return 0;
+  }
+}
+
+/** Compute what each schedule would provide per year/field, using computed data for percentage rules */
 function buildScheduleOverlay(
   schedules: ScheduledItem[],
   years: YearData[],
-  inflationRate: number
+  inflationRate: number,
+  computedYears?: ComputedYear[]
 ): Map<number, Map<string, number>> {
   const overlay = new Map<number, Map<string, number>>();
   for (let i = 0; i < years.length; i++) {
     const yd = years[i];
+    const cy = computedYears?.[i];
     const fieldMap = new Map<string, number>();
     for (const s of schedules) {
       if (yd.year < s.startYear) continue;
       if (s.endYear !== undefined && yd.year > s.endYear) continue;
       const field = s.field;
       if (!fieldMap.has(field)) {
-        // Percentage-based rules depend on computed values — show a marker (-1) so cell knows a rule exists
-        if (s.amountType === 'percentage') {
-          fieldMap.set(field, -1);
-        } else if (!s.conditions || s.conditions.length === 0) {
+        const hasConditions = s.conditions && s.conditions.length > 0;
+        if (s.amountType === 'percentage' && cy && s.amountReference) {
+          // Compute actual percentage amount from computed values
+          const refValue = getRefFromComputed(s.amountReference, cy);
+          let pctAmt = getScheduledAmount(s, yd.year, inflationRate) * refValue;
+          if (s.amountMin !== undefined && s.amountMin > 0) pctAmt = Math.max(pctAmt, s.amountMin);
+          if (s.amountMax !== undefined && s.amountMax > 0) pctAmt = Math.min(pctAmt, s.amountMax);
+          if (pctAmt > 0) fieldMap.set(field, pctAmt);
+        } else if (s.amountType === 'percentage') {
+          // No computed data available — skip display
+        } else if (hasConditions && cy) {
+          // Conditional rule: check if conditions would pass, if so show the amount
+          // (conditions already evaluated in engine — just show the scheduled amount as a hint)
+          const amt = getScheduledAmount(s, yd.year, inflationRate);
+          if (amt > 0) fieldMap.set(field, amt);
+        } else if (!hasConditions) {
           fieldMap.set(field, getScheduledAmount(s, yd.year, inflationRate));
         }
       }
@@ -70,9 +107,10 @@ export function TimelinePage() {
 
   const schedules = activeScenario?.scheduledItems ?? [];
   const inflRate = activeScenario?.assumptions.inflationRate ?? 0;
+  const computedYears = activeComputed?.years;
   const scheduleOverlay = useMemo(
-    () => activeScenario ? buildScheduleOverlay(schedules, activeScenario.years, inflRate) : new Map(),
-    [schedules, activeScenario?.years, inflRate]
+    () => activeScenario ? buildScheduleOverlay(schedules, activeScenario.years, inflRate, computedYears) : new Map(),
+    [schedules, activeScenario?.years, inflRate, computedYears]
   );
 
   if (!activeScenario) return null;
