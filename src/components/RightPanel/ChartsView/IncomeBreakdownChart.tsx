@@ -1,0 +1,44 @@
+import React from 'react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
+} from 'recharts';
+import type { ComputedYear } from '../../../types/computed';
+import { formatShort } from '../../../utils/formatters';
+
+interface Props { years: ComputedYear[]; rawYears: import('../../../types/scenario').YearData[] }
+
+export function IncomeBreakdownChart({ years, rawYears }: Props) {
+  const data = years.map((y, i) => ({
+    year: y.year,
+    Employment: Math.round(rawYears[i]?.employmentIncome ?? 0),
+    'Self-Empl.': Math.round(rawYears[i]?.selfEmploymentIncome ?? 0),
+    'Elig. Div.': Math.round(rawYears[i]?.eligibleDividends ?? 0),
+    'Non-Elig. Div.': Math.round(rawYears[i]?.nonEligibleDividends ?? 0),
+    Interest: Math.round(rawYears[i]?.interestIncome ?? 0),
+    'Cap. Gains': Math.round(rawYears[i]?.capitalGainsRealized ?? 0),
+    Other: Math.round(rawYears[i]?.otherTaxableIncome ?? 0),
+  }));
+
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+        <XAxis dataKey="year" tick={{ fill: '#94a3b8', fontSize: 10 }} />
+        <YAxis tickFormatter={v => formatShort(v)} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+        <Tooltip
+          contentStyle={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 11 }}
+          labelStyle={{ color: '#0f172a' }}
+          formatter={(v: number, name: string) => [formatShort(v), name]}
+        />
+        <Legend wrapperStyle={{ fontSize: 10, color: '#64748b' }} />
+        <Bar dataKey="Employment" stackId="a" fill="#2563eb" />
+        <Bar dataKey="Self-Empl." stackId="a" fill="#7c3aed" />
+        <Bar dataKey="Elig. Div." stackId="a" fill="#059669" />
+        <Bar dataKey="Non-Elig. Div." stackId="a" fill="#0d9488" />
+        <Bar dataKey="Interest" stackId="a" fill="#0891b2" />
+        <Bar dataKey="Cap. Gains" stackId="a" fill="#d97706" />
+        <Bar dataKey="Other" stackId="a" fill="#94a3b8" />
+      </BarChart>
+    </ResponsiveContainer>
+  );
+}
