@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useScenario } from '../store/ScenarioContext';
 import { formatCAD, formatPct, formatShort } from '../utils/formatters';
 import { usePersistedYear } from '../utils/usePersistedYear';
+import { ChartRangeSelector, sliceByRange } from '../components/ChartRangeSelector';
+import type { ChartRange } from '../components/ChartRangeSelector';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   ComposedChart, Line,
@@ -205,13 +207,16 @@ function AllYearsView({ years, rawYears, openingBalances }: {
   rawYears: YearData[];
   openingBalances: OpeningBalances;
 }) {
+  const [chartRange, setChartRange] = useState<ChartRange>('all');
+  const chartYears = sliceByRange(years, chartRange);
+
   const tooltipStyle = {
     contentStyle: { background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 11 },
     labelStyle: { color: '#0f172a' },
   };
 
   // Stacked bar chart data
-  const barData = years.map(yr => ({
+  const barData = chartYears.map(yr => ({
     year: yr.year,
     RRSP: yr.accounts.rrspEOY,
     TFSA: yr.accounts.tfsaEOY,
@@ -221,7 +226,7 @@ function AllYearsView({ years, rawYears, openingBalances }: {
   }));
 
   // Returns chart data
-  const returnData = years.map(yr => ({
+  const returnData = chartYears.map(yr => ({
     year: yr.year,
     RRSP: yr.accounts.rrspReturn * 100,
     TFSA: yr.accounts.tfsaReturn * 100,
@@ -233,7 +238,12 @@ function AllYearsView({ years, rawYears, openingBalances }: {
   return (
     <div className="space-y-4">
       {/* Net Worth Composition chart */}
-      <Section title="Net Worth Composition Over Time">
+      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100">
+          <div className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Net Worth Composition Over Time</div>
+          <ChartRangeSelector value={chartRange} onChange={setChartRange} />
+        </div>
+        <div className="px-4 py-3">
         <div style={{ height: 280 }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={barData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
@@ -250,10 +260,16 @@ function AllYearsView({ years, rawYears, openingBalances }: {
             </BarChart>
           </ResponsiveContainer>
         </div>
-      </Section>
+        </div>
+      </div>
 
       {/* Return Performance chart */}
-      <Section title="Blended Return % by Account">
+      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100">
+          <div className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Blended Return % by Account</div>
+          <ChartRangeSelector value={chartRange} onChange={setChartRange} />
+        </div>
+        <div className="px-4 py-3">
         <div style={{ height: 220 }}>
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={returnData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
@@ -270,7 +286,8 @@ function AllYearsView({ years, rawYears, openingBalances }: {
             </ComposedChart>
           </ResponsiveContainer>
         </div>
-      </Section>
+        </div>
+      </div>
 
       {/* YoY Balance Table */}
       <Section title="Year-over-Year Account Balances">
