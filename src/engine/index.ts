@@ -49,6 +49,11 @@ function buildConditionContext(computed: ComputedYear, rawYd: YearData): Record<
     selfEmploymentIncome: rawYd.selfEmploymentIncome,
     rrspEOY: computed.accounts.rrspEOY,
     tfsaEOY: computed.accounts.tfsaEOY,
+    fhsaEOY: computed.accounts.fhsaEOY,
+    nonRegEOY: computed.accounts.nonRegEOY,
+    savingsEOY: computed.accounts.savingsEOY,
+    rrspUnusedRoom: computed.rrspUnusedRoom,
+    tfsaUnusedRoom: computed.tfsaUnusedRoom,
     age: computed.retirement.age ?? 0,
   };
 }
@@ -61,7 +66,7 @@ export function getScheduledAmount(item: ScheduledItem, year: number, inflationR
   return item.amount * Math.pow(1 + rate, yearsElapsed);
 }
 
-/** Apply scheduled items to a year's data. If prevComputed provided, evaluates conditions. */
+/** Apply scheduled items to a year's data. If prevComputed provided, evaluates conditions & percentage amounts. */
 function applySchedules(
   yd: YearData,
   schedules: ScheduledItem[],
@@ -75,36 +80,54 @@ function applySchedules(
     if (s.endYear !== undefined && yd.year > s.endYear) continue;
 
     const hasConditions = s.conditions && s.conditions.length > 0;
+    const isPercentage = s.amountType === 'percentage';
+    const needsComputed = hasConditions || isPercentage;
 
-    // In first pass, skip conditional items. In second pass, only process conditional items.
-    if (conditionalOnly && !hasConditions) continue;
-    if (!conditionalOnly && hasConditions) continue;
+    // In first pass, skip items needing computed context. In second pass, only process those.
+    if (conditionalOnly && !needsComputed) continue;
+    if (!conditionalOnly && needsComputed) continue;
 
-    // Evaluate conditions against prevComputed
-    if (hasConditions && prevComputed) {
-      const ctx = buildConditionContext(prevComputed, yd);
-      const allPass = s.conditions!.every(c => evaluateCondition(c, ctx));
-      if (!allPass) continue;
-    } else if (hasConditions && !prevComputed) {
+    // Build context once if needed
+    let ctx: Record<string, number> | null = null;
+    if (needsComputed && prevComputed) {
+      ctx = buildConditionContext(prevComputed, yd);
+    } else if (needsComputed && !prevComputed) {
       // No computed data to evaluate against yet — skip
       continue;
+    }
+
+    // Evaluate conditions against computed context
+    if (hasConditions && ctx) {
+      const allPass = s.conditions!.every(c => evaluateCondition(c, ctx!));
+      if (!allPass) continue;
     }
 
     // Only apply if the field is still 0 (user hasn't manually entered a value)
     const field = s.field as keyof YearData;
     if ((result[field] as number) === 0) {
-      (result as any)[field] = getScheduledAmount(s, yd.year, inflationRate);
+      let amount: number;
+      if (isPercentage && ctx && s.amountReference) {
+        const refValue = ctx[s.amountReference] ?? 0;
+        const pct = getScheduledAmount(s, yd.year, inflationRate); // growth-adjusted percentage
+        amount = pct * refValue;
+      } else {
+        amount = getScheduledAmount(s, yd.year, inflationRate);
+      }
+      // Apply min/max caps
+      if (s.amountMin !== undefined && s.amountMin > 0) amount = Math.max(amount, s.amountMin);
+      if (s.amountMax !== undefined && s.amountMax > 0) amount = Math.min(amount, s.amountMax);
+      (result as any)[field] = amount;
     }
   }
   return result;
 }
 
-/** Check if any conditional schedule items apply to this year range */
+/** Check if any schedule items need computed context (conditions or percentage amounts) */
 function hasConditionalSchedules(schedules: ScheduledItem[], year: number): boolean {
   return schedules.some(s => {
     if (year < s.startYear) return false;
     if (s.endYear !== undefined && year > s.endYear) return false;
-    return s.conditions && s.conditions.length > 0;
+    return (s.conditions && s.conditions.length > 0) || s.amountType === 'percentage';
   });
 }
 

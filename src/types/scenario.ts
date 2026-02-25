@@ -6,7 +6,12 @@ export type ConditionOperator = '>' | '<' | '>=' | '<=' | '==' | 'between';
 export type ConditionField =
   | 'grossIncome' | 'netTaxableIncome' | 'afterTaxIncome' | 'netCashFlow'
   | 'netWorth' | 'totalIncomeTax' | 'employmentIncome' | 'selfEmploymentIncome'
-  | 'rrspEOY' | 'tfsaEOY' | 'age';
+  | 'rrspEOY' | 'tfsaEOY' | 'fhsaEOY' | 'nonRegEOY' | 'savingsEOY'
+  | 'rrspUnusedRoom' | 'tfsaUnusedRoom'
+  | 'age';
+
+// Reference fields for percentage-based scheduled amounts
+export type AmountReference = ConditionField;
 
 export interface ScheduleCondition {
   field: ConditionField;
@@ -128,9 +133,13 @@ export interface ScheduledItem {
   field: ScheduledField;
   startYear: number;
   endYear?: number;   // undefined = indefinite
-  amount: number;
+  amount: number;     // dollar amount when 'fixed', decimal percentage when 'percentage' (0.10 = 10%)
+  amountType?: 'fixed' | 'percentage';    // default 'fixed'
+  amountReference?: AmountReference;       // reference field for percentage mode
+  amountMin?: number;                      // floor on computed amount (optional)
+  amountMax?: number;                      // cap on computed amount (optional)
   conditions?: ScheduleCondition[];
-  growthRate?: number;             // annual % increase on base amount
+  growthRate?: number;             // annual % increase on base amount (or on the percentage itself)
   growthType?: 'fixed' | 'inflation'; // grow by growthRate or by assumption's inflation rate
 }
 

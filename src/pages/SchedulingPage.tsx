@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useScenario, useUpdateScenario } from '../store/ScenarioContext';
-import type { ScheduledItem, ScheduledField, ScheduleCondition, ConditionField, ConditionOperator } from '../types/scenario';
+import type { ScheduledItem, ScheduledField, ScheduleCondition, ConditionField, ConditionOperator, AmountReference } from '../types/scenario';
 
 const SCHEDULED_FIELD_OPTIONS: { value: ScheduledField; label: string; group: string }[] = [
   { value: 'employmentIncome', label: 'Employment Income', group: 'Income' },
@@ -38,18 +38,40 @@ const SCHEDULED_FIELD_OPTIONS: { value: ScheduledField; label: string; group: st
   { value: 'nonRegCashPct', label: 'Non-Reg Cash %', group: 'Asset Allocation' },
 ];
 
-const CONDITION_FIELDS: { value: ConditionField; label: string }[] = [
-  { value: 'grossIncome', label: 'Gross Income' },
-  { value: 'netTaxableIncome', label: 'Net Taxable Income' },
-  { value: 'afterTaxIncome', label: 'After-Tax Income' },
-  { value: 'netCashFlow', label: 'Net Cash Flow' },
-  { value: 'netWorth', label: 'Net Worth' },
-  { value: 'totalIncomeTax', label: 'Total Income Tax' },
-  { value: 'employmentIncome', label: 'Employment Income' },
-  { value: 'selfEmploymentIncome', label: 'Self-Employment Income' },
-  { value: 'rrspEOY', label: 'RRSP EOY Balance' },
-  { value: 'tfsaEOY', label: 'TFSA EOY Balance' },
-  { value: 'age', label: 'Age' },
+const CONDITION_FIELDS: { value: ConditionField; label: string; group: string }[] = [
+  { value: 'grossIncome', label: 'Gross Income', group: 'Income' },
+  { value: 'netTaxableIncome', label: 'Net Taxable Income', group: 'Income' },
+  { value: 'afterTaxIncome', label: 'After-Tax Income', group: 'Income' },
+  { value: 'employmentIncome', label: 'Employment Income', group: 'Income' },
+  { value: 'selfEmploymentIncome', label: 'Self-Employment Income', group: 'Income' },
+  { value: 'netCashFlow', label: 'Net Cash Flow', group: 'Cash Flow' },
+  { value: 'totalIncomeTax', label: 'Total Income Tax', group: 'Tax' },
+  { value: 'netWorth', label: 'Net Worth', group: 'Accounts' },
+  { value: 'rrspEOY', label: 'RRSP Balance', group: 'Accounts' },
+  { value: 'tfsaEOY', label: 'TFSA Balance', group: 'Accounts' },
+  { value: 'fhsaEOY', label: 'FHSA Balance', group: 'Accounts' },
+  { value: 'nonRegEOY', label: 'Non-Reg Balance', group: 'Accounts' },
+  { value: 'savingsEOY', label: 'Savings Balance', group: 'Accounts' },
+  { value: 'rrspUnusedRoom', label: 'RRSP Unused Room', group: 'Room' },
+  { value: 'tfsaUnusedRoom', label: 'TFSA Unused Room', group: 'Room' },
+  { value: 'age', label: 'Age', group: 'Other' },
+];
+
+const REFERENCE_FIELDS: { value: AmountReference; label: string; group: string }[] = [
+  { value: 'grossIncome', label: 'Gross Income', group: 'Income' },
+  { value: 'netTaxableIncome', label: 'Net Taxable Income', group: 'Income' },
+  { value: 'afterTaxIncome', label: 'After-Tax Income', group: 'Income' },
+  { value: 'employmentIncome', label: 'Employment Income', group: 'Income' },
+  { value: 'selfEmploymentIncome', label: 'Self-Empl. Income', group: 'Income' },
+  { value: 'netCashFlow', label: 'Net Cash Flow', group: 'Cash Flow' },
+  { value: 'netWorth', label: 'Net Worth', group: 'Accounts' },
+  { value: 'rrspEOY', label: 'RRSP Balance', group: 'Accounts' },
+  { value: 'tfsaEOY', label: 'TFSA Balance', group: 'Accounts' },
+  { value: 'fhsaEOY', label: 'FHSA Balance', group: 'Accounts' },
+  { value: 'nonRegEOY', label: 'Non-Reg Balance', group: 'Accounts' },
+  { value: 'savingsEOY', label: 'Savings Balance', group: 'Accounts' },
+  { value: 'rrspUnusedRoom', label: 'RRSP Unused Room', group: 'Room' },
+  { value: 'tfsaUnusedRoom', label: 'TFSA Unused Room', group: 'Room' },
 ];
 
 const OPERATORS: { value: ConditionOperator; label: string }[] = [
@@ -61,7 +83,7 @@ const OPERATORS: { value: ConditionOperator; label: string }[] = [
   { value: 'between', label: 'between' },
 ];
 
-const cellCls = "border border-slate-200 text-[11px] text-right px-1.5 py-1 bg-white text-slate-700 outline-none focus:border-blue-400 rounded";
+const cellBase = "border border-slate-200 text-[11px] px-1.5 py-1 bg-white text-slate-700 outline-none focus:border-blue-400 rounded";
 
 export function SchedulingPage() {
   const { activeScenario } = useScenario();
@@ -90,6 +112,17 @@ export function SchedulingPage() {
     };
     setItems([...items, newItem]);
     setExpandedId(newItem.id);
+  }
+
+  function duplicateItem(item: ScheduledItem) {
+    const dup: ScheduledItem = {
+      ...item,
+      id: crypto.randomUUID(),
+      label: item.label ? `${item.label} (copy)` : '',
+      conditions: item.conditions ? item.conditions.map(c => ({ ...c })) : undefined,
+    };
+    setItems([...items, dup]);
+    setExpandedId(dup.id);
   }
 
   function removeItem(id: string) {
@@ -123,15 +156,35 @@ export function SchedulingPage() {
     updateItem(itemId, { conditions: conds.length > 0 ? conds : undefined });
   }
 
+  function renderGroupedSelect(
+    options: { value: string; label: string; group: string }[],
+    value: string,
+    onChange: (v: string) => void,
+    className: string,
+  ) {
+    const groups = [...new Set(options.map(o => o.group))];
+    return (
+      <select className={className} value={value} onChange={e => onChange(e.target.value)}>
+        {groups.map(g => (
+          <optgroup key={g} label={g}>
+            {options.filter(o => o.group === g).map(o => (
+              <option key={o.value} value={o.value}>{o.label}</option>
+            ))}
+          </optgroup>
+        ))}
+      </select>
+    );
+  }
+
   return (
     <div className="h-full overflow-auto bg-slate-50">
-      <div className="max-w-6xl mx-auto px-6 py-5">
+      <div className="max-w-7xl mx-auto px-6 py-5">
         <div className="flex items-center justify-between mb-4">
           <div>
             <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1">Scheduling Rules</div>
             <div className="text-xs text-slate-500">
-              Auto-fill recurring amounts across years. Per-year overrides in the Timeline take priority.
-              Conditional rules evaluate against Pass 1 computed values.
+              Auto-fill recurring amounts across years. Supports fixed dollar amounts or percentage of computed values.
+              Per-year overrides in the Timeline take priority. Conditional & percentage rules evaluate against Pass 1 computed values.
             </div>
           </div>
           <button
@@ -151,56 +204,112 @@ export function SchedulingPage() {
             <table className="w-full text-xs">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="text-left py-2.5 px-3 text-[10px] text-slate-500 font-semibold uppercase w-36">Label</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] text-slate-500 font-semibold uppercase w-32">Label</th>
                   <th className="text-left py-2.5 px-3 text-[10px] text-slate-500 font-semibold uppercase">Field</th>
+                  <th className="text-center py-2.5 px-1 text-[10px] text-slate-500 font-semibold uppercase w-10">Type</th>
+                  <th className="text-right py-2.5 px-3 text-[10px] text-slate-500 font-semibold uppercase w-20">Amount</th>
+                  <th className="text-left py-2.5 px-2 text-[10px] text-slate-500 font-semibold uppercase w-36">Reference</th>
                   <th className="text-center py-2.5 px-2 text-[10px] text-slate-500 font-semibold uppercase w-20">Start</th>
                   <th className="text-center py-2.5 px-2 text-[10px] text-slate-500 font-semibold uppercase w-20">End</th>
-                  <th className="text-right py-2.5 px-3 text-[10px] text-slate-500 font-semibold uppercase w-24">Amount</th>
-                  <th className="text-right py-2.5 px-2 text-[10px] text-slate-500 font-semibold uppercase w-16">Growth %</th>
-                  <th className="text-center py-2.5 px-2 text-[10px] text-slate-500 font-semibold uppercase w-20">Growth Type</th>
-                  <th className="text-center py-2.5 px-2 text-[10px] text-slate-500 font-semibold uppercase w-24">Conditions</th>
-                  <th className="w-8"></th>
+                  <th className="text-right py-2.5 px-2 text-[10px] text-slate-500 font-semibold uppercase w-16">Growth</th>
+                  <th className="text-center py-2.5 px-2 text-[10px] text-slate-500 font-semibold uppercase w-20">Grow By</th>
+                  <th className="text-center py-2.5 px-2 text-[10px] text-slate-500 font-semibold uppercase w-20">Settings</th>
+                  <th className="w-14"></th>
                 </tr>
               </thead>
               <tbody>
                 {items.map(item => {
                   const condCount = item.conditions?.length ?? 0;
                   const isExpanded = expandedId === item.id;
+                  const isPct = item.amountType === 'percentage';
+                  const hasCaps = (item.amountMin !== undefined && item.amountMin > 0) || (item.amountMax !== undefined && item.amountMax > 0);
+                  const settingsCount = condCount + (hasCaps ? 1 : 0);
 
                   return (
                     <React.Fragment key={item.id}>
                       <tr className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
+                        {/* Label */}
                         <td className="py-1.5 px-3">
                           <input
-                            className={`${cellCls} text-left w-full`}
+                            className={`${cellBase} text-left w-full`}
                             placeholder="e.g. Salary"
                             value={item.label}
                             onChange={e => updateItem(item.id, { label: e.target.value })}
                           />
                         </td>
+                        {/* Field */}
                         <td className="py-1.5 px-3">
-                          <select
-                            className={`${cellCls} text-left w-full`}
-                            value={item.field}
-                            onChange={e => updateItem(item.id, { field: e.target.value as ScheduledField })}
-                          >
-                            {SCHEDULED_FIELD_OPTIONS.map(o => (
-                              <option key={o.value} value={o.value}>{o.label}</option>
-                            ))}
-                          </select>
+                          {renderGroupedSelect(
+                            SCHEDULED_FIELD_OPTIONS,
+                            item.field,
+                            v => updateItem(item.id, { field: v as ScheduledField }),
+                            `${cellBase} text-left w-full`,
+                          )}
                         </td>
+                        {/* Amount Type toggle */}
+                        <td className="py-1.5 px-1 text-center">
+                          <button
+                            onClick={() => {
+                              if (isPct) {
+                                updateItem(item.id, { amountType: 'fixed', amountReference: undefined });
+                              } else {
+                                updateItem(item.id, { amountType: 'percentage', amountReference: item.amountReference ?? 'grossIncome', amount: 0 });
+                              }
+                            }}
+                            className={`text-[10px] font-bold px-1.5 py-0.5 rounded border transition-colors ${
+                              isPct
+                                ? 'bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100'
+                                : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'
+                            }`}
+                            title={isPct ? 'Percentage of reference — click for fixed $' : 'Fixed dollar — click for percentage'}
+                          >
+                            {isPct ? '%' : '$'}
+                          </button>
+                        </td>
+                        {/* Amount */}
+                        <td className="py-1.5 px-3">
+                          <input
+                            type="number"
+                            className={`${cellBase} text-right w-full`}
+                            placeholder={isPct ? '10' : '0'}
+                            value={isPct ? (item.amount !== 0 ? (item.amount * 100).toFixed(1).replace(/\.0$/, '') : '') : (item.amount || '')}
+                            onChange={e => {
+                              const v = e.target.value;
+                              if (isPct) {
+                                updateItem(item.id, { amount: v === '' ? 0 : (parseFloat(v) / 100 || 0) });
+                              } else {
+                                updateItem(item.id, { amount: v === '' ? 0 : (parseFloat(v) || 0) });
+                              }
+                            }}
+                          />
+                        </td>
+                        {/* Reference (only for percentage) */}
+                        <td className="py-1.5 px-2">
+                          {isPct ? (
+                            renderGroupedSelect(
+                              REFERENCE_FIELDS,
+                              item.amountReference ?? 'grossIncome',
+                              v => updateItem(item.id, { amountReference: v as AmountReference }),
+                              `${cellBase} text-left w-full`,
+                            )
+                          ) : (
+                            <span className="text-[10px] text-slate-300 px-1">—</span>
+                          )}
+                        </td>
+                        {/* Start */}
                         <td className="py-1.5 px-2">
                           <input
                             type="number"
-                            className={`${cellCls} w-full text-center`}
+                            className={`${cellBase} w-full text-center`}
                             value={item.startYear}
                             onChange={e => updateItem(item.id, { startYear: parseInt(e.target.value) || startYear })}
                           />
                         </td>
+                        {/* End */}
                         <td className="py-1.5 px-2">
                           <input
                             type="number"
-                            className={`${cellCls} w-full text-center`}
+                            className={`${cellBase} w-full text-center`}
                             placeholder="∞"
                             value={item.endYear ?? ''}
                             onChange={e => {
@@ -209,30 +318,24 @@ export function SchedulingPage() {
                             }}
                           />
                         </td>
-                        <td className="py-1.5 px-3">
-                          <input
-                            type="number"
-                            className={`${cellCls} w-full`}
-                            value={item.amount}
-                            onChange={e => updateItem(item.id, { amount: parseFloat(e.target.value) || 0 })}
-                          />
-                        </td>
+                        {/* Growth % */}
                         <td className="py-1.5 px-2">
                           <input
                             type="number"
-                            className={`${cellCls} w-full`}
+                            className={`${cellBase} text-right w-full`}
                             step="0.1"
                             placeholder="0"
-                            value={item.growthRate !== undefined ? (item.growthRate * 100).toFixed(1) : ''}
+                            value={item.growthRate !== undefined ? (item.growthRate * 100).toFixed(1).replace(/\.0$/, '') : ''}
                             onChange={e => {
                               const v = e.target.value;
                               updateItem(item.id, { growthRate: v === '' ? undefined : (parseFloat(v) / 100 || 0) });
                             }}
                           />
                         </td>
+                        {/* Growth Type */}
                         <td className="py-1.5 px-2 text-center">
                           <select
-                            className={`${cellCls} text-center w-full`}
+                            className={`${cellBase} text-center w-full`}
                             value={item.growthType ?? 'fixed'}
                             onChange={e => updateItem(item.id, { growthType: e.target.value as 'fixed' | 'inflation' })}
                           >
@@ -240,19 +343,26 @@ export function SchedulingPage() {
                             <option value="inflation">Inflation</option>
                           </select>
                         </td>
+                        {/* Settings (conditions + caps) */}
                         <td className="py-1.5 px-2 text-center">
                           <button
                             onClick={() => setExpandedId(isExpanded ? null : item.id)}
                             className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
-                              condCount > 0
+                              settingsCount > 0
                                 ? 'bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100'
                                 : 'bg-slate-50 border-slate-200 text-slate-400 hover:bg-slate-100 hover:text-slate-600'
                             }`}
                           >
-                            {condCount > 0 ? `${condCount} cond${condCount > 1 ? 's' : ''}` : 'none'}
+                            {settingsCount > 0 ? `${settingsCount} set` : 'more'}
                           </button>
                         </td>
-                        <td className="py-1.5 px-1 text-center">
+                        {/* Actions */}
+                        <td className="py-1.5 px-1 text-center whitespace-nowrap">
+                          <button
+                            onClick={() => duplicateItem(item)}
+                            className="text-slate-300 hover:text-blue-500 transition-colors text-sm leading-none mr-1"
+                            title="Duplicate"
+                          >⧉</button>
                           <button
                             onClick={() => removeItem(item.id)}
                             className="text-slate-300 hover:text-red-500 transition-colors text-sm leading-none"
@@ -261,63 +371,107 @@ export function SchedulingPage() {
                         </td>
                       </tr>
 
-                      {/* Expanded conditions */}
+                      {/* Expanded settings */}
                       {isExpanded && (
                         <tr>
-                          <td colSpan={9} className="bg-slate-50 px-6 py-3 border-b border-slate-200">
-                            <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                              Conditions (all must pass for this rule to apply)
-                            </div>
-                            {(item.conditions ?? []).map((cond, ci) => (
-                              <div key={ci} className="flex items-center gap-2 mb-1.5">
-                                <select
-                                  className={`${cellCls} text-left w-40`}
-                                  value={cond.field}
-                                  onChange={e => updateCondition(item.id, ci, { field: e.target.value as ConditionField })}
-                                >
-                                  {CONDITION_FIELDS.map(f => (
-                                    <option key={f.value} value={f.value}>{f.label}</option>
-                                  ))}
-                                </select>
-                                <select
-                                  className={`${cellCls} text-center w-20`}
-                                  value={cond.operator}
-                                  onChange={e => updateCondition(item.id, ci, { operator: e.target.value as ConditionOperator })}
-                                >
-                                  {OPERATORS.map(o => (
-                                    <option key={o.value} value={o.value}>{o.label}</option>
-                                  ))}
-                                </select>
-                                <input
-                                  type="number"
-                                  className={`${cellCls} w-28`}
-                                  value={cond.value}
-                                  onChange={e => updateCondition(item.id, ci, { value: parseFloat(e.target.value) || 0 })}
-                                />
-                                {cond.operator === 'between' && (
-                                  <>
-                                    <span className="text-[10px] text-slate-400">and</span>
+                          <td colSpan={11} className="bg-slate-50 px-6 py-3 border-b border-slate-200">
+                            <div className="grid grid-cols-2 gap-6">
+                              {/* Left: Min/Max Caps */}
+                              <div>
+                                <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                                  Amount Caps
+                                </div>
+                                <div className="flex items-center gap-3 mb-2">
+                                  <label className="text-[10px] text-slate-500 w-8">Min</label>
+                                  <input
+                                    type="number"
+                                    className={`${cellBase} text-right w-28`}
+                                    placeholder="none"
+                                    value={item.amountMin ?? ''}
+                                    onChange={e => {
+                                      const v = e.target.value;
+                                      updateItem(item.id, { amountMin: v === '' ? undefined : (parseFloat(v) || 0) });
+                                    }}
+                                  />
+                                  <span className="text-[9px] text-slate-400">Computed amount won't go below this</span>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <label className="text-[10px] text-slate-500 w-8">Max</label>
+                                  <input
+                                    type="number"
+                                    className={`${cellBase} text-right w-28`}
+                                    placeholder="none"
+                                    value={item.amountMax ?? ''}
+                                    onChange={e => {
+                                      const v = e.target.value;
+                                      updateItem(item.id, { amountMax: v === '' ? undefined : (parseFloat(v) || 0) });
+                                    }}
+                                  />
+                                  <span className="text-[9px] text-slate-400">Computed amount won't exceed this</span>
+                                </div>
+                                {isPct && (
+                                  <div className="mt-2 text-[9px] text-emerald-600 bg-emerald-50 rounded px-2 py-1 border border-emerald-100">
+                                    This rule computes: {(item.amount * 100).toFixed(1)}% of {REFERENCE_FIELDS.find(r => r.value === item.amountReference)?.label ?? item.amountReference}
+                                    {item.amountMax ? `, capped at $${item.amountMax.toLocaleString()}` : ''}
+                                    {item.amountMin ? `, min $${item.amountMin.toLocaleString()}` : ''}
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Right: Conditions */}
+                              <div>
+                                <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                                  Conditions <span className="font-normal text-slate-400">(all must pass)</span>
+                                </div>
+                                {(item.conditions ?? []).map((cond, ci) => (
+                                  <div key={ci} className="flex items-center gap-2 mb-1.5">
+                                    {renderGroupedSelect(
+                                      CONDITION_FIELDS,
+                                      cond.field,
+                                      v => updateCondition(item.id, ci, { field: v as ConditionField }),
+                                      `${cellBase} text-left w-36`,
+                                    )}
+                                    <select
+                                      className={`${cellBase} text-center w-20`}
+                                      value={cond.operator}
+                                      onChange={e => updateCondition(item.id, ci, { operator: e.target.value as ConditionOperator })}
+                                    >
+                                      {OPERATORS.map(o => (
+                                        <option key={o.value} value={o.value}>{o.label}</option>
+                                      ))}
+                                    </select>
                                     <input
                                       type="number"
-                                      className={`${cellCls} w-28`}
-                                      value={cond.value2 ?? 0}
-                                      onChange={e => updateCondition(item.id, ci, { value2: parseFloat(e.target.value) || 0 })}
+                                      className={`${cellBase} text-right w-28`}
+                                      value={cond.value}
+                                      onChange={e => updateCondition(item.id, ci, { value: parseFloat(e.target.value) || 0 })}
                                     />
-                                  </>
-                                )}
+                                    {cond.operator === 'between' && (
+                                      <>
+                                        <span className="text-[10px] text-slate-400">and</span>
+                                        <input
+                                          type="number"
+                                          className={`${cellBase} text-right w-28`}
+                                          value={cond.value2 ?? 0}
+                                          onChange={e => updateCondition(item.id, ci, { value2: parseFloat(e.target.value) || 0 })}
+                                        />
+                                      </>
+                                    )}
+                                    <button
+                                      onClick={() => removeCondition(item.id, ci)}
+                                      className="text-slate-300 hover:text-red-500 transition-colors text-sm"
+                                      title="Remove condition"
+                                    >×</button>
+                                  </div>
+                                ))}
                                 <button
-                                  onClick={() => removeCondition(item.id, ci)}
-                                  className="text-slate-300 hover:text-red-500 transition-colors text-sm"
-                                  title="Remove condition"
-                                >×</button>
+                                  onClick={() => addCondition(item.id)}
+                                  className="text-[10px] text-blue-600 hover:text-blue-800 transition-colors mt-1"
+                                >
+                                  + Add condition
+                                </button>
                               </div>
-                            ))}
-                            <button
-                              onClick={() => addCondition(item.id)}
-                              className="text-[10px] text-blue-600 hover:text-blue-800 transition-colors mt-1"
-                            >
-                              + Add condition
-                            </button>
+                            </div>
                           </td>
                         </tr>
                       )}

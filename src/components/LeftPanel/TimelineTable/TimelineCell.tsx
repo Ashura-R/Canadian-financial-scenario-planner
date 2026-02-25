@@ -21,10 +21,11 @@ export function TimelineCell({ value, onChange, readOnly, pct, hasWarning, hasOv
     if (editing) inputRef.current?.select();
   }, [editing]);
 
+  const isPctRule = scheduledValue === -1; // percentage-based rule (computed dynamically)
   const hasSchedule = scheduledValue !== undefined && scheduledValue !== 0;
   const isScheduleFilling = hasSchedule && value === 0;
-  const isUserOverride = hasSchedule && value !== 0;
-  const displayValue = isScheduleFilling ? scheduledValue : value;
+  const isUserOverride = hasSchedule && !isPctRule && value !== 0;
+  const displayValue = isScheduleFilling && !isPctRule ? scheduledValue : value;
 
   function fmt(v: number) {
     if (pct) return (v * 100).toFixed(0) + '%';
@@ -36,7 +37,7 @@ export function TimelineCell({ value, onChange, readOnly, pct, hasWarning, hasOv
   function startEdit() {
     if (readOnly) return;
     setEditing(true);
-    const editVal = isScheduleFilling ? scheduledValue : value;
+    const editVal = (isScheduleFilling && !isPctRule) ? scheduledValue : value;
     setRaw(pct ? (editVal * 100).toFixed(0) : String(Math.round(editVal)));
   }
 
@@ -54,10 +55,10 @@ export function TimelineCell({ value, onChange, readOnly, pct, hasWarning, hasOv
   const baseCls = [
     'w-full text-right text-[10px] px-1 py-px rounded transition-colors select-none relative group',
     readOnly ? 'cursor-default' : 'cursor-pointer',
-    isScheduleFilling ? 'text-blue-600' : isUserOverride ? 'text-slate-900 font-medium' : dimmed ? 'text-slate-400' : 'text-slate-700',
+    (isScheduleFilling || (isPctRule && value !== 0)) ? 'text-blue-600' : isUserOverride ? 'text-slate-900 font-medium' : dimmed ? 'text-slate-400' : 'text-slate-700',
     hasWarning ? 'bg-red-50 text-red-600' : '',
     hasOverride && !hasWarning ? 'bg-blue-50' : '',
-    isScheduleFilling && !hasWarning ? 'bg-blue-50/40' : '',
+    (isScheduleFilling || (isPctRule && value !== 0)) && !hasWarning ? 'bg-blue-50/40' : '',
     !readOnly && !hasWarning ? 'hover:bg-slate-100' : '',
   ].join(' ');
 
@@ -81,6 +82,7 @@ export function TimelineCell({ value, onChange, readOnly, pct, hasWarning, hasOv
   return (
     <div className={baseCls} onClick={startEdit} title={
       hasWarning ? '⚠ Validation warning'
+      : isPctRule && value !== 0 ? '⚡ Computed from % schedule rule — click to override'
       : isScheduleFilling ? '⚡ From schedule rule — click to override'
       : isUserOverride ? '✎ Manual override — click ✕ to revert to schedule'
       : hasOverride ? 'EOY Override active'
@@ -88,7 +90,7 @@ export function TimelineCell({ value, onChange, readOnly, pct, hasWarning, hasOv
     }>
       {hasWarning && <span className="mr-0.5 text-red-500">!</span>}
       {hasOverride && !hasWarning && !isUserOverride && <span className="mr-0.5 text-blue-500">↗</span>}
-      {isScheduleFilling && !hasWarning && <span className="mr-0.5 text-blue-400">⚡</span>}
+      {(isScheduleFilling || (isPctRule && value !== 0)) && !hasWarning && <span className="mr-0.5 text-blue-400">⚡</span>}
       {fmt(displayValue)}
       {isUserOverride && !readOnly && (
         <button

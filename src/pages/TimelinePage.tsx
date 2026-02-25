@@ -20,7 +20,7 @@ function loadBanding(): boolean {
   try { return localStorage.getItem(BAND_STORAGE_KEY) === '1'; } catch { return false; }
 }
 
-/** Compute what each schedule would provide per year/field (non-conditional only) */
+/** Compute what each schedule would provide per year/field (fixed-amount non-conditional only; percentage rules show 0 as hint) */
 function buildScheduleOverlay(
   schedules: ScheduledItem[],
   years: YearData[],
@@ -35,7 +35,12 @@ function buildScheduleOverlay(
       if (s.endYear !== undefined && yd.year > s.endYear) continue;
       const field = s.field;
       if (!fieldMap.has(field)) {
-        fieldMap.set(field, getScheduledAmount(s, yd.year, inflationRate));
+        // Percentage-based rules depend on computed values — show a marker (-1) so cell knows a rule exists
+        if (s.amountType === 'percentage') {
+          fieldMap.set(field, -1);
+        } else if (!s.conditions || s.conditions.length === 0) {
+          fieldMap.set(field, getScheduledAmount(s, yd.year, inflationRate));
+        }
       }
     }
     if (fieldMap.size > 0) overlay.set(i, fieldMap);
