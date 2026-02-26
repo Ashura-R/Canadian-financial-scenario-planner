@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useScenario } from '../../store/ScenarioContext';
 import { makeDefaultScenario } from '../../store/defaults';
-import { generatePDFReport } from '../../utils/pdfReport';
+import { PDFReportModal } from '../PDFReportModal';
 import type { Scenario } from '../../types/scenario';
 
 interface Props {
@@ -56,11 +56,7 @@ export function ScenarioBar({ onCompare }: Props) {
     URL.revokeObjectURL(url);
   }
 
-  function handlePDFReport() {
-    if (activeScenario && activeComputed) {
-      generatePDFReport({ scenario: activeScenario, computed: activeComputed });
-    }
-  }
+  const [showPDFModal, setShowPDFModal] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -133,9 +129,16 @@ export function ScenarioBar({ onCompare }: Props) {
         <button onClick={onCompare} className={btnCls}>Compare</button>
         <button onClick={exportScenario} className={btnCls}>Export</button>
         <button onClick={() => fileInputRef.current?.click()} className={btnCls}>Import</button>
-        <button onClick={handlePDFReport} className={btnCls}>PDF Report</button>
+        <button onClick={() => setShowPDFModal(true)} className={btnCls}>PDF Report</button>
         <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={importScenario} />
       </div>
+      {showPDFModal && activeScenario && activeComputed && (
+        <PDFReportModal
+          scenario={activeScenario}
+          computed={activeComputed}
+          onClose={() => setShowPDFModal(false)}
+        />
+      )}
     </div>
   );
 }
