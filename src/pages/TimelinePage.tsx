@@ -51,6 +51,11 @@ function getRefFromComputed(ref: string, cy: ComputedYear): number {
     case 'tfsaUnusedRoom': return cy.tfsaUnusedRoom;
     case 'capitalGainsRealized': return cy.tax.taxableCapitalGains; // from computed tax
     case 'capitalLossCF': return cy.capitalLossCF;
+    case 'liraEOY': return cy.accounts.liraEOY;
+    case 'respEOY': return cy.accounts.respEOY;
+    case 'rentalGrossIncome': return 0;
+    case 'pensionIncome': return 0;
+    case 'foreignIncome': return 0;
     default: return 0;
   }
 }
@@ -95,7 +100,7 @@ function buildScheduleOverlay(
 
 // Default group order
 const DEFAULT_GROUP_ORDER = [
-  'Income', 'RRSP', 'TFSA', 'FHSA', 'Non-Reg & Savings',
+  'Income', 'RRSP', 'TFSA', 'FHSA', 'Non-Reg & Savings', 'LIRA/LIF', 'RESP',
   'Asset Allocation', 'Capital Loss', 'ACB Tracking',
   'EOY Overrides', 'Retirement (Computed)', 'Liabilities (Computed)', 'Rate Overrides',
   'Contribution Room', 'Tax Results (Computed)',
@@ -107,6 +112,8 @@ const GROUP_DEFAULTS: Record<string, boolean> = {
   'TFSA': true,
   'FHSA': true,
   'Non-Reg & Savings': true,
+  'LIRA/LIF': false,
+  'RESP': false,
   'Asset Allocation': false,
   'Capital Loss': false,
   'ACB Tracking': false,
@@ -147,6 +154,11 @@ const ROW_REGISTRY: RowEntry[] = [
   { rowId: 'capitalGainsRealized', editable: true, group: 'Income' },
   { rowId: 'capitalLossesRealized', editable: true, group: 'Income' },
   { rowId: 'otherTaxableIncome', editable: true, group: 'Income' },
+  { rowId: 'rentalGrossIncome', editable: true, group: 'Income' },
+  { rowId: 'rentalExpenses', editable: true, group: 'Income' },
+  { rowId: 'pensionIncome', editable: true, group: 'Income' },
+  { rowId: 'foreignIncome', editable: true, group: 'Income' },
+  { rowId: 'foreignTaxPaid', editable: true, group: 'Income' },
   { rowId: 'charitableDonations', editable: true, group: 'Income' },
   { rowId: '_summary_grossIncome', editable: false, group: 'Income' },
   // RRSP
@@ -165,6 +177,16 @@ const ROW_REGISTRY: RowEntry[] = [
   { rowId: 'nonRegWithdrawal', editable: true, group: 'Non-Reg & Savings' },
   { rowId: 'savingsDeposit', editable: true, group: 'Non-Reg & Savings' },
   { rowId: 'savingsWithdrawal', editable: true, group: 'Non-Reg & Savings' },
+  // LIRA/LIF
+  { rowId: 'lifWithdrawal', editable: true, group: 'LIRA/LIF' },
+  { rowId: '_computed_liraEOY', editable: false, group: 'LIRA/LIF' },
+  { rowId: '_computed_lifMin', editable: false, group: 'LIRA/LIF' },
+  { rowId: '_computed_lifMax', editable: false, group: 'LIRA/LIF' },
+  // RESP
+  { rowId: 'respContribution', editable: true, group: 'RESP' },
+  { rowId: 'respWithdrawal', editable: true, group: 'RESP' },
+  { rowId: '_computed_respEOY', editable: false, group: 'RESP' },
+  { rowId: '_computed_respCESG', editable: false, group: 'RESP' },
   // Asset Allocation
   { rowId: 'rrspEquityPct', editable: true, group: 'Asset Allocation', pct: true },
   { rowId: 'rrspFixedPct', editable: true, group: 'Asset Allocation', pct: true },
@@ -179,6 +201,12 @@ const ROW_REGISTRY: RowEntry[] = [
   { rowId: 'nonRegEquityPct', editable: true, group: 'Asset Allocation', pct: true },
   { rowId: 'nonRegFixedPct', editable: true, group: 'Asset Allocation', pct: true },
   { rowId: 'nonRegCashPct', editable: true, group: 'Asset Allocation', pct: true },
+  { rowId: 'liraEquityPct', editable: true, group: 'Asset Allocation', pct: true },
+  { rowId: 'liraFixedPct', editable: true, group: 'Asset Allocation', pct: true },
+  { rowId: 'liraCashPct', editable: true, group: 'Asset Allocation', pct: true },
+  { rowId: 'respEquityPct', editable: true, group: 'Asset Allocation', pct: true },
+  { rowId: 'respFixedPct', editable: true, group: 'Asset Allocation', pct: true },
+  { rowId: 'respCashPct', editable: true, group: 'Asset Allocation', pct: true },
   // Capital Loss
   { rowId: 'capitalLossApplied', editable: true, group: 'Capital Loss' },
   { rowId: '_computed_capitalLossCF', editable: false, group: 'Capital Loss' },
@@ -195,6 +223,8 @@ const ROW_REGISTRY: RowEntry[] = [
   { rowId: 'fhsaEOYOverride', editable: true, group: 'EOY Overrides', isOverride: true },
   { rowId: 'nonRegEOYOverride', editable: true, group: 'EOY Overrides', isOverride: true },
   { rowId: 'savingsEOYOverride', editable: true, group: 'EOY Overrides', isOverride: true },
+  { rowId: 'liraEOYOverride', editable: true, group: 'EOY Overrides', isOverride: true },
+  { rowId: 'respEOYOverride', editable: true, group: 'EOY Overrides', isOverride: true },
   // Retirement (Computed)
   { rowId: '_computed_age', editable: false, group: 'Retirement (Computed)' },
   { rowId: '_computed_cppIncome', editable: false, group: 'Retirement (Computed)' },
@@ -740,6 +770,11 @@ export function TimelinePage() {
             {renderRow('Capital Gains', 'capitalGainsRealized')}
             {renderRow('Capital Losses', 'capitalLossesRealized')}
             {renderRow('Other Taxable', 'otherTaxableIncome')}
+            {renderRow('Rental Gross', 'rentalGrossIncome')}
+            {renderRow('Rental Expenses', 'rentalExpenses')}
+            {renderRow('Pension Income', 'pensionIncome')}
+            {renderRow('Foreign Income', 'foreignIncome')}
+            {renderRow('Foreign Tax Paid', 'foreignTaxPaid')}
             {renderRow('Charitable Donations', 'charitableDonations')}
             <tr className="bg-slate-50 border-b border-slate-100">
               <td className="sticky left-0 bg-slate-50 z-10 py-0.5 pl-3 pr-2 text-[10px] text-slate-700 font-semibold whitespace-nowrap border-r border-slate-100" style={{ minWidth: LABEL_WIDTH }}>
@@ -800,6 +835,26 @@ export function TimelinePage() {
           </>
         );
 
+      case 'LIRA/LIF':
+        return (
+          <>
+            {renderRow('LIF Withdrawal', 'lifWithdrawal')}
+            {renderComputedRow('_computed_liraEOY', 'LIRA/LIF EOY', i => { const v = computed[i]?.accounts?.liraEOY ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
+            {renderComputedRow('_computed_lifMin', 'LIF Min Withdrawal', i => { const v = computed[i]?.retirement?.lifMinWithdrawal ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
+            {renderComputedRow('_computed_lifMax', 'LIF Max Withdrawal', i => { const v = computed[i]?.retirement?.lifMaxWithdrawal ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
+          </>
+        );
+
+      case 'RESP':
+        return (
+          <>
+            {renderRow('RESP Contribution', 'respContribution')}
+            {renderRow('RESP Withdrawal', 'respWithdrawal')}
+            {renderComputedRow('_computed_respEOY', 'RESP EOY', i => { const v = computed[i]?.accounts?.respEOY ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
+            {renderComputedRow('_computed_respCESG', 'CESG Grant', i => { const v = computed[i]?.respCESG ?? 0; return v > 0 ? '$' + Math.round(v).toLocaleString() : '—'; })}
+          </>
+        );
+
       case 'Asset Allocation':
         return (
           <>
@@ -834,6 +889,20 @@ export function TimelinePage() {
             {renderRow('  Equity %', 'nonRegEquityPct', { pct: true })}
             {renderRow('  Fixed %', 'nonRegFixedPct', { pct: true })}
             {renderRow('  Cash %', 'nonRegCashPct', { pct: true })}
+            <tr className="bg-slate-50/60 border-b border-slate-100">
+              <td className="sticky left-0 bg-white z-10 py-0.5 pl-3 pr-2 text-[9px] text-slate-400 italic border-r border-slate-100" style={{ minWidth: LABEL_WIDTH }}>LIRA Alloc</td>
+              {years.map((_, i) => <td key={i} />)}
+            </tr>
+            {renderRow('  Equity %', 'liraEquityPct', { pct: true })}
+            {renderRow('  Fixed %', 'liraFixedPct', { pct: true })}
+            {renderRow('  Cash %', 'liraCashPct', { pct: true })}
+            <tr className="bg-slate-50/60 border-b border-slate-100">
+              <td className="sticky left-0 bg-white z-10 py-0.5 pl-3 pr-2 text-[9px] text-slate-400 italic border-r border-slate-100" style={{ minWidth: LABEL_WIDTH }}>RESP Alloc</td>
+              {years.map((_, i) => <td key={i} />)}
+            </tr>
+            {renderRow('  Equity %', 'respEquityPct', { pct: true })}
+            {renderRow('  Fixed %', 'respFixedPct', { pct: true })}
+            {renderRow('  Cash %', 'respCashPct', { pct: true })}
           </>
         );
 
@@ -884,6 +953,8 @@ export function TimelinePage() {
             {renderOverrideRow('fhsaEOYOverride', 'FHSA Override')}
             {renderOverrideRow('nonRegEOYOverride', 'NONREG Override')}
             {renderOverrideRow('savingsEOYOverride', 'SAVINGS Override')}
+            {renderOverrideRow('liraEOYOverride', 'LIRA Override')}
+            {renderOverrideRow('respEOYOverride', 'RESP Override')}
           </>
         );
 

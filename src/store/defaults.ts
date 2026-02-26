@@ -82,6 +82,11 @@ export function makeDefaultYear(year: number): YearData {
     capitalLossesRealized: 0,
     otherTaxableIncome: 0,
     charitableDonations: 0,
+    rentalGrossIncome: 0,
+    rentalExpenses: 0,
+    pensionIncome: 0,
+    foreignIncome: 0,
+    foreignTaxPaid: 0,
     rrspContribution: 0,
     rrspDeductionClaimed: 0,
     tfsaContribution: 0,
@@ -94,6 +99,9 @@ export function makeDefaultYear(year: number): YearData {
     nonRegWithdrawal: 0,
     savingsDeposit: 0,
     savingsWithdrawal: 0,
+    lifWithdrawal: 0,
+    respContribution: 0,
+    respWithdrawal: 0,
     rrspEquityPct: 1,
     rrspFixedPct: 0,
     rrspCashPct: 0,
@@ -106,6 +114,12 @@ export function makeDefaultYear(year: number): YearData {
     nonRegEquityPct: 1,
     nonRegFixedPct: 0,
     nonRegCashPct: 0,
+    liraEquityPct: 1,
+    liraFixedPct: 0,
+    liraCashPct: 0,
+    respEquityPct: 1,
+    respFixedPct: 0,
+    respCashPct: 0,
     capitalLossApplied: 0,
   };
 }
@@ -121,7 +135,7 @@ export function makeDefaultScenario(name = 'Scenario 1'): Scenario {
     name,
     assumptions: ass,
     // Opening balances default to 0 — user enters their own values
-    openingBalances: { rrsp: 0, tfsa: 0, fhsa: 0, nonReg: 0, savings: 0 },
+    openingBalances: { rrsp: 0, tfsa: 0, fhsa: 0, nonReg: 0, savings: 0, lira: 0, resp: 0 },
     openingCarryForwards: { rrspUnusedRoom: 0, tfsaUnusedRoom: 0, capitalLossCF: 0, fhsaContribLifetime: 0 },
     years,
   };

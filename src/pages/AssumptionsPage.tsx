@@ -546,6 +546,8 @@ export function AssumptionsPage() {
               <BalanceRow label="FHSA" color="bg-cyan-500" value={ob.fhsa} onChange={v => setBalance('fhsa', v)} />
               <BalanceRow label="Non-Registered" color="bg-amber-500" value={ob.nonReg} onChange={v => setBalance('nonReg', v)} />
               <BalanceRow label="Savings" color="bg-sky-500" value={ob.savings} onChange={v => setBalance('savings', v)} />
+              <BalanceRow label="LIRA" color="bg-purple-500" value={ob.lira} onChange={v => setBalance('lira', v)} />
+              <BalanceRow label="RESP" color="bg-rose-500" value={ob.resp} onChange={v => setBalance('resp', v)} />
             </Section>
 
             <Divider />
@@ -556,6 +558,8 @@ export function AssumptionsPage() {
               <BalanceRow label="TFSA Unused Room" color="bg-emerald-500" value={cf.tfsaUnusedRoom} onChange={v => setCF('tfsaUnusedRoom', v)} />
               <BalanceRow label="Capital Loss C/F" color="bg-red-500" value={cf.capitalLossCF} onChange={v => setCF('capitalLossCF', v)} />
               <BalanceRow label="FHSA Lifetime Contrib" color="bg-cyan-500" value={cf.fhsaContribLifetime} onChange={v => setCF('fhsaContribLifetime', v)} />
+              <BalanceRow label="RESP CESG Lifetime" color="bg-rose-500" value={cf.respGrantsLifetime ?? 0} onChange={v => setCF('respGrantsLifetime', v)} />
+              <BalanceRow label="Prior Year Earned Income" color="bg-slate-400" value={cf.priorYearEarnedIncome ?? 0} onChange={v => setCF('priorYearEarnedIncome', v)} />
             </Section>
 
             <Divider />

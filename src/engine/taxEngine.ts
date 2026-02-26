@@ -140,20 +140,27 @@ export function computeTax(
     taxableCapitalGains = Math.max(0, netGains) * capitalGainsInclusionRate;
   }
 
+  // Net rental income (can be negative — loss reduces other income)
+  const rentalNet = yd.rentalGrossIncome - yd.rentalExpenses;
+
   // Total income before deductions
-  // Note: rrspWithdrawal (and RRIF withdrawals) are fully taxable
-  // CPP pension benefit and OAS are also taxable income
+  // Note: rrspWithdrawal (and RRIF withdrawals), LIF withdrawals are fully taxable
+  // CPP pension benefit, OAS, pension income, foreign income, rental net are also taxable
   const totalIncomeBeforeDeductions =
     yd.employmentIncome +
     yd.selfEmploymentIncome +
     yd.rrspWithdrawal +
+    yd.lifWithdrawal +
     retirementIncome.cppBenefitIncome +
     retirementIncome.oasIncome +
     grossedUpEligibleDiv +
     grossedUpNonEligibleDiv +
     yd.interestIncome +
     taxableCapitalGains +
-    yd.otherTaxableIncome;
+    yd.otherTaxableIncome +
+    yd.pensionIncome +
+    yd.foreignIncome +
+    rentalNet;
 
   // Net taxable income
   const netTaxableIncome = Math.max(
@@ -177,9 +184,13 @@ export function computeTax(
     : 0;
 
   // Pension income credit: up to $2,000 of eligible pension income at lowest bracket rate
-  // Eligible: RRIF withdrawals when age >= 65
+  // Eligible: RRIF withdrawals when age >= 65, LIF withdrawals when age >= 65, DB pension/annuity income
   const pensionIncomeAmount = 2000;
-  const eligiblePensionIncome = (isRRIF && age !== null && age >= 65) ? yd.rrspWithdrawal : 0;
+  let eligiblePensionIncome = yd.pensionIncome; // DB pension is always eligible
+  if (age !== null && age >= 65) {
+    if (isRRIF) eligiblePensionIncome += yd.rrspWithdrawal;
+    eligiblePensionIncome += yd.lifWithdrawal; // LIF withdrawals eligible at 65+
+  }
   const fedPensionCredit = Math.min(eligiblePensionIncome, pensionIncomeAmount) * bpaCreditRate;
 
   // Age amount credit: $8,396 (2024), clawed back at 15% of net income above $42,335
@@ -286,15 +297,32 @@ export function computeTax(
     federalTaxPayable += amtAdditional;
   }
 
+  // --- Foreign Tax Credit (FTC) ---
+  let fedForeignTaxCredit = 0;
+  let provForeignTaxCredit = 0;
+  if (yd.foreignTaxPaid > 0 && yd.foreignIncome > 0 && netTaxableIncome > 0) {
+    const foreignIncomeRatio = Math.min(1, yd.foreignIncome / netTaxableIncome);
+    fedForeignTaxCredit = Math.min(yd.foreignTaxPaid, federalTaxPayable * foreignIncomeRatio);
+    federalTaxPayable = Math.max(0, federalTaxPayable - fedForeignTaxCredit);
+    provForeignTaxCredit = Math.min(
+      Math.max(0, yd.foreignTaxPaid - fedForeignTaxCredit),
+      provincialTaxPayable * foreignIncomeRatio
+    );
+    provincialTaxPayable = Math.max(0, provincialTaxPayable - provForeignTaxCredit);
+  }
+  const foreignTaxCredit = fedForeignTaxCredit + provForeignTaxCredit;
+
   const totalIncomeTax = federalTaxPayable + provincialTaxPayable;
 
   // Gross income for rate calculations (pre-gross-up, pre-deductions)
+  const rentalNetForGross = yd.rentalGrossIncome - yd.rentalExpenses;
   const grossIncome =
     yd.employmentIncome + yd.selfEmploymentIncome +
-    yd.rrspWithdrawal +
+    yd.rrspWithdrawal + yd.lifWithdrawal +
     retirementIncome.cppBenefitIncome + retirementIncome.oasIncome +
     yd.eligibleDividends + yd.nonEligibleDividends +
-    yd.interestIncome + yd.capitalGainsRealized + yd.otherTaxableIncome;
+    yd.interestIncome + yd.capitalGainsRealized + yd.otherTaxableIncome +
+    yd.pensionIncome + yd.foreignIncome + rentalNetForGross;
 
   const margFed = marginalRate(netTaxableIncome, federalBrackets);
   const margProv = marginalRate(netTaxableIncome, provincialBrackets);
@@ -323,6 +351,8 @@ export function computeTax(
     provDonationCredit,
     provEligibleDivCredit: provEligibleDivCredit,
     provNonEligibleDivCredit: provNonEligibleDivCredit,
+    fedForeignTaxCredit,
+    provForeignTaxCredit,
     federalBracketDetail: computeBracketDetail(netTaxableIncome, federalBrackets),
     provincialBracketDetail: computeBracketDetail(netTaxableIncome, provincialBrackets),
   };
@@ -342,6 +372,7 @@ export function computeTax(
     provincialTaxPayable,
     ontarioSurtax,
     oasClawback,
+    foreignTaxCredit,
     amtTax,
     amtAdditional,
     totalIncomeTax,

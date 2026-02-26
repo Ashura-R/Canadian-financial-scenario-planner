@@ -9,7 +9,9 @@ export type ConditionField =
   | 'rrspEOY' | 'tfsaEOY' | 'fhsaEOY' | 'nonRegEOY' | 'savingsEOY'
   | 'rrspUnusedRoom' | 'tfsaUnusedRoom'
   | 'capitalGainsRealized' | 'capitalLossCF'
-  | 'age';
+  | 'age'
+  | 'rentalGrossIncome' | 'pensionIncome' | 'foreignIncome'
+  | 'liraEOY' | 'respEOY';
 
 // Reference fields for percentage-based scheduled amounts
 export type AmountReference = ConditionField;
@@ -25,7 +27,9 @@ export type AmountMaxReference =
   | 'fhsaBalance'     // current FHSA balance (for withdrawals)
   | 'nonRegBalance'   // current Non-Reg balance (for withdrawals)
   | 'savingsBalance'  // current Savings balance (for withdrawals)
-  | 'capitalLossCF';  // available capital loss carry-forward
+  | 'capitalLossCF'   // available capital loss carry-forward
+  | 'liraBalance'     // current LIRA/LIF balance (for withdrawals)
+  | 'respBalance';    // current RESP balance (for withdrawals)
 
 export interface ScheduleCondition {
   field: ConditionField;
@@ -151,7 +155,17 @@ export type ScheduledField =
   | 'rrspEquityPct' | 'rrspFixedPct' | 'rrspCashPct'
   | 'tfsaEquityPct' | 'tfsaFixedPct' | 'tfsaCashPct'
   | 'fhsaEquityPct' | 'fhsaFixedPct' | 'fhsaCashPct'
-  | 'nonRegEquityPct' | 'nonRegFixedPct' | 'nonRegCashPct';
+  | 'nonRegEquityPct' | 'nonRegFixedPct' | 'nonRegCashPct'
+  | 'rentalGrossIncome'
+  | 'rentalExpenses'
+  | 'pensionIncome'
+  | 'foreignIncome'
+  | 'foreignTaxPaid'
+  | 'lifWithdrawal'
+  | 'respContribution'
+  | 'respWithdrawal'
+  | 'liraEquityPct' | 'liraFixedPct' | 'liraCashPct'
+  | 'respEquityPct' | 'respFixedPct' | 'respCashPct';
 
 export interface ScheduledItem {
   id: string;
@@ -182,6 +196,11 @@ export interface YearData {
   capitalLossesRealized: number;
   otherTaxableIncome: number;
   charitableDonations: number;
+  rentalGrossIncome: number;
+  rentalExpenses: number;
+  pensionIncome: number;
+  foreignIncome: number;
+  foreignTaxPaid: number;
   // Account contributions
   rrspContribution: number;
   rrspDeductionClaimed: number;
@@ -196,6 +215,9 @@ export interface YearData {
   nonRegWithdrawal: number;
   savingsDeposit: number;
   savingsWithdrawal: number;
+  lifWithdrawal: number;
+  respContribution: number;
+  respWithdrawal: number;
   // Asset allocation (each group sums to 1.0)
   rrspEquityPct: number;
   rrspFixedPct: number;
@@ -209,6 +231,12 @@ export interface YearData {
   nonRegEquityPct: number;
   nonRegFixedPct: number;
   nonRegCashPct: number;
+  liraEquityPct: number;
+  liraFixedPct: number;
+  liraCashPct: number;
+  respEquityPct: number;
+  respFixedPct: number;
+  respCashPct: number;
   // Optional decisions
   capitalLossApplied: number;
   // EOY overrides (optional)
@@ -217,6 +245,8 @@ export interface YearData {
   fhsaEOYOverride?: number;
   nonRegEOYOverride?: number;
   savingsEOYOverride?: number;
+  liraEOYOverride?: number;
+  respEOYOverride?: number;
   // Per-year rate overrides (optional)
   inflationRateOverride?: number;
   equityReturnOverride?: number;
@@ -231,6 +261,8 @@ export interface OpeningBalances {
   fhsa: number;
   nonReg: number;
   savings: number;
+  lira: number;
+  resp: number;
 }
 
 export interface OpeningCarryForwards {
@@ -239,6 +271,7 @@ export interface OpeningCarryForwards {
   capitalLossCF: number;     // net capital losses from prior years
   fhsaContribLifetime: number; // lifetime FHSA contributions made before start year
   priorYearEarnedIncome?: number; // prior-year earned income for year-1 RRSP room calculation
+  respGrantsLifetime?: number;    // lifetime CESG received before start year
 }
 
 export interface ACBConfig {

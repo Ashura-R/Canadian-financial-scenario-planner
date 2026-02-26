@@ -98,6 +98,11 @@ function buildConditionContext(computed: ComputedYear, rawYd: YearData): Record<
     capitalGainsRealized: rawYd.capitalGainsRealized,
     capitalLossCF: computed.capitalLossCF,
     age: computed.retirement.age ?? 0,
+    rentalGrossIncome: rawYd.rentalGrossIncome,
+    pensionIncome: rawYd.pensionIncome,
+    foreignIncome: rawYd.foreignIncome,
+    liraEOY: computed.accounts.liraEOY,
+    respEOY: computed.accounts.respEOY,
   };
 }
 
@@ -120,6 +125,8 @@ function resolveMaxRef(
     case 'fhsaBalance': return prevBalances.fhsa;
     case 'nonRegBalance': return prevBalances.nonReg;
     case 'savingsBalance': return prevBalances.savings;
+    case 'liraBalance': return prevBalances.lira;
+    case 'respBalance': return prevBalances.resp;
     case 'capitalLossCF': return computed.capitalLossCF;
     default: return Infinity;
   }
@@ -229,6 +236,7 @@ function computeOneYear(
   autoComputeGains: boolean = false,
   priorYearEarnedIncome: number = 0,
   fhsaOpeningYear: number | null = null,
+  respCESG: number = 0,
 ): {
   computed: ComputedYear;
   newCapitalLossCF: number;
@@ -257,8 +265,22 @@ function computeOneYear(
     ? Math.max(yd.rrspWithdrawal, rrifMinWithdrawal)
     : yd.rrspWithdrawal;
 
-  const ydEffective = effectiveRrspWithdrawal !== yd.rrspWithdrawal
-    ? { ...yd, rrspWithdrawal: effectiveRrspWithdrawal }
+  // LIRA → LIF conversion (same age as RRIF by default)
+  const isLIF = age !== null && age >= retSettings.rrifConversionAge;
+  const lifMinWithdrawal = isLIF && age !== null
+    ? prevBalances.lira * getRRIFFactor(age)
+    : 0;
+  // LIF max: at 0% reference rate = balance / (90 - age), or 100% if age >= 90
+  const lifMaxWithdrawal = isLIF && age !== null
+    ? (age >= 90 ? prevBalances.lira : prevBalances.lira / Math.max(1, 90 - age))
+    : 0;
+  // Clamp LIF withdrawal between min and max (only when LIF is active)
+  const effectiveLifWithdrawal = isLIF
+    ? Math.min(Math.max(yd.lifWithdrawal, lifMinWithdrawal), lifMaxWithdrawal > 0 ? lifMaxWithdrawal : yd.lifWithdrawal)
+    : 0; // Can't withdraw from LIRA before conversion
+
+  let ydEffective = effectiveRrspWithdrawal !== yd.rrspWithdrawal || effectiveLifWithdrawal !== yd.lifWithdrawal
+    ? { ...yd, rrspWithdrawal: effectiveRrspWithdrawal, lifWithdrawal: effectiveLifWithdrawal }
     : yd;
 
   let cppBenefitIncome = 0;
@@ -292,7 +314,7 @@ function computeOneYear(
   const ei = computeEI(ydEffective.employmentIncome, ydEffective.selfEmploymentIncome, assumptions.ei);
 
   // Compute accounts FIRST (needed for ACB)
-  const accounts = computeAccounts(ydEffective, assumptions, prevBalances, returnOverrides);
+  const accounts = computeAccounts(ydEffective, assumptions, prevBalances, returnOverrides, respCESG);
 
   // ACB tracking
   let acbResult: ComputedACB | undefined;
@@ -331,6 +353,9 @@ function computeOneYear(
     oasIncome,
     isRRIF,
     rrifMinWithdrawal,
+    isLIF,
+    lifMinWithdrawal,
+    lifMaxWithdrawal,
   };
 
   const realGrossIncome = waterfall.grossIncome / inflationFactor;
@@ -383,6 +408,8 @@ function computeOneYear(
     fhsa: accounts.fhsaEOY,
     nonReg: accounts.nonRegEOY,
     savings: accounts.savingsEOY,
+    lira: accounts.liraEOY,
+    resp: accounts.respEOY,
   };
 
   return {
@@ -431,6 +458,13 @@ export function compute(scenario: Scenario): ComputedScenario {
   // Liability tracking
   const liabilities = scenario.liabilities ?? [];
   let liabilityBalances = liabilities.map(l => l.openingBalance);
+
+  // RESP CESG tracking
+  let respGrantsLifetime = ocf?.respGrantsLifetime ?? 0;
+  const CESG_RATE = 0.20;
+  const CESG_ANNUAL_MAX = 500;
+  const CESG_MATCH_LIMIT = 2500;
+  const CESG_LIFETIME_MAX = 7200;
 
   const computedYears: ComputedYear[] = [];
 
@@ -571,6 +605,14 @@ export function compute(scenario: Scenario): ComputedScenario {
       }
     }
 
+    // RESP CESG: 20% match on first $2,500 contributed, max $500/yr, $7,200 lifetime
+    const respContribForCESG = Math.min(ydWithFHSA.respContribution, CESG_MATCH_LIMIT);
+    const cESGThisYear = Math.min(
+      respContribForCESG * CESG_RATE,
+      CESG_ANNUAL_MAX,
+      Math.max(0, CESG_LIFETIME_MAX - respGrantsLifetime),
+    );
+
     // Pass 1: Apply non-conditional scheduled items
     const ydPass1 = applySchedules(ydWithFHSA, schedules, assumptions.inflationRate, null, false,
       prevBalances, assumptions, fhsaContribLifetime, fhsaUnusedRoom);
@@ -581,7 +623,7 @@ export function compute(scenario: Scenario): ComputedScenario {
       tfsaUnusedRoom, tfsaRoomGenerated,
       inflationFactor, returnOverrides, fhsaDisposed,
       acbEnabled, prevACB, autoComputeGains,
-      priorYearEarnedIncome, fhsaOpeningYear,
+      priorYearEarnedIncome, fhsaOpeningYear, cESGThisYear,
     );
 
     // Pass 2: Check if conditional schedules apply, if so recompute
@@ -607,7 +649,7 @@ export function compute(scenario: Scenario): ComputedScenario {
           tfsaUnusedRoom, tfsaRoomGenerated,
           inflationFactor, returnOverrides, fhsaDisposed,
           acbEnabled, prevACB, autoComputeGains,
-          priorYearEarnedIncome, fhsaOpeningYear,
+          priorYearEarnedIncome, fhsaOpeningYear, cESGThisYear,
         );
       }
     }
@@ -645,6 +687,13 @@ export function compute(scenario: Scenario): ComputedScenario {
       computedYear.realNetCashFlow = computedYear.waterfall.netCashFlow / inflationFactor;
       liabilityBalances = liabResult.newBalances;
     }
+
+    // Attach RESP CESG tracking
+    if (cESGThisYear > 0 || respGrantsLifetime > 0) {
+      computedYear.respCESG = cESGThisYear;
+      computedYear.respGrantsLifetime = respGrantsLifetime + cESGThisYear;
+    }
+    respGrantsLifetime += cESGThisYear;
 
     computedYears.push(computedYear);
 

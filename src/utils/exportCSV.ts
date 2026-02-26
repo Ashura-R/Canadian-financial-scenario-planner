@@ -28,6 +28,11 @@ export function buildTimelineCSV(
   rows.push({ label: 'Capital Gains Realized', values: rawYears.map(y => y.capitalGainsRealized) });
   rows.push({ label: 'Capital Losses Realized', values: rawYears.map(y => y.capitalLossesRealized) });
   rows.push({ label: 'Other Taxable Income', values: rawYears.map(y => y.otherTaxableIncome) });
+  rows.push({ label: 'Rental Gross Income', values: rawYears.map(y => y.rentalGrossIncome) });
+  rows.push({ label: 'Rental Expenses', values: rawYears.map(y => y.rentalExpenses) });
+  rows.push({ label: 'Pension Income', values: rawYears.map(y => y.pensionIncome) });
+  rows.push({ label: 'Foreign Income', values: rawYears.map(y => y.foreignIncome) });
+  rows.push({ label: 'Foreign Tax Paid', values: rawYears.map(y => y.foreignTaxPaid) });
   rows.push({ label: 'Charitable Donations', values: rawYears.map(y => y.charitableDonations) });
   rows.push({ label: 'Gross Income', values: years.map(y => fmt(y.waterfall.grossIncome)) });
 
@@ -45,6 +50,9 @@ export function buildTimelineCSV(
   rows.push({ label: 'Non-Reg Withdrawal', values: rawYears.map(y => y.nonRegWithdrawal) });
   rows.push({ label: 'Savings Deposit', values: rawYears.map(y => y.savingsDeposit) });
   rows.push({ label: 'Savings Withdrawal', values: rawYears.map(y => y.savingsWithdrawal) });
+  rows.push({ label: 'LIF Withdrawal', values: rawYears.map(y => y.lifWithdrawal) });
+  rows.push({ label: 'RESP Contribution', values: rawYears.map(y => y.respContribution) });
+  rows.push({ label: 'RESP Withdrawal', values: rawYears.map(y => y.respWithdrawal) });
 
   // Tax Results
   rows.push({ label: '', values: [] });
@@ -72,6 +80,9 @@ export function buildTimelineCSV(
   rows.push({ label: 'FHSA EOY', values: years.map(y => fmt(y.accounts.fhsaEOY)) });
   rows.push({ label: 'Non-Reg EOY', values: years.map(y => fmt(y.accounts.nonRegEOY)) });
   rows.push({ label: 'Savings EOY', values: years.map(y => fmt(y.accounts.savingsEOY)) });
+  rows.push({ label: 'LIRA/LIF EOY', values: years.map(y => fmt(y.accounts.liraEOY)) });
+  rows.push({ label: 'RESP EOY', values: years.map(y => fmt(y.accounts.respEOY)) });
+  rows.push({ label: 'RESP CESG', values: years.map(y => fmt(y.respCESG ?? 0)) });
   rows.push({ label: 'Net Worth', values: years.map(y => fmt(y.accounts.netWorth)) });
 
   // Room Tracking

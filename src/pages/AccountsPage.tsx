@@ -90,6 +90,24 @@ function getAccountFlows(
       eoy: yr.accounts.savingsEOY,
       hasOverride: rawYd.savingsEOYOverride !== undefined,
     },
+    {
+      label: 'LIRA/LIF',
+      opening: prevBalances.lira,
+      contribution: 0,
+      withdrawal: rawYd.lifWithdrawal,
+      returnAmt: (prevBalances.lira - rawYd.lifWithdrawal) * yr.accounts.liraReturn,
+      eoy: yr.accounts.liraEOY,
+      hasOverride: rawYd.liraEOYOverride !== undefined,
+    },
+    {
+      label: 'RESP',
+      opening: prevBalances.resp,
+      contribution: rawYd.respContribution + (yr.respCESG ?? 0),
+      withdrawal: rawYd.respWithdrawal,
+      returnAmt: (prevBalances.resp + rawYd.respContribution + (yr.respCESG ?? 0) - rawYd.respWithdrawal) * yr.accounts.respReturn,
+      eoy: yr.accounts.respEOY,
+      hasOverride: rawYd.respEOYOverride !== undefined,
+    },
   ];
 }
 
@@ -145,6 +163,8 @@ function buildPrevBalances(
     fhsa: prev.accounts.fhsaEOY,
     nonReg: prev.accounts.nonRegEOY,
     savings: prev.accounts.savingsEOY,
+    lira: prev.accounts.liraEOY,
+    resp: prev.accounts.respEOY,
   };
 }
 
@@ -176,6 +196,8 @@ function SingleYearView({ yr, rawYd, prevBalances }: {
           <Row label="FHSA" value={formatPct(yr.accounts.fhsaReturn)} />
           <Row label="Non-Reg" value={formatPct(yr.accounts.nonRegReturn)} />
           <Row label="Savings" value={formatPct(yr.accounts.savingsReturn)} />
+          <Row label="LIRA/LIF" value={formatPct(yr.accounts.liraReturn)} />
+          <Row label="RESP" value={formatPct(yr.accounts.respReturn)} />
         </Section>
       </div>
 
@@ -226,7 +248,9 @@ function SingleYearView({ yr, rawYd, prevBalances }: {
             { label: 'FHSA', value: yr.accounts.fhsaEOY, color: 'text-cyan-600' },
             { label: 'Non-Reg', value: yr.accounts.nonRegEOY, color: 'text-amber-600' },
             { label: 'Savings', value: yr.accounts.savingsEOY, color: 'text-sky-600' },
-          ].map(a => (
+            { label: 'LIRA/LIF', value: yr.accounts.liraEOY, color: 'text-purple-600' },
+            { label: 'RESP', value: yr.accounts.respEOY, color: 'text-rose-600' },
+          ].filter(a => a.value > 0 || a.label === 'RRSP' || a.label === 'TFSA').map(a => (
             <div key={a.label}>
               <div className={`text-lg font-bold tabular-nums ${a.color}`}>{formatShort(a.value)}</div>
               <div className="text-xs text-slate-500">{a.label}</div>
@@ -268,6 +292,8 @@ function AllYearsView({ years, rawYears, openingBalances }: {
     FHSA: yr.accounts.fhsaEOY,
     'Non-Reg': yr.accounts.nonRegEOY,
     Savings: yr.accounts.savingsEOY,
+    'LIRA/LIF': yr.accounts.liraEOY,
+    RESP: yr.accounts.respEOY,
   }));
 
   // Returns chart data
@@ -278,6 +304,8 @@ function AllYearsView({ years, rawYears, openingBalances }: {
     FHSA: yr.accounts.fhsaReturn * 100,
     'Non-Reg': yr.accounts.nonRegReturn * 100,
     Savings: yr.accounts.savingsReturn * 100,
+    'LIRA/LIF': yr.accounts.liraReturn * 100,
+    RESP: yr.accounts.respReturn * 100,
   }));
 
   return (
@@ -302,6 +330,8 @@ function AllYearsView({ years, rawYears, openingBalances }: {
               <Bar dataKey="FHSA" stackId="a" fill="#06b6d4" />
               <Bar dataKey="Non-Reg" stackId="a" fill="#f59e0b" />
               <Bar dataKey="Savings" stackId="a" fill="#0ea5e9" />
+              <Bar dataKey="LIRA/LIF" stackId="a" fill="#a855f7" />
+              <Bar dataKey="RESP" stackId="a" fill="#f43f5e" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -328,6 +358,8 @@ function AllYearsView({ years, rawYears, openingBalances }: {
               <Line type="monotone" dataKey="FHSA" stroke="#06b6d4" strokeWidth={2} dot={false} />
               <Line type="monotone" dataKey="Non-Reg" stroke="#f59e0b" strokeWidth={2} dot={false} />
               <Line type="monotone" dataKey="Savings" stroke="#0ea5e9" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="LIRA/LIF" stroke="#a855f7" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="RESP" stroke="#f43f5e" strokeWidth={2} dot={false} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
@@ -346,6 +378,8 @@ function AllYearsView({ years, rawYears, openingBalances }: {
                 <th className="py-1.5 px-2 text-right text-[10px] text-cyan-600 font-semibold">FHSA</th>
                 <th className="py-1.5 px-2 text-right text-[10px] text-amber-600 font-semibold">Non-Reg</th>
                 <th className="py-1.5 px-2 text-right text-[10px] text-sky-600 font-semibold">Savings</th>
+                <th className="py-1.5 px-2 text-right text-[10px] text-purple-600 font-semibold">LIRA/LIF</th>
+                <th className="py-1.5 px-2 text-right text-[10px] text-rose-600 font-semibold">RESP</th>
                 <th className="py-1.5 px-2 text-right text-[10px] text-slate-700 font-bold">Net Worth</th>
               </tr>
             </thead>
@@ -358,6 +392,8 @@ function AllYearsView({ years, rawYears, openingBalances }: {
                   <td className="py-1 px-2 text-right text-cyan-600">{formatShort(yr.accounts.fhsaEOY)}</td>
                   <td className="py-1 px-2 text-right text-amber-600">{formatShort(yr.accounts.nonRegEOY)}</td>
                   <td className="py-1 px-2 text-right text-sky-600">{formatShort(yr.accounts.savingsEOY)}</td>
+                  <td className="py-1 px-2 text-right text-purple-600">{formatShort(yr.accounts.liraEOY)}</td>
+                  <td className="py-1 px-2 text-right text-rose-600">{formatShort(yr.accounts.respEOY)}</td>
                   <td className="py-1 px-2 text-right font-semibold">{formatShort(yr.accounts.netWorth)}</td>
                 </tr>
               ))}

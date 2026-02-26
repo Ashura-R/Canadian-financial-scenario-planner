@@ -22,7 +22,8 @@ export function computeAccounts(
   yd: YearData,
   ass: Assumptions,
   prevBalances: OpeningBalances,
-  returnOverrides?: ReturnOverrides
+  returnOverrides?: ReturnOverrides,
+  respCESG: number = 0,
 ): ComputedAccounts {
   const r = {
     equity: returnOverrides?.equity ?? ass.assetReturns.equity,
@@ -57,18 +58,34 @@ export function computeAccounts(
     ? yd.savingsEOYOverride
     : (prevBalances.savings + yd.savingsDeposit - yd.savingsWithdrawal) * (1 + savingsReturn);
 
+  // LIRA/LIF
+  const liraReturn = calcReturn(yd.liraEquityPct, yd.liraFixedPct, yd.liraCashPct, r);
+  const liraEOY = yd.liraEOYOverride !== undefined
+    ? yd.liraEOYOverride
+    : (prevBalances.lira - yd.lifWithdrawal) * (1 + liraReturn);
+
+  // RESP (contributions + CESG grant - withdrawals)
+  const respReturn = calcReturn(yd.respEquityPct, yd.respFixedPct, yd.respCashPct, r);
+  const respEOY = yd.respEOYOverride !== undefined
+    ? yd.respEOYOverride
+    : (prevBalances.resp + yd.respContribution + respCESG - yd.respWithdrawal) * (1 + respReturn);
+
   return {
     rrspReturn,
     tfsaReturn,
     fhsaReturn,
     nonRegReturn,
     savingsReturn,
+    liraReturn,
+    respReturn,
     rrspEOY: Math.max(0, rrspEOY),
     tfsaEOY: Math.max(0, tfsaEOY),
     fhsaEOY: Math.max(0, fhsaEOY),
     nonRegEOY: Math.max(0, nonRegEOY),
     savingsEOY: Math.max(0, savingsEOY),
-    netWorth: Math.max(0, rrspEOY) + Math.max(0, tfsaEOY) + Math.max(0, fhsaEOY) + Math.max(0, nonRegEOY) + Math.max(0, savingsEOY),
+    liraEOY: Math.max(0, liraEOY),
+    respEOY: Math.max(0, respEOY),
+    netWorth: Math.max(0, rrspEOY) + Math.max(0, tfsaEOY) + Math.max(0, fhsaEOY) + Math.max(0, nonRegEOY) + Math.max(0, savingsEOY) + Math.max(0, liraEOY) + Math.max(0, respEOY),
   };
 }
 
@@ -80,13 +97,15 @@ export function computeWaterfall(
   accounts: ComputedAccounts,
   retirementIncome: RetirementIncome = { cppBenefitIncome: 0, oasIncome: 0 }
 ): ComputedWaterfall {
-  // Gross income includes RRSP/RRIF withdrawals and CPP/OAS benefits
+  // Gross income includes RRSP/RRIF withdrawals, LIF withdrawals, and CPP/OAS benefits
+  const rentalNet = yd.rentalGrossIncome - yd.rentalExpenses;
   const grossIncome =
     yd.employmentIncome + yd.selfEmploymentIncome +
-    yd.rrspWithdrawal +
+    yd.rrspWithdrawal + yd.lifWithdrawal +
     retirementIncome.cppBenefitIncome + retirementIncome.oasIncome +
     yd.eligibleDividends + yd.nonEligibleDividends +
-    yd.interestIncome + yd.capitalGainsRealized + yd.otherTaxableIncome;
+    yd.interestIncome + yd.capitalGainsRealized + yd.otherTaxableIncome +
+    yd.pensionIncome + yd.foreignIncome + rentalNet;
 
   const afterRRSPDed = grossIncome - yd.rrspDeductionClaimed;
   const afterFHSADed = afterRRSPDed - yd.fhsaDeductionClaimed;
@@ -101,10 +120,10 @@ export function computeWaterfall(
 
   const totalContributions =
     yd.rrspContribution + yd.tfsaContribution + yd.fhsaContribution +
-    yd.nonRegContribution + yd.savingsDeposit;
+    yd.nonRegContribution + yd.savingsDeposit + yd.respContribution;
   const totalWithdrawals =
     yd.rrspWithdrawal + yd.tfsaWithdrawal + yd.fhsaWithdrawal +
-    yd.nonRegWithdrawal + yd.savingsWithdrawal;
+    yd.nonRegWithdrawal + yd.savingsWithdrawal + yd.lifWithdrawal + yd.respWithdrawal;
 
   const netCashFlow = afterTaxIncome - totalContributions + totalWithdrawals;
 

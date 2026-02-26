@@ -12,6 +12,11 @@ const SCHEDULED_FIELD_OPTIONS: { value: ScheduledField; label: string; group: st
   { value: 'capitalGainsRealized', label: 'Capital Gains Realized', group: 'Income' },
   { value: 'capitalLossesRealized', label: 'Capital Losses Realized', group: 'Income' },
   { value: 'otherTaxableIncome', label: 'Other Taxable Income', group: 'Income' },
+  { value: 'rentalGrossIncome', label: 'Rental Gross Income', group: 'Income' },
+  { value: 'rentalExpenses', label: 'Rental Expenses', group: 'Income' },
+  { value: 'pensionIncome', label: 'Pension Income', group: 'Income' },
+  { value: 'foreignIncome', label: 'Foreign Income', group: 'Income' },
+  { value: 'foreignTaxPaid', label: 'Foreign Tax Paid', group: 'Income' },
   { value: 'charitableDonations', label: 'Charitable Donations', group: 'Income' },
   { value: 'rrspContribution', label: 'RRSP Contribution', group: 'Contributions' },
   { value: 'rrspDeductionClaimed', label: 'RRSP Deduction Claimed', group: 'Contributions' },
@@ -25,6 +30,9 @@ const SCHEDULED_FIELD_OPTIONS: { value: ScheduledField; label: string; group: st
   { value: 'nonRegWithdrawal', label: 'Non-Reg Withdrawal', group: 'Withdrawals' },
   { value: 'savingsDeposit', label: 'Savings Deposit', group: 'Savings' },
   { value: 'savingsWithdrawal', label: 'Savings Withdrawal', group: 'Savings' },
+  { value: 'lifWithdrawal', label: 'LIF Withdrawal', group: 'Withdrawals' },
+  { value: 'respContribution', label: 'RESP Contribution', group: 'Contributions' },
+  { value: 'respWithdrawal', label: 'RESP Withdrawal', group: 'Withdrawals' },
   { value: 'capitalLossApplied', label: 'Capital Loss Applied', group: 'Other' },
   { value: 'rrspEquityPct', label: 'RRSP Equity %', group: 'Asset Allocation' },
   { value: 'rrspFixedPct', label: 'RRSP Fixed %', group: 'Asset Allocation' },
@@ -38,6 +46,12 @@ const SCHEDULED_FIELD_OPTIONS: { value: ScheduledField; label: string; group: st
   { value: 'nonRegEquityPct', label: 'Non-Reg Equity %', group: 'Asset Allocation' },
   { value: 'nonRegFixedPct', label: 'Non-Reg Fixed %', group: 'Asset Allocation' },
   { value: 'nonRegCashPct', label: 'Non-Reg Cash %', group: 'Asset Allocation' },
+  { value: 'liraEquityPct', label: 'LIRA Equity %', group: 'Asset Allocation' },
+  { value: 'liraFixedPct', label: 'LIRA Fixed %', group: 'Asset Allocation' },
+  { value: 'liraCashPct', label: 'LIRA Cash %', group: 'Asset Allocation' },
+  { value: 'respEquityPct', label: 'RESP Equity %', group: 'Asset Allocation' },
+  { value: 'respFixedPct', label: 'RESP Fixed %', group: 'Asset Allocation' },
+  { value: 'respCashPct', label: 'RESP Cash %', group: 'Asset Allocation' },
 ];
 
 const CONDITION_FIELDS: { value: ConditionField; label: string; group: string }[] = [
@@ -58,6 +72,11 @@ const CONDITION_FIELDS: { value: ConditionField; label: string; group: string }[
   { value: 'tfsaUnusedRoom', label: 'TFSA Unused Room', group: 'Room' },
   { value: 'capitalGainsRealized', label: 'Capital Gains Realized', group: 'Capital' },
   { value: 'capitalLossCF', label: 'Capital Loss C/F', group: 'Capital' },
+  { value: 'liraEOY', label: 'LIRA/LIF Balance', group: 'Accounts' },
+  { value: 'respEOY', label: 'RESP Balance', group: 'Accounts' },
+  { value: 'rentalGrossIncome', label: 'Rental Gross Income', group: 'Income' },
+  { value: 'pensionIncome', label: 'Pension Income', group: 'Income' },
+  { value: 'foreignIncome', label: 'Foreign Income', group: 'Income' },
   { value: 'age', label: 'Age', group: 'Other' },
 ];
 
@@ -90,6 +109,8 @@ const MAX_REF_OPTIONS: { value: AmountMaxReference; label: string; group: string
   { value: 'fhsaBalance', label: 'FHSA Balance', group: 'Account Balance' },
   { value: 'nonRegBalance', label: 'Non-Reg Balance', group: 'Account Balance' },
   { value: 'savingsBalance', label: 'Savings Balance', group: 'Account Balance' },
+  { value: 'liraBalance', label: 'LIRA/LIF Balance', group: 'Account Balance' },
+  { value: 'respBalance', label: 'RESP Balance', group: 'Account Balance' },
   { value: 'capitalLossCF', label: 'Capital Loss C/F', group: 'Carry-Forward' },
 ];
 

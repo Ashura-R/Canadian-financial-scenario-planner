@@ -25,6 +25,8 @@ export interface ComputedTaxDetail {
   provDonationCredit: number;
   provEligibleDivCredit: number;
   provNonEligibleDivCredit: number;
+  fedForeignTaxCredit: number;
+  provForeignTaxCredit: number;
   federalBracketDetail: BracketDetail[];
   provincialBracketDetail: BracketDetail[];
 }
@@ -61,6 +63,7 @@ export interface ComputedTax {
   provincialTaxPayable: number;
   ontarioSurtax: number;
   oasClawback: number;
+  foreignTaxCredit: number;          // total FTC claimed (federal + provincial)
   amtTax: number;                  // AMT computed tax (0 if AMT doesn't apply)
   amtAdditional: number;           // AMT amount added (AMT - regular tax, if positive)
   totalIncomeTax: number;
@@ -77,11 +80,15 @@ export interface ComputedAccounts {
   fhsaReturn: number;
   nonRegReturn: number;
   savingsReturn: number;
+  liraReturn: number;
+  respReturn: number;
   rrspEOY: number;
   tfsaEOY: number;
   fhsaEOY: number;
   nonRegEOY: number;
   savingsEOY: number;
+  liraEOY: number;
+  respEOY: number;
   netWorth: number;
 }
 
@@ -105,6 +112,9 @@ export interface ComputedRetirement {
   oasIncome: number;        // OAS benefit this year (0 if not yet receiving)
   isRRIF: boolean;          // true once RRSP has converted to RRIF
   rrifMinWithdrawal: number; // CRA minimum withdrawal amount (0 if not RRIF yet)
+  isLIF: boolean;            // true once LIRA has converted to LIF
+  lifMinWithdrawal: number;  // minimum withdrawal (same as RRIF factors)
+  lifMaxWithdrawal: number;  // maximum withdrawal (federal formula)
 }
 
 export interface ComputedACB {
@@ -163,6 +173,9 @@ export interface ComputedYear {
   hbpRepaymentRequired?: number; // annual required repayment (1/15 of original)
   hbpRepaymentMade?: number;     // actual repayment (from RRSP contribution)
   hbpTaxableShortfall?: number;  // shortfall added to taxable income
+  // RESP CESG tracking
+  respCESG?: number;              // CESG grant received this year
+  respGrantsLifetime?: number;    // cumulative lifetime CESG
   // Warnings
   warnings: ValidationWarning[];
 }
