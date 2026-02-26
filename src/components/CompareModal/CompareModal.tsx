@@ -6,7 +6,7 @@ import { formatCAD, formatPct } from '../../utils/formatters';
 import type { ComputedScenario, ComputedYear } from '../../types/computed';
 import type { Scenario } from '../../types/scenario';
 
-type Tab = 'diff' | 'charts' | 'tax' | 'accounts';
+type Tab = 'lifetime' | 'diff' | 'charts' | 'tax' | 'accounts';
 
 interface Props {
   onClose: () => void;
@@ -141,12 +141,82 @@ function AccountsCompareTab({ scenarios, computed }: { scenarios: Scenario[]; co
   );
 }
 
+function LifetimeSummaryTab({ scenarios, computed }: { scenarios: Scenario[]; computed: ComputedScenario[] }) {
+  const metrics: { label: string; fn: (c: ComputedScenario) => string; cls?: string; best?: 'min' | 'max' }[] = [
+    { label: 'Lifetime Gross Income', fn: c => formatCAD(c.analytics.lifetimeGrossIncome) },
+    { label: 'Lifetime Total Tax', fn: c => formatCAD(c.analytics.lifetimeTotalTax), cls: 'text-red-600', best: 'min' },
+    { label: 'Lifetime CPP + EI', fn: c => formatCAD(c.analytics.lifetimeCPPEI), cls: 'text-amber-600' },
+    { label: 'Lifetime After-Tax Income', fn: c => formatCAD(c.analytics.lifetimeAfterTaxIncome), cls: 'text-emerald-600', best: 'max' },
+    { label: 'Lifetime Avg Tax Rate', fn: c => formatPct(c.analytics.lifetimeAvgTaxRate), best: 'min' },
+    { label: 'Lifetime Avg All-In Rate', fn: c => formatPct(c.analytics.lifetimeAvgAllInRate), best: 'min' },
+    { label: 'Lifetime Net Cash Flow', fn: c => formatCAD(c.analytics.lifetimeCashFlow) },
+    { label: 'Final Net Worth', fn: c => {
+      const last = c.years[c.years.length - 1];
+      return last ? formatCAD(last.accounts.netWorth) : '—';
+    }, best: 'max' },
+    { label: 'Final Real Net Worth', fn: c => {
+      const last = c.years[c.years.length - 1];
+      return last ? formatCAD(last.realNetWorth) : '—';
+    }, best: 'max' },
+  ];
+
+  // Determine best scenario per metric
+  function getBestIdx(metric: typeof metrics[number]): number | null {
+    if (!metric.best) return null;
+    const vals = computed.map(c => {
+      const last = c.years[c.years.length - 1];
+      if (metric.label.includes('Final Net Worth')) return last?.accounts.netWorth ?? 0;
+      if (metric.label.includes('Final Real')) return last?.realNetWorth ?? 0;
+      if (metric.label.includes('Total Tax')) return c.analytics.lifetimeTotalTax;
+      if (metric.label.includes('After-Tax')) return c.analytics.lifetimeAfterTaxIncome;
+      if (metric.label.includes('Avg Tax Rate')) return c.analytics.lifetimeAvgTaxRate;
+      if (metric.label.includes('All-In')) return c.analytics.lifetimeAvgAllInRate;
+      return 0;
+    });
+    const target = metric.best === 'min' ? Math.min(...vals) : Math.max(...vals);
+    return vals.indexOf(target);
+  }
+
+  return (
+    <div className="p-4">
+      <div className="overflow-x-auto">
+        <table className="w-full text-xs border-collapse">
+          <thead>
+            <tr className="bg-slate-50 border-b border-slate-200">
+              <th className="py-2.5 px-3 text-left text-[10px] text-slate-500 font-semibold w-52">Lifetime Metric</th>
+              {scenarios.map(sc => (
+                <th key={sc.id} className="py-2.5 px-3 text-right text-[10px] text-slate-700 font-semibold">{sc.name}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {metrics.map(row => {
+              const bestIdx = getBestIdx(row);
+              return (
+                <tr key={row.label} className="border-b border-slate-100 hover:bg-blue-50/30">
+                  <td className="py-2 px-3 text-slate-600 font-medium">{row.label}</td>
+                  {computed.map((c, i) => (
+                    <td key={i} className={`py-2 px-3 text-right tabular-nums ${row.cls ?? 'text-slate-700'} ${i === bestIdx ? 'font-bold bg-emerald-50' : ''}`}>
+                      {row.fn(c)}
+                      {i === bestIdx && <span className="ml-1 text-[8px] text-emerald-600 font-bold">BEST</span>}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export function CompareModal({ onClose }: Props) {
   const { state } = useScenario();
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(state.scenarios.slice(0, 2).map(s => s.id))
   );
-  const [tab, setTab] = useState<Tab>('diff');
+  const [tab, setTab] = useState<Tab>('lifetime');
 
   function toggle(id: string) {
     setSelected(prev => {
@@ -164,6 +234,7 @@ export function CompareModal({ onClose }: Props) {
   const selectedComputed = selectedScenarios.map(s => state.computed[s.id]).filter(Boolean);
 
   const TAB_LABELS: Record<Tab, string> = {
+    lifetime: 'Lifetime Summary',
     diff: 'Metrics Diff',
     charts: 'Overlay Charts',
     tax: 'Tax Detail',
@@ -237,6 +308,8 @@ export function CompareModal({ onClose }: Props) {
               <div className="p-8 text-center text-slate-400 text-sm">
                 Select at least 2 scenarios to compare.
               </div>
+            ) : tab === 'lifetime' ? (
+              <LifetimeSummaryTab scenarios={selectedScenarios} computed={selectedComputed} />
             ) : tab === 'diff' ? (
               <DiffTable scenarios={selectedScenarios} computed={selectedComputed} />
             ) : tab === 'charts' ? (

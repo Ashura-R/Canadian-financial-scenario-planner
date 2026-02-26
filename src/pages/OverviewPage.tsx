@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useScenario } from '../store/ScenarioContext';
+import { compute } from '../engine/index';
 import { formatShort, formatPct } from '../utils/formatters';
 import { usePersistedYear } from '../utils/usePersistedYear';
 import { NetWorthChart } from '../components/RightPanel/ChartsView/NetWorthChart';
@@ -126,6 +127,137 @@ function loadViewMode(): ViewMode {
   } catch { return 'nominal'; }
 }
 
+function WhatIfPanel({ scenario }: { scenario: import('../types/scenario').Scenario }) {
+  const [open, setOpen] = useState(false);
+  const baseInflation = scenario.assumptions.inflationRate;
+  const baseEquity = scenario.assumptions.assetReturns.equity;
+  const [inflAdj, setInflAdj] = useState(0);
+  const [eqAdj, setEqAdj] = useState(0);
+
+  const hasAdjustment = inflAdj !== 0 || eqAdj !== 0;
+
+  const whatIfResult = useMemo(() => {
+    if (!hasAdjustment) return null;
+    const modified = {
+      ...scenario,
+      assumptions: {
+        ...scenario.assumptions,
+        inflationRate: baseInflation + inflAdj / 100,
+        assetReturns: {
+          ...scenario.assumptions.assetReturns,
+          equity: baseEquity + eqAdj / 100,
+        },
+      },
+    };
+    return compute(modified);
+  }, [scenario, inflAdj, eqAdj, hasAdjustment, baseInflation, baseEquity]);
+
+  const baseResult = useMemo(() => compute(scenario), [scenario]);
+
+  if (!open) {
+    return (
+      <button
+        onClick={() => setOpen(true)}
+        className="text-[10px] text-blue-500 hover:text-blue-700 transition-colors flex items-center gap-1"
+      >
+        <span>What-If</span>
+      </button>
+    );
+  }
+
+  const baseNW = baseResult.years[baseResult.years.length - 1]?.accounts.netWorth ?? 0;
+  const baseTax = baseResult.analytics.lifetimeTotalTax;
+  const baseAfterTax = baseResult.analytics.lifetimeAfterTaxIncome;
+
+  const wiResult = whatIfResult ?? baseResult;
+  const wiNW = wiResult.years[wiResult.years.length - 1]?.accounts.netWorth ?? 0;
+  const wiTax = wiResult.analytics.lifetimeTotalTax;
+  const wiAfterTax = wiResult.analytics.lifetimeAfterTaxIncome;
+
+  const diffNW = wiNW - baseNW;
+  const diffTax = wiTax - baseTax;
+  const diffAfterTax = wiAfterTax - baseAfterTax;
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100">
+        <div className="text-xs font-semibold text-slate-700">What-If Scenario</div>
+        <div className="flex items-center gap-2">
+          {hasAdjustment && (
+            <button
+              onClick={() => { setInflAdj(0); setEqAdj(0); }}
+              className="text-[10px] text-slate-400 hover:text-slate-600 transition-colors"
+            >Reset</button>
+          )}
+          <button onClick={() => setOpen(false)} className="text-[10px] text-slate-400 hover:text-slate-600 transition-colors">Close</button>
+        </div>
+      </div>
+      <div className="px-4 py-3">
+        <div className="grid grid-cols-2 gap-4 mb-3">
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[10px] text-slate-500">Inflation Adjustment</label>
+              <span className={`text-[10px] font-semibold tabular-nums ${inflAdj === 0 ? 'text-slate-400' : inflAdj > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                {inflAdj > 0 ? '+' : ''}{inflAdj.toFixed(1)}%
+              </span>
+            </div>
+            <input type="range" min={-3} max={3} step={0.5} value={inflAdj} onChange={e => setInflAdj(Number(e.target.value))}
+              className="w-full h-1.5 accent-blue-600" />
+            <div className="flex justify-between text-[8px] text-slate-300 mt-0.5">
+              <span>-3%</span>
+              <span>Base: {(baseInflation * 100).toFixed(1)}%</span>
+              <span>+3%</span>
+            </div>
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <label className="text-[10px] text-slate-500">Equity Return Adjustment</label>
+              <span className={`text-[10px] font-semibold tabular-nums ${eqAdj === 0 ? 'text-slate-400' : eqAdj > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                {eqAdj > 0 ? '+' : ''}{eqAdj.toFixed(1)}%
+              </span>
+            </div>
+            <input type="range" min={-5} max={5} step={0.5} value={eqAdj} onChange={e => setEqAdj(Number(e.target.value))}
+              className="w-full h-1.5 accent-blue-600" />
+            <div className="flex justify-between text-[8px] text-slate-300 mt-0.5">
+              <span>-5%</span>
+              <span>Base: {(baseEquity * 100).toFixed(1)}%</span>
+              <span>+5%</span>
+            </div>
+          </div>
+        </div>
+        {hasAdjustment && (
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-slate-50 rounded px-3 py-2">
+              <div className="text-[9px] text-slate-400 uppercase tracking-wider">Final Net Worth</div>
+              <div className="text-sm font-bold tabular-nums text-slate-800">{formatShort(wiNW)}</div>
+              <div className={`text-[10px] font-semibold tabular-nums ${diffNW >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {diffNW >= 0 ? '+' : ''}{formatShort(diffNW)}
+              </div>
+            </div>
+            <div className="bg-slate-50 rounded px-3 py-2">
+              <div className="text-[9px] text-slate-400 uppercase tracking-wider">Lifetime Tax</div>
+              <div className="text-sm font-bold tabular-nums text-red-600">{formatShort(wiTax)}</div>
+              <div className={`text-[10px] font-semibold tabular-nums ${diffTax <= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {diffTax >= 0 ? '+' : ''}{formatShort(diffTax)}
+              </div>
+            </div>
+            <div className="bg-slate-50 rounded px-3 py-2">
+              <div className="text-[9px] text-slate-400 uppercase tracking-wider">Lifetime After-Tax</div>
+              <div className="text-sm font-bold tabular-nums text-emerald-600">{formatShort(wiAfterTax)}</div>
+              <div className={`text-[10px] font-semibold tabular-nums ${diffAfterTax >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                {diffAfterTax >= 0 ? '+' : ''}{formatShort(diffAfterTax)}
+              </div>
+            </div>
+          </div>
+        )}
+        {!hasAdjustment && (
+          <div className="text-[10px] text-slate-400 text-center py-2">Drag the sliders to see how changes affect your outcomes.</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => void }) {
   const { activeComputed, activeScenario } = useScenario();
   const [viewMode, setViewModeRaw] = useState<ViewMode>(loadViewMode);
@@ -215,6 +347,9 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => vo
             ))}
           </select>
         </div>
+
+        {/* What-If Panel */}
+        <WhatIfPanel scenario={activeScenario} />
 
         {/* 3-column cards */}
         <div className="grid grid-cols-3 gap-4">

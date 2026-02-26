@@ -1156,15 +1156,41 @@ export function TimelinePage() {
               >
                 Row
               </th>
-              {years.map(yd => (
-                <th
-                  key={yd.year}
-                  className="py-2 px-0.5 text-center text-[10px] font-semibold text-slate-700"
-                  style={{ minWidth: YEAR_WIDTH }}
-                >
-                  {yd.year}
-                </th>
-              ))}
+              {years.map((yd, i) => {
+                const cy = computed[i];
+                const age = cy?.retirement?.age ?? null;
+                // Detect retirement events
+                const events: { label: string; color: string }[] = [];
+                if (cy && i > 0) {
+                  const prev = computed[i - 1];
+                  if (cy.retirement.cppIncome > 0 && (!prev || prev.retirement.cppIncome === 0)) events.push({ label: 'CPP', color: 'bg-blue-500' });
+                  if (cy.retirement.oasIncome > 0 && (!prev || prev.retirement.oasIncome === 0)) events.push({ label: 'OAS', color: 'bg-green-500' });
+                  if (cy.retirement.isRRIF && (!prev || !prev.retirement.isRRIF)) events.push({ label: 'RRIF', color: 'bg-amber-500' });
+                  if (cy.retirement.isLIF && (!prev || !prev.retirement.isLIF)) events.push({ label: 'LIF', color: 'bg-purple-500' });
+                } else if (cy && i === 0) {
+                  if (cy.retirement.cppIncome > 0) events.push({ label: 'CPP', color: 'bg-blue-500' });
+                  if (cy.retirement.oasIncome > 0) events.push({ label: 'OAS', color: 'bg-green-500' });
+                  if (cy.retirement.isRRIF) events.push({ label: 'RRIF', color: 'bg-amber-500' });
+                  if (cy.retirement.isLIF) events.push({ label: 'LIF', color: 'bg-purple-500' });
+                }
+                return (
+                  <th
+                    key={yd.year}
+                    className="py-1 px-0.5 text-center text-[10px] font-semibold text-slate-700"
+                    style={{ minWidth: YEAR_WIDTH }}
+                  >
+                    <div>{yd.year}</div>
+                    {age !== null && <div className="text-[8px] font-normal text-slate-400">Age {age}</div>}
+                    {events.length > 0 && (
+                      <div className="flex items-center justify-center gap-0.5 mt-0.5">
+                        {events.map(ev => (
+                          <span key={ev.label} className={`${ev.color} text-white text-[7px] px-1 py-px rounded-sm leading-none font-bold`}>{ev.label}</span>
+                        ))}
+                      </div>
+                    )}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>

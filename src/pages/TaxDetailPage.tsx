@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+} from 'recharts';
 import { useScenario } from '../store/ScenarioContext';
 import { formatCAD, formatPct, formatShort } from '../utils/formatters';
 import { usePersistedYear } from '../utils/usePersistedYear';
@@ -278,6 +281,51 @@ function AllYearsView({ years, rawYears }: { years: ComputedYear[]; rawYears: im
   );
 }
 
+function MarginalRateChart({ years, selectedYearIdx, onSelectYear }: {
+  years: ComputedYear[];
+  selectedYearIdx: number;
+  onSelectYear: (i: number) => void;
+}) {
+  const data = useMemo(() =>
+    years.map(y => ({
+      year: y.year,
+      Federal: y.tax.marginalFederalRate,
+      Provincial: y.tax.marginalProvincialRate,
+      Combined: y.tax.marginalCombinedRate,
+      'Avg All-In': y.tax.avgAllInRate,
+    })),
+    [years]
+  );
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-lg overflow-hidden mb-4">
+      <div className="px-4 py-2 border-b border-slate-100 text-xs font-semibold text-slate-700">Marginal & Average Tax Rates Over Time</div>
+      <div style={{ height: 200, padding: '12px 12px 8px' }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+            onClick={(e) => {
+              if (e?.activeTooltipIndex !== undefined) onSelectYear(e.activeTooltipIndex);
+            }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <XAxis dataKey="year" tick={{ fill: '#94a3b8', fontSize: 10 }} />
+            <YAxis tickFormatter={v => formatPct(v)} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+            <Tooltip
+              contentStyle={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 11 }}
+              formatter={(v: number, name: string) => [formatPct(v), name]}
+            />
+            <Legend wrapperStyle={{ fontSize: 10 }} />
+            <Line type="monotone" dataKey="Federal" stroke="#2563eb" strokeWidth={1.5} dot={false} />
+            <Line type="monotone" dataKey="Provincial" stroke="#059669" strokeWidth={1.5} dot={false} />
+            <Line type="monotone" dataKey="Combined" stroke="#dc2626" strokeWidth={2.5} dot={false} />
+            <Line type="monotone" dataKey="Avg All-In" stroke="#d97706" strokeWidth={1.5} strokeDasharray="5 3" dot={false} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
 export function TaxDetailPage() {
   const { activeComputed, activeScenario } = useScenario();
   const [viewMode, setViewModeRaw] = useState<'single' | 'all'>(() => {
@@ -327,6 +375,9 @@ export function TaxDetailPage() {
             </div>
           </div>
         </div>
+
+        {/* Marginal Rate Chart — always visible */}
+        <MarginalRateChart years={years} selectedYearIdx={selectedYearIdx} onSelectYear={setSelectedYearIdx} />
 
         {viewMode === 'single' ? (
           <SingleYearView yr={yr} rawYd={rawYd} />

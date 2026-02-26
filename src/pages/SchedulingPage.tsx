@@ -149,6 +149,77 @@ function deepClone<T>(obj: T): T {
   return JSON.parse(JSON.stringify(obj));
 }
 
+const GANTT_COLORS = ['#2563eb', '#059669', '#d97706', '#7c3aed', '#dc2626', '#0891b2', '#475569', '#be185d', '#0d9488', '#ca8a04'];
+
+function GanttView({ items, startYear, endYear }: { items: ScheduledItem[]; startYear: number; endYear: number }) {
+  const [collapsed, setCollapsed] = useState(false);
+  const totalYears = endYear - startYear + 1;
+  const fieldLabels = Object.fromEntries(SCHEDULED_FIELD_OPTIONS.map(o => [o.value, o.label]));
+
+  if (collapsed) {
+    return (
+      <div className="mb-4">
+        <button onClick={() => setCollapsed(false)} className="text-[10px] text-blue-500 hover:text-blue-700 transition-colors">
+          ▶ Show Schedule Timeline
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-4 bg-white border border-slate-200 rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100">
+        <div className="text-xs font-semibold text-slate-700">Schedule Timeline</div>
+        <button onClick={() => setCollapsed(true)} className="text-[10px] text-slate-400 hover:text-slate-600 transition-colors">▼ Hide</button>
+      </div>
+      <div className="px-4 py-3 overflow-x-auto">
+        {/* Year labels */}
+        <div className="flex items-center mb-1" style={{ paddingLeft: 140 }}>
+          {Array.from({ length: totalYears }, (_, i) => (
+            <div
+              key={i}
+              className="text-[8px] text-slate-400 text-center shrink-0"
+              style={{ width: `${100 / totalYears}%`, minWidth: 20 }}
+            >
+              {(startYear + i) % 5 === 0 || i === 0 || i === totalYears - 1 ? startYear + i : ''}
+            </div>
+          ))}
+        </div>
+        {/* Bars */}
+        {items.map((item, idx) => {
+          const ruleStart = Math.max(item.startYear, startYear);
+          const ruleEnd = item.endYear !== undefined ? Math.min(item.endYear, endYear) : endYear;
+          const leftPct = ((ruleStart - startYear) / totalYears) * 100;
+          const widthPct = ((ruleEnd - ruleStart + 1) / totalYears) * 100;
+          const color = GANTT_COLORS[idx % GANTT_COLORS.length];
+          const label = item.label || fieldLabels[item.field] || item.field;
+
+          return (
+            <div key={item.id} className="flex items-center gap-2 mb-1 group" style={{ height: 20 }}>
+              <div className="text-[10px] text-slate-500 truncate shrink-0 w-[132px] text-right pr-1" title={label}>
+                <span className="text-[9px] text-slate-300 mr-1">#{idx + 1}</span>{label}
+              </div>
+              <div className="flex-1 relative bg-slate-50 rounded-sm" style={{ height: 14 }}>
+                <div
+                  className="absolute top-0 rounded-sm transition-all group-hover:brightness-110"
+                  style={{
+                    left: `${leftPct}%`,
+                    width: `${widthPct}%`,
+                    height: 14,
+                    backgroundColor: color,
+                    opacity: 0.75,
+                  }}
+                  title={`${ruleStart} – ${ruleEnd}`}
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export function SchedulingPage() {
   const { activeScenario, activeComputed } = useScenario();
   const update = useUpdateScenario();
@@ -523,6 +594,11 @@ export function SchedulingPage() {
               <button onClick={confirmRemoveItem} className="px-2.5 py-1 text-[11px] rounded bg-red-600 text-white hover:bg-red-700 transition-colors">Delete</button>
             </div>
           </div>
+        )}
+
+        {/* Gantt View */}
+        {items.length > 0 && (
+          <GanttView items={items} startYear={startYear} endYear={endYear} />
         )}
 
         {items.length === 0 ? (
