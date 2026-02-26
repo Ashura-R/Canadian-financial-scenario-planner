@@ -11,6 +11,13 @@ import type { ChartRange } from '../ChartRangeSelector';
 
 const SCENARIO_COLORS = ['#2563eb', '#059669', '#d97706', '#7c3aed', '#dc2626', '#0891b2'];
 
+/* CSS-variable-backed chart tokens */
+const GRID = 'var(--app-chart-grid)';
+const TICK = 'var(--app-chart-tick)';
+const TT_BG = 'var(--app-surface)';
+const TT_BORDER = 'var(--app-border)';
+const LEGEND_COLOR = 'var(--app-text3)';
+
 interface Props {
   scenarios: Scenario[];
   computed: ComputedScenario[];
@@ -23,9 +30,9 @@ function ChartCard({ title, range, onRangeChange, children }: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-lg">
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100">
-        <div className="text-xs font-semibold text-slate-700">{title}</div>
+    <div className="bg-app-surface border border-app-border rounded-lg">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-app-border">
+        <div className="text-xs font-semibold text-app-text2">{title}</div>
         <ChartRangeSelector value={range} onChange={onRangeChange} />
       </div>
       <div style={{ height: 240, padding: '8px 8px 4px' }}>
@@ -52,8 +59,8 @@ function buildData(
 }
 
 const tooltipStyle = {
-  contentStyle: { background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 11 },
-  labelStyle: { color: '#0f172a' },
+  contentStyle: { background: TT_BG, border: `1px solid ${TT_BORDER}`, borderRadius: 6, fontSize: 11 },
+  labelStyle: { color: 'var(--app-text)' },
 };
 
 function OverlayLine({ data, scenarios, title, range, onRangeChange }: {
@@ -68,11 +75,11 @@ function OverlayLine({ data, scenarios, title, range, onRangeChange }: {
     <ChartCard title={title} range={range} onRangeChange={onRangeChange}>
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={sliced} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-          <XAxis dataKey="year" tick={{ fill: '#94a3b8', fontSize: 10 }} />
-          <YAxis tickFormatter={v => formatShort(v as number)} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+          <XAxis dataKey="year" tick={{ fill: TICK, fontSize: 10 }} />
+          <YAxis tickFormatter={v => formatShort(v as number)} tick={{ fill: TICK, fontSize: 10 }} />
           <Tooltip {...tooltipStyle} formatter={(v: number, name: string) => [formatShort(v), name]} />
-          <Legend wrapperStyle={{ fontSize: 11, color: '#64748b' }} />
+          <Legend wrapperStyle={{ fontSize: 11, color: LEGEND_COLOR }} />
           {scenarios.map((sc, i) => (
             <Line key={sc.id} type="monotone" dataKey={sc.name} stroke={SCENARIO_COLORS[i % SCENARIO_COLORS.length]} strokeWidth={2} dot={false} />
           ))}
@@ -94,11 +101,11 @@ function OverlayArea({ data, scenarios, title, range, onRangeChange }: {
     <ChartCard title={title} range={range} onRangeChange={onRangeChange}>
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={sliced} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-          <XAxis dataKey="year" tick={{ fill: '#94a3b8', fontSize: 10 }} />
-          <YAxis tickFormatter={v => formatShort(v as number)} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+          <CartesianGrid strokeDasharray="3 3" stroke={GRID} />
+          <XAxis dataKey="year" tick={{ fill: TICK, fontSize: 10 }} />
+          <YAxis tickFormatter={v => formatShort(v as number)} tick={{ fill: TICK, fontSize: 10 }} />
           <Tooltip {...tooltipStyle} formatter={(v: number, name: string) => [formatShort(v), name]} />
-          <Legend wrapperStyle={{ fontSize: 11, color: '#64748b' }} />
+          <Legend wrapperStyle={{ fontSize: 11, color: LEGEND_COLOR }} />
           {scenarios.map((sc, i) => (
             <Area key={sc.id} type="monotone" dataKey={sc.name} stroke={SCENARIO_COLORS[i % SCENARIO_COLORS.length]} fill={SCENARIO_COLORS[i % SCENARIO_COLORS.length]} fillOpacity={0.15} strokeWidth={2} dot={false} />
           ))}

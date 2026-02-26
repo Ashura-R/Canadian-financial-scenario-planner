@@ -20,9 +20,9 @@ function TaxCompareTab({ scenarios, computed }: { scenarios: Scenario[]; compute
   return (
     <div className="p-4">
       <div className="flex items-center gap-3 mb-4">
-        <span className="text-xs text-slate-500">Year:</span>
+        <span className="text-xs text-app-text3">Year:</span>
         <select
-          className="text-xs border border-slate-200 rounded px-2 py-1 bg-white text-slate-700"
+          className="text-xs border border-app-border rounded px-2 py-1 bg-app-surface text-app-text2"
           value={yearIdx}
           onChange={e => setYearIdx(Number(e.target.value))}
         >
@@ -33,10 +33,10 @@ function TaxCompareTab({ scenarios, computed }: { scenarios: Scenario[]; compute
       <div className="overflow-x-auto">
         <table className="w-full text-xs border-collapse">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="py-2 px-3 text-left text-[10px] text-slate-500 font-semibold w-48">Tax Metric</th>
+            <tr className="bg-app-surface2 border-b border-app-border">
+              <th className="py-2 px-3 text-left text-[10px] text-app-text3 font-semibold w-48">Tax Metric</th>
               {scenarios.map(sc => (
-                <th key={sc.id} className="py-2 px-3 text-right text-[10px] text-slate-700 font-semibold">{sc.name}</th>
+                <th key={sc.id} className="py-2 px-3 text-right text-[10px] text-app-text2 font-semibold">{sc.name}</th>
               ))}
             </tr>
           </thead>
@@ -59,12 +59,12 @@ function TaxCompareTab({ scenarios, computed }: { scenarios: Scenario[]; compute
               { label: 'Avg Tax Rate', fn: (yr: ComputedYear) => formatPct(yr.tax.avgIncomeTaxRate) },
               { label: 'Avg All-In Rate', fn: (yr: ComputedYear) => formatPct(yr.tax.avgAllInRate) },
             ].map(row => (
-              <tr key={row.label} className="border-b border-slate-100 hover:bg-blue-50/30">
-                <td className="py-1.5 px-3 text-slate-600">{row.label}</td>
+              <tr key={row.label} className="border-b border-app-border hover:bg-app-accent-light/30">
+                <td className="py-1.5 px-3 text-app-text2">{row.label}</td>
                 {computed.map((c, i) => {
                   const yr = c.years[yearIdx];
                   return (
-                    <td key={i} className="py-1.5 px-3 text-right text-slate-700">
+                    <td key={i} className="py-1.5 px-3 text-right text-app-text2">
                       {yr ? row.fn(yr) : '—'}
                     </td>
                   );
@@ -85,9 +85,9 @@ function AccountsCompareTab({ scenarios, computed }: { scenarios: Scenario[]; co
   return (
     <div className="p-4">
       <div className="flex items-center gap-3 mb-4">
-        <span className="text-xs text-slate-500">Year:</span>
+        <span className="text-xs text-app-text3">Year:</span>
         <select
-          className="text-xs border border-slate-200 rounded px-2 py-1 bg-white text-slate-700"
+          className="text-xs border border-app-border rounded px-2 py-1 bg-app-surface text-app-text2"
           value={yearIdx}
           onChange={e => setYearIdx(Number(e.target.value))}
         >
@@ -98,10 +98,10 @@ function AccountsCompareTab({ scenarios, computed }: { scenarios: Scenario[]; co
       <div className="overflow-x-auto">
         <table className="w-full text-xs border-collapse">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="py-2 px-3 text-left text-[10px] text-slate-500 font-semibold w-48">Account Metric</th>
+            <tr className="bg-app-surface2 border-b border-app-border">
+              <th className="py-2 px-3 text-left text-[10px] text-app-text3 font-semibold w-48">Account Metric</th>
               {scenarios.map(sc => (
-                <th key={sc.id} className="py-2 px-3 text-right text-[10px] text-slate-700 font-semibold">{sc.name}</th>
+                <th key={sc.id} className="py-2 px-3 text-right text-[10px] text-app-text2 font-semibold">{sc.name}</th>
               ))}
             </tr>
           </thead>
@@ -122,12 +122,12 @@ function AccountsCompareTab({ scenarios, computed }: { scenarios: Scenario[]; co
               { label: 'FHSA Unused Room', fn: (yr: ComputedYear) => formatCAD(yr.fhsaUnusedRoom) },
               { label: 'Capital Loss C/F', fn: (yr: ComputedYear) => formatCAD(yr.capitalLossCF) },
             ].map(row => (
-              <tr key={row.label} className="border-b border-slate-100 hover:bg-blue-50/30">
-                <td className="py-1.5 px-3 text-slate-600">{row.label}</td>
+              <tr key={row.label} className="border-b border-app-border hover:bg-app-accent-light/30">
+                <td className="py-1.5 px-3 text-app-text2">{row.label}</td>
                 {computed.map((c, i) => {
                   const yr = c.years[yearIdx];
                   return (
-                    <td key={i} className="py-1.5 px-3 text-right text-slate-700">
+                    <td key={i} className="py-1.5 px-3 text-right text-app-text2">
                       {yr ? row.fn(yr) : '—'}
                     </td>
                   );
@@ -182,10 +182,10 @@ function LifetimeSummaryTab({ scenarios, computed }: { scenarios: Scenario[]; co
       <div className="overflow-x-auto">
         <table className="w-full text-xs border-collapse">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="py-2.5 px-3 text-left text-[10px] text-slate-500 font-semibold w-52">Lifetime Metric</th>
+            <tr className="bg-app-surface2 border-b border-app-border">
+              <th className="py-2.5 px-3 text-left text-[10px] text-app-text3 font-semibold w-52">Lifetime Metric</th>
               {scenarios.map(sc => (
-                <th key={sc.id} className="py-2.5 px-3 text-right text-[10px] text-slate-700 font-semibold">{sc.name}</th>
+                <th key={sc.id} className="py-2.5 px-3 text-right text-[10px] text-app-text2 font-semibold">{sc.name}</th>
               ))}
             </tr>
           </thead>
@@ -193,10 +193,10 @@ function LifetimeSummaryTab({ scenarios, computed }: { scenarios: Scenario[]; co
             {metrics.map(row => {
               const bestIdx = getBestIdx(row);
               return (
-                <tr key={row.label} className="border-b border-slate-100 hover:bg-blue-50/30">
-                  <td className="py-2 px-3 text-slate-600 font-medium">{row.label}</td>
+                <tr key={row.label} className="border-b border-app-border hover:bg-app-accent-light/30">
+                  <td className="py-2 px-3 text-app-text2 font-medium">{row.label}</td>
                   {computed.map((c, i) => (
-                    <td key={i} className={`py-2 px-3 text-right tabular-nums ${row.cls ?? 'text-slate-700'} ${i === bestIdx ? 'font-bold bg-emerald-50' : ''}`}>
+                    <td key={i} className={`py-2 px-3 text-right tabular-nums ${row.cls ?? 'text-app-text2'} ${i === bestIdx ? 'font-bold bg-app-accent-light' : ''}`}>
                       {row.fn(c)}
                       {i === bestIdx && <span className="ml-1 text-[8px] text-emerald-600 font-bold">BEST</span>}
                     </td>
@@ -245,29 +245,29 @@ export function CompareModal({ onClose }: Props) {
     <div className="fixed inset-0 z-50 flex items-start justify-start bg-black/40 backdrop-blur-sm">
       <div className="w-full h-full flex">
         {/* Sidebar */}
-        <div className="w-52 bg-white border-r border-slate-200 flex flex-col shrink-0 shadow-lg">
-          <div className="p-4 border-b border-slate-200">
-            <h2 className="text-sm font-bold text-slate-800">Compare Scenarios</h2>
-            <p className="text-xs text-slate-400 mt-0.5">Select 2+ to compare</p>
+        <div className="w-52 bg-app-surface border-r border-app-border flex flex-col shrink-0 shadow-lg">
+          <div className="p-4 border-b border-app-border">
+            <h2 className="text-sm font-bold text-app-text">Compare Scenarios</h2>
+            <p className="text-xs text-app-text4 mt-0.5">Select 2+ to compare</p>
           </div>
           <div className="flex-1 overflow-y-auto p-3 space-y-1">
             {state.scenarios.map(sc => (
-              <label key={sc.id} className="flex items-center gap-2.5 cursor-pointer p-2 rounded-md hover:bg-slate-50 transition-colors">
+              <label key={sc.id} className="flex items-center gap-2.5 cursor-pointer p-2 rounded-md hover:bg-app-surface2 transition-colors">
                 <input
                   type="checkbox"
                   checked={selected.has(sc.id)}
                   onChange={() => toggle(sc.id)}
-                  className="accent-blue-600 w-3.5 h-3.5"
+                  className="accent-[var(--app-accent)] w-3.5 h-3.5"
                 />
-                <span className="text-sm text-slate-700">{sc.name}</span>
+                <span className="text-sm text-app-text2">{sc.name}</span>
               </label>
             ))}
           </div>
-          <div className="p-3 border-t border-slate-200">
-            <div className="text-xs text-slate-400 mb-2">{selectedScenarios.length} selected</div>
+          <div className="p-3 border-t border-app-border">
+            <div className="text-xs text-app-text4 mb-2">{selectedScenarios.length} selected</div>
             <button
               onClick={onClose}
-              className="w-full py-1.5 text-xs rounded border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+              className="w-full py-1.5 text-xs rounded border border-app-border bg-app-surface2 text-app-text2 hover:bg-app-surface2 hover:text-app-text transition-colors"
             >
               Close
             </button>
@@ -275,10 +275,10 @@ export function CompareModal({ onClose }: Props) {
         </div>
 
         {/* Main content */}
-        <div className="flex-1 flex flex-col bg-slate-50 overflow-hidden">
+        <div className="flex-1 flex flex-col bg-app-surface2 overflow-hidden">
           {/* Header */}
-          <div className="flex items-center gap-4 px-5 py-3 bg-white border-b border-slate-200 shrink-0">
-            <div className="flex-1 text-sm font-semibold text-slate-800">
+          <div className="flex items-center gap-4 px-5 py-3 bg-app-surface border-b border-app-border shrink-0">
+            <div className="flex-1 text-sm font-semibold text-app-text">
               Comparing: {selectedScenarios.map(s => s.name).join(' vs ')}
             </div>
             <div className="flex gap-1">
@@ -288,8 +288,8 @@ export function CompareModal({ onClose }: Props) {
                   onClick={() => setTab(t)}
                   className={`px-4 py-1.5 text-xs rounded border transition-colors ${
                     tab === t
-                      ? 'bg-blue-600 border-blue-600 text-white'
-                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                      ? 'bg-app-accent border-app-accent text-white'
+                      : 'bg-app-surface border-app-border text-app-text2 hover:bg-app-surface2 hover:text-app-text'
                   }`}
                 >
                   {TAB_LABELS[t]}
@@ -298,14 +298,14 @@ export function CompareModal({ onClose }: Props) {
             </div>
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-slate-700 text-xl leading-none transition-colors"
+              className="text-app-text4 hover:text-app-text2 text-xl leading-none transition-colors"
             >×</button>
           </div>
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto">
             {selectedComputed.length < 2 ? (
-              <div className="p-8 text-center text-slate-400 text-sm">
+              <div className="p-8 text-center text-app-text4 text-sm">
                 Select at least 2 scenarios to compare.
               </div>
             ) : tab === 'lifetime' ? (

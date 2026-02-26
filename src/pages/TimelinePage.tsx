@@ -601,15 +601,15 @@ export function TimelinePage() {
     const isActive = fillRow?.key === key;
     return (
       <td
-        className="sticky left-0 bg-inherit z-10 py-0.5 pl-2 pr-1 text-[10px] text-slate-500 whitespace-nowrap border-r border-slate-100 group"
+        className="sticky left-0 bg-inherit z-10 py-0.5 pl-2 pr-1 text-[10px] text-app-text3 whitespace-nowrap border-r border-app-border group"
         style={{ minWidth: LABEL_WIDTH, maxWidth: LABEL_WIDTH }}
       >
         {isActive ? (
           <div className="flex items-center gap-1">
-            <span className="text-[9px] text-blue-500 shrink-0 font-semibold">ALL→</span>
+            <span className="text-[9px] text-app-accent shrink-0 font-semibold">ALL→</span>
             <input
               ref={fillInputRef}
-              className="flex-1 min-w-0 text-[10px] border border-blue-400 rounded px-1 py-px outline-none bg-blue-50 text-slate-800"
+              className="flex-1 min-w-0 text-[10px] border border-app-accent rounded px-1 py-px outline-none bg-app-accent-light text-app-text"
               value={fillVal}
               onChange={e => setFillVal(e.target.value)}
               onKeyDown={e => {
@@ -625,7 +625,7 @@ export function TimelinePage() {
             <span>{label}</span>
             {isEditable && (
               <button
-                className="opacity-0 group-hover:opacity-100 text-[8px] px-0.5 py-px text-blue-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all"
+                className="opacity-0 group-hover:opacity-100 text-[8px] px-0.5 py-px text-app-accent hover:text-app-accent hover:bg-app-accent-light rounded transition-all"
                 onMouseDown={e => { e.preventDefault(); openFill(key, pct); }}
                 title="Fill all years with one value"
               >⟹</button>
@@ -639,9 +639,9 @@ export function TimelinePage() {
   function renderRow(label: string, key: YDKey, opts: { readOnly?: boolean; pct?: boolean; computedFn?: (i: number) => number } = {}) {
     const isEditable = !opts.readOnly && !opts.computedFn;
     const myIdx = bandRowIdx++;
-    const bandCls = banding && myIdx % 2 === 1 ? 'bg-slate-50/60' : 'bg-white';
+    const bandCls = banding && myIdx % 2 === 1 ? 'bg-app-surface2/60' : 'bg-app-surface';
     return (
-      <tr key={key} className={`border-b border-slate-100 hover:bg-blue-50/30 transition-colors ${bandCls}`}>
+      <tr key={key} className={`border-b border-app-border hover:bg-app-accent-light/30 transition-colors ${bandCls}`}>
         {labelCell(label, key, opts.pct, isEditable)}
         {years.map((yd, i) => {
           const warns = warningFields(i);
@@ -659,7 +659,7 @@ export function TimelinePage() {
               data-col={i}
             >
               {opts.readOnly || opts.computedFn ? (
-                <div className={`w-full text-right text-[10px] px-1 py-px text-slate-400 rounded ${focused ? 'ring-2 ring-blue-500 ring-inset' : ''} ${selected && !focused ? 'bg-blue-100' : ''}`}>
+                <div className={`w-full text-right text-[10px] px-1 py-px text-app-text4 rounded ${focused ? 'ring-2 ring-app-accent ring-inset' : ''} ${selected && !focused ? 'bg-app-accent-light' : ''}`}>
                   {opts.pct
                     ? (displayVal * 100).toFixed(1) + '%'
                     : displayVal >= 1000
@@ -695,15 +695,15 @@ export function TimelinePage() {
   // Render a computed-only row with data attributes and focus/selection styles
   function renderComputedRow(rowId: string, label: string, fn: (i: number) => string, colorCls?: string) {
     return (
-      <tr key={rowId} className="border-b border-slate-100">
-        <td className="sticky left-0 bg-white z-10 py-0.5 pl-3 pr-2 text-[10px] text-slate-500 whitespace-nowrap border-r border-slate-100" style={{ minWidth: LABEL_WIDTH }}>{label}</td>
+      <tr key={rowId} className="border-b border-app-border">
+        <td className="sticky left-0 bg-app-surface z-10 py-0.5 pl-3 pr-2 text-[10px] text-app-text3 whitespace-nowrap border-r border-app-border" style={{ minWidth: LABEL_WIDTH }}>{label}</td>
         {years.map((_, i) => {
           const focused = grid.isFocused(rowId, i);
           const selected = grid.isSelected(rowId, i);
           return (
             <td
               key={i}
-              className={`py-0.5 px-0.5 text-right text-[10px] ${colorCls ?? 'text-slate-400'} rounded ${focused ? 'ring-2 ring-blue-500 ring-inset' : ''} ${selected && !focused ? 'bg-blue-100' : ''}`}
+              className={`py-0.5 px-0.5 text-right text-[10px] ${colorCls ?? 'text-app-text4'} rounded ${focused ? 'ring-2 ring-app-accent ring-inset' : ''} ${selected && !focused ? 'bg-app-accent-light' : ''}`}
               data-row={rowId}
               data-col={i}
               onClick={(e) => onCellClick(rowId, i, e.shiftKey)}
@@ -719,8 +719,8 @@ export function TimelinePage() {
   // Render an override/optional row (EOY overrides, Rate overrides)
   function renderOverrideRow(key: YDKey, label: string, pct?: boolean) {
     return (
-      <tr key={key} className="border-b border-slate-100 hover:bg-blue-50/30">
-        <td className="sticky left-0 bg-white z-10 py-0.5 pl-3 pr-2 text-[10px] text-slate-500 whitespace-nowrap border-r border-slate-100" style={{ minWidth: LABEL_WIDTH }}>{label}</td>
+      <tr key={key} className="border-b border-app-border hover:bg-app-accent-light/30">
+        <td className="sticky left-0 bg-app-surface z-10 py-0.5 pl-3 pr-2 text-[10px] text-app-text3 whitespace-nowrap border-r border-app-border" style={{ minWidth: LABEL_WIDTH }}>{label}</td>
         {years.map((yd, i) => {
           const v = yd[key] as number | undefined;
           const focused = grid.isFocused(key, i);
@@ -788,8 +788,8 @@ export function TimelinePage() {
             {renderRow('Foreign Income', 'foreignIncome')}
             {renderRow('Foreign Tax Paid', 'foreignTaxPaid')}
             {renderRow('Charitable Donations', 'charitableDonations')}
-            <tr className="bg-slate-50 border-b border-slate-100">
-              <td className="sticky left-0 bg-slate-50 z-10 py-0.5 pl-3 pr-2 text-[10px] text-slate-700 font-semibold whitespace-nowrap border-r border-slate-100" style={{ minWidth: LABEL_WIDTH }}>
+            <tr className="bg-app-surface2 border-b border-app-border">
+              <td className="sticky left-0 bg-app-surface2 z-10 py-0.5 pl-3 pr-2 text-[10px] text-app-text2 font-semibold whitespace-nowrap border-r border-app-border" style={{ minWidth: LABEL_WIDTH }}>
                 Total Gross Income
               </td>
               {years.map((_, i) => {
@@ -798,7 +798,7 @@ export function TimelinePage() {
                 return (
                   <td
                     key={i}
-                    className={`py-0.5 px-0.5 text-right text-[10px] text-emerald-600 font-medium rounded ${focused ? 'ring-2 ring-blue-500 ring-inset' : ''} ${selected && !focused ? 'bg-blue-100' : ''}`}
+                    className={`py-0.5 px-0.5 text-right text-[10px] text-emerald-600 font-medium rounded ${focused ? 'ring-2 ring-app-accent ring-inset' : ''} ${selected && !focused ? 'bg-app-accent-light' : ''}`}
                     data-row="_summary_grossIncome"
                     data-col={i}
                     onClick={(e) => onCellClick('_summary_grossIncome', i, e.shiftKey)}
@@ -885,8 +885,8 @@ export function TimelinePage() {
       case 'Asset Allocation':
         return (
           <>
-            <tr className="bg-slate-50/60 border-b border-slate-100">
-              <td className="sticky left-0 bg-white z-10 py-0.5 pl-3 pr-2 text-[9px] text-slate-400 italic border-r border-slate-100" style={{ minWidth: LABEL_WIDTH }}>RRSP Alloc</td>
+            <tr className="bg-app-surface2/60 border-b border-app-border">
+              <td className="sticky left-0 bg-app-surface z-10 py-0.5 pl-3 pr-2 text-[9px] text-app-text4 italic border-r border-app-border" style={{ minWidth: LABEL_WIDTH }}>RRSP Alloc</td>
               {years.map((_, i) => <td key={i} />)}
             </tr>
             {renderRow('  Equity %', 'rrspEquityPct', { pct: true })}
@@ -895,36 +895,36 @@ export function TimelinePage() {
             {renderComputedRow('_computed_rrspReturn', '  Return (calc)',
               i => computed[i] ? (computed[i].accounts.rrspReturn * 100).toFixed(1) + '%' : '—'
             )}
-            <tr className="bg-slate-50/60 border-b border-slate-100">
-              <td className="sticky left-0 bg-white z-10 py-0.5 pl-3 pr-2 text-[9px] text-slate-400 italic border-r border-slate-100" style={{ minWidth: LABEL_WIDTH }}>TFSA Alloc</td>
+            <tr className="bg-app-surface2/60 border-b border-app-border">
+              <td className="sticky left-0 bg-app-surface z-10 py-0.5 pl-3 pr-2 text-[9px] text-app-text4 italic border-r border-app-border" style={{ minWidth: LABEL_WIDTH }}>TFSA Alloc</td>
               {years.map((_, i) => <td key={i} />)}
             </tr>
             {renderRow('  Equity %', 'tfsaEquityPct', { pct: true })}
             {renderRow('  Fixed %', 'tfsaFixedPct', { pct: true })}
             {renderRow('  Cash %', 'tfsaCashPct', { pct: true })}
-            <tr className="bg-slate-50/60 border-b border-slate-100">
-              <td className="sticky left-0 bg-white z-10 py-0.5 pl-3 pr-2 text-[9px] text-slate-400 italic border-r border-slate-100" style={{ minWidth: LABEL_WIDTH }}>FHSA Alloc</td>
+            <tr className="bg-app-surface2/60 border-b border-app-border">
+              <td className="sticky left-0 bg-app-surface z-10 py-0.5 pl-3 pr-2 text-[9px] text-app-text4 italic border-r border-app-border" style={{ minWidth: LABEL_WIDTH }}>FHSA Alloc</td>
               {years.map((_, i) => <td key={i} />)}
             </tr>
             {renderRow('  Equity %', 'fhsaEquityPct', { pct: true })}
             {renderRow('  Fixed %', 'fhsaFixedPct', { pct: true })}
             {renderRow('  Cash %', 'fhsaCashPct', { pct: true })}
-            <tr className="bg-slate-50/60 border-b border-slate-100">
-              <td className="sticky left-0 bg-white z-10 py-0.5 pl-3 pr-2 text-[9px] text-slate-400 italic border-r border-slate-100" style={{ minWidth: LABEL_WIDTH }}>Non-Reg Alloc</td>
+            <tr className="bg-app-surface2/60 border-b border-app-border">
+              <td className="sticky left-0 bg-app-surface z-10 py-0.5 pl-3 pr-2 text-[9px] text-app-text4 italic border-r border-app-border" style={{ minWidth: LABEL_WIDTH }}>Non-Reg Alloc</td>
               {years.map((_, i) => <td key={i} />)}
             </tr>
             {renderRow('  Equity %', 'nonRegEquityPct', { pct: true })}
             {renderRow('  Fixed %', 'nonRegFixedPct', { pct: true })}
             {renderRow('  Cash %', 'nonRegCashPct', { pct: true })}
-            <tr className="bg-slate-50/60 border-b border-slate-100">
-              <td className="sticky left-0 bg-white z-10 py-0.5 pl-3 pr-2 text-[9px] text-slate-400 italic border-r border-slate-100" style={{ minWidth: LABEL_WIDTH }}>LIRA Alloc</td>
+            <tr className="bg-app-surface2/60 border-b border-app-border">
+              <td className="sticky left-0 bg-app-surface z-10 py-0.5 pl-3 pr-2 text-[9px] text-app-text4 italic border-r border-app-border" style={{ minWidth: LABEL_WIDTH }}>LIRA Alloc</td>
               {years.map((_, i) => <td key={i} />)}
             </tr>
             {renderRow('  Equity %', 'liraEquityPct', { pct: true })}
             {renderRow('  Fixed %', 'liraFixedPct', { pct: true })}
             {renderRow('  Cash %', 'liraCashPct', { pct: true })}
-            <tr className="bg-slate-50/60 border-b border-slate-100">
-              <td className="sticky left-0 bg-white z-10 py-0.5 pl-3 pr-2 text-[9px] text-slate-400 italic border-r border-slate-100" style={{ minWidth: LABEL_WIDTH }}>RESP Alloc</td>
+            <tr className="bg-app-surface2/60 border-b border-app-border">
+              <td className="sticky left-0 bg-app-surface z-10 py-0.5 pl-3 pr-2 text-[9px] text-app-text4 italic border-r border-app-border" style={{ minWidth: LABEL_WIDTH }}>RESP Alloc</td>
               {years.map((_, i) => <td key={i} />)}
             </tr>
             {renderRow('  Equity %', 'respEquityPct', { pct: true })}
@@ -949,7 +949,7 @@ export function TimelinePage() {
         if (!acbOn) {
           return (
             <tr>
-              <td className="sticky left-0 z-10 bg-slate-50 px-2 py-1.5 text-[11px] text-slate-400 italic" colSpan={years.length + 1}>
+              <td className="sticky left-0 z-10 bg-app-surface2 px-2 py-1.5 text-[11px] text-app-text4 italic" colSpan={years.length + 1}>
                 Enable in Settings &gt; Accounts
               </td>
             </tr>
@@ -1032,20 +1032,20 @@ export function TimelinePage() {
 
       case 'Tax Results (Computed)': {
         const taxRows = [
-          { rowId: '_computed_netTaxable', label: 'Net Taxable Income', fn: (i: number) => computed[i]?.tax.netTaxableIncome ?? 0, cls: 'text-slate-600' },
+          { rowId: '_computed_netTaxable', label: 'Net Taxable Income', fn: (i: number) => computed[i]?.tax.netTaxableIncome ?? 0, cls: 'text-app-text2' },
           { rowId: '_computed_fedTax', label: 'Federal Tax', fn: (i: number) => computed[i]?.tax.federalTaxPayable ?? 0, cls: 'text-red-600' },
           { rowId: '_computed_provTax', label: 'Provincial Tax', fn: (i: number) => computed[i]?.tax.provincialTaxPayable ?? 0, cls: 'text-red-600' },
           { rowId: '_computed_cppPaid', label: 'CPP Paid', fn: (i: number) => computed[i]?.cpp.totalCPPPaid ?? 0, cls: 'text-amber-600' },
           { rowId: '_computed_eiPaid', label: 'EI Paid', fn: (i: number) => computed[i]?.ei.totalEI ?? 0, cls: 'text-amber-600' },
           { rowId: '_computed_afterTax', label: 'After-Tax Income', fn: (i: number) => computed[i]?.waterfall.afterTaxIncome ?? 0, cls: 'text-emerald-600' },
           { rowId: '_computed_netCash', label: 'Net Cash Flow', fn: (i: number) => computed[i]?.waterfall.netCashFlow ?? 0 },
-          { rowId: '_computed_netWorth', label: 'Net Worth (EOY)', fn: (i: number) => computed[i]?.accounts.netWorth ?? 0, cls: 'text-blue-600' },
+          { rowId: '_computed_netWorth', label: 'Net Worth (EOY)', fn: (i: number) => computed[i]?.accounts.netWorth ?? 0, cls: 'text-app-accent' },
         ];
         return (
           <>
             {taxRows.map(({ rowId, label, fn, cls }) => (
-              <tr key={rowId} className="border-b border-slate-100">
-                <td className="sticky left-0 bg-white z-10 py-0.5 pl-3 pr-2 text-[10px] text-slate-500 whitespace-nowrap border-r border-slate-100" style={{ minWidth: LABEL_WIDTH }}>{label}</td>
+              <tr key={rowId} className="border-b border-app-border">
+                <td className="sticky left-0 bg-app-surface z-10 py-0.5 pl-3 pr-2 text-[10px] text-app-text3 whitespace-nowrap border-r border-app-border" style={{ minWidth: LABEL_WIDTH }}>{label}</td>
                 {years.map((_, i) => {
                   const v = fn(i);
                   const color = cls ?? (v >= 0 ? 'text-emerald-600' : 'text-red-600');
@@ -1054,7 +1054,7 @@ export function TimelinePage() {
                   return (
                     <td
                       key={i}
-                      className={`py-0.5 px-0.5 text-right text-[10px] font-medium ${color} rounded ${focused ? 'ring-2 ring-blue-500 ring-inset' : ''} ${selected && !focused ? 'bg-blue-100' : ''}`}
+                      className={`py-0.5 px-0.5 text-right text-[10px] font-medium ${color} rounded ${focused ? 'ring-2 ring-app-accent ring-inset' : ''} ${selected && !focused ? 'bg-app-accent-light' : ''}`}
                       data-row={rowId}
                       data-col={i}
                       onClick={(e) => onCellClick(rowId, i, e.shiftKey)}
@@ -1079,7 +1079,7 @@ export function TimelinePage() {
   return (
     <div
       ref={tableRef}
-      className="h-full overflow-auto bg-white outline-none"
+      className="h-full overflow-auto bg-app-surface outline-none"
       tabIndex={0}
       onKeyDown={grid.handleKeyDown}
       onMouseDown={handleTableMouseDown}
@@ -1088,24 +1088,24 @@ export function TimelinePage() {
     >
       {/* Toolbar */}
       <div
-        className="sticky top-0 z-40 bg-blue-50 border-b border-blue-100 px-3 py-1 text-[10px] text-blue-500 flex items-center justify-between gap-3"
+        className="sticky top-0 z-40 bg-app-accent-light border-b border-app-border px-3 py-1 text-[10px] text-app-accent flex items-center justify-between gap-3"
         style={{ minWidth: (LABEL_WIDTH + years.length * YEAR_WIDTH) * zoom }}
       >
         <span>
-          Click/drag to select · <kbd className="bg-white border border-blue-200 rounded px-0.5">↑↓←→</kbd> navigate · <kbd className="bg-white border border-blue-200 rounded px-0.5">Enter</kbd> edit · <kbd className="bg-white border border-blue-200 rounded px-0.5">Shift</kbd>+click/arrow range · <kbd className="bg-white border border-blue-200 rounded px-0.5">Ctrl+C</kbd>/<kbd className="bg-white border border-blue-200 rounded px-0.5">X</kbd>/<kbd className="bg-white border border-blue-200 rounded px-0.5">V</kbd> copy/cut/paste · <kbd className="bg-white border border-blue-200 rounded px-0.5">Ctrl+Z</kbd>/<kbd className="bg-white border border-blue-200 rounded px-0.5">Y</kbd> undo/redo · <kbd className="bg-white border border-blue-200 rounded px-0.5">Ctrl+A</kbd> select all
+          Click/drag to select · <kbd className="bg-app-surface border border-app-border rounded px-0.5">↑↓←→</kbd> navigate · <kbd className="bg-app-surface border border-app-border rounded px-0.5">Enter</kbd> edit · <kbd className="bg-app-surface border border-app-border rounded px-0.5">Shift</kbd>+click/arrow range · <kbd className="bg-app-surface border border-app-border rounded px-0.5">Ctrl+C</kbd>/<kbd className="bg-app-surface border border-app-border rounded px-0.5">X</kbd>/<kbd className="bg-app-surface border border-app-border rounded px-0.5">V</kbd> copy/cut/paste · <kbd className="bg-app-surface border border-app-border rounded px-0.5">Ctrl+Z</kbd>/<kbd className="bg-app-surface border border-app-border rounded px-0.5">Y</kbd> undo/redo · <kbd className="bg-app-surface border border-app-border rounded px-0.5">Ctrl+A</kbd> select all
         </span>
         <div className="flex items-center gap-3 shrink-0">
           <div className="flex items-center gap-0.5">
             <button
               onClick={undo}
               disabled={!canUndo}
-              className="w-5 h-5 flex items-center justify-center rounded border border-blue-200 bg-white text-blue-600 hover:bg-blue-100 disabled:opacity-30 disabled:cursor-not-allowed text-[10px] leading-none"
+              className="w-5 h-5 flex items-center justify-center rounded border border-app-border bg-app-surface text-app-accent hover:bg-app-accent-light disabled:opacity-30 disabled:cursor-not-allowed text-[10px] leading-none"
               title="Undo (Ctrl+Z)"
             >↶</button>
             <button
               onClick={redo}
               disabled={!canRedo}
-              className="w-5 h-5 flex items-center justify-center rounded border border-blue-200 bg-white text-blue-600 hover:bg-blue-100 disabled:opacity-30 disabled:cursor-not-allowed text-[10px] leading-none"
+              className="w-5 h-5 flex items-center justify-center rounded border border-app-border bg-app-surface text-app-accent hover:bg-app-accent-light disabled:opacity-30 disabled:cursor-not-allowed text-[10px] leading-none"
               title="Redo (Ctrl+Y)"
             >↷</button>
           </div>
@@ -1114,22 +1114,22 @@ export function TimelinePage() {
               type="checkbox"
               checked={banding}
               onChange={e => setBanding(e.target.checked)}
-              className="accent-blue-600 w-3 h-3"
+              className="accent-[var(--app-accent)] w-3 h-3"
             />
-            <span className="text-[10px] text-blue-600">Banding</span>
+            <span className="text-[10px] text-app-accent">Banding</span>
           </label>
           <div className="flex items-center gap-1">
             <button
               onClick={zoomOut}
               disabled={zoom <= ZOOM_LEVELS[0]}
-              className="w-5 h-5 flex items-center justify-center rounded border border-blue-200 bg-white text-blue-600 hover:bg-blue-100 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-bold leading-none"
+              className="w-5 h-5 flex items-center justify-center rounded border border-app-border bg-app-surface text-app-accent hover:bg-app-accent-light disabled:opacity-30 disabled:cursor-not-allowed text-xs font-bold leading-none"
               title="Zoom out"
             >−</button>
-            <span className="text-[10px] text-blue-600 w-8 text-center font-medium tabular-nums">{zoomPct}%</span>
+            <span className="text-[10px] text-app-accent w-8 text-center font-medium tabular-nums">{zoomPct}%</span>
             <button
               onClick={zoomIn}
               disabled={zoom >= ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}
-              className="w-5 h-5 flex items-center justify-center rounded border border-blue-200 bg-white text-blue-600 hover:bg-blue-100 disabled:opacity-30 disabled:cursor-not-allowed text-xs font-bold leading-none"
+              className="w-5 h-5 flex items-center justify-center rounded border border-app-border bg-app-surface text-app-accent hover:bg-app-accent-light disabled:opacity-30 disabled:cursor-not-allowed text-xs font-bold leading-none"
               title="Zoom in"
             >+</button>
           </div>
@@ -1141,7 +1141,7 @@ export function TimelinePage() {
                 downloadCSV(csv, `${name.replace(/[^a-zA-Z0-9]/g, '_')}_timeline.csv`);
               }
             }}
-            className="px-2 py-0.5 rounded border border-blue-200 bg-white text-blue-600 hover:bg-blue-100 text-[10px] font-medium"
+            className="px-2 py-0.5 rounded border border-app-border bg-app-surface text-app-accent hover:bg-app-accent-light text-[10px] font-medium"
             title="Export timeline as CSV"
           >CSV</button>
         </div>
@@ -1149,9 +1149,9 @@ export function TimelinePage() {
       <div style={{ zoom }}>
         <table className="w-full text-xs border-collapse" style={{ minWidth: LABEL_WIDTH + years.length * YEAR_WIDTH }}>
           <thead className="sticky top-0 z-30">
-            <tr className="bg-slate-50 border-b border-slate-200">
+            <tr className="bg-app-surface2 border-b border-app-border">
               <th
-                className="sticky left-0 bg-slate-50 z-40 py-2 pl-3 pr-2 text-left text-[10px] text-slate-500 font-semibold uppercase tracking-wide border-r border-slate-200"
+                className="sticky left-0 bg-app-surface2 z-40 py-2 pl-3 pr-2 text-left text-[10px] text-app-text3 font-semibold uppercase tracking-wide border-r border-app-border"
                 style={{ minWidth: LABEL_WIDTH }}
               >
                 Row
@@ -1176,11 +1176,11 @@ export function TimelinePage() {
                 return (
                   <th
                     key={yd.year}
-                    className="py-1 px-0.5 text-center text-[10px] font-semibold text-slate-700"
+                    className="py-1 px-0.5 text-center text-[10px] font-semibold text-app-text2"
                     style={{ minWidth: YEAR_WIDTH }}
                   >
                     <div>{yd.year}</div>
-                    {age !== null && <div className="text-[8px] font-normal text-slate-400">Age {age}</div>}
+                    {age !== null && <div className="text-[8px] font-normal text-app-text4">Age {age}</div>}
                     {events.length > 0 && (
                       <div className="flex items-center justify-center gap-0.5 mt-0.5">
                         {events.map(ev => (

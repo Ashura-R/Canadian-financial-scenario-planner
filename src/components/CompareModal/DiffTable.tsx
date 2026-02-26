@@ -63,23 +63,23 @@ export function DiffTable({ scenarios, computed }: Props) {
     <div className="overflow-x-auto">
       <table className="w-full text-xs border-collapse">
         <thead>
-          <tr className="bg-slate-50 border-b border-slate-200">
-            <th className="py-2.5 px-4 text-left text-[10px] text-slate-500 font-semibold uppercase tracking-wide w-44">Metric</th>
+          <tr className="bg-app-surface2 border-b border-app-border">
+            <th className="py-2.5 px-4 text-left text-[10px] text-app-text3 font-semibold uppercase tracking-wide w-44">Metric</th>
             {scenarios.map(sc => (
-              <th key={sc.id} className="py-2.5 px-4 text-right text-[10px] text-slate-700 font-semibold whitespace-nowrap">
+              <th key={sc.id} className="py-2.5 px-4 text-right text-[10px] text-app-text2 font-semibold whitespace-nowrap">
                 {sc.name}
               </th>
             ))}
             {scenarios.length === 2 && (
-              <th className="py-2.5 px-4 text-right text-[10px] text-slate-500 font-medium uppercase tracking-wide">Diff</th>
+              <th className="py-2.5 px-4 text-right text-[10px] text-app-text3 font-medium uppercase tracking-wide">Diff</th>
             )}
           </tr>
         </thead>
         <tbody>
           {groups.map(group => (
             <React.Fragment key={group}>
-              <tr className="bg-slate-50 border-y border-slate-100">
-                <td colSpan={scenarios.length + 2} className="py-1.5 px-4 text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
+              <tr className="bg-app-surface2 border-y border-app-border">
+                <td colSpan={scenarios.length + 2} className="py-1.5 px-4 text-[10px] font-semibold text-app-text4 uppercase tracking-widest">
                   {group}
                 </td>
               </tr>
@@ -90,14 +90,14 @@ export function DiffTable({ scenarios, computed }: Props) {
                 const diff = scenarios.length === 2 ? values[1] - values[0] : null;
 
                 return (
-                  <tr key={metric.label} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors">
-                    <td className="py-2 px-4 text-xs text-slate-600">{metric.label}</td>
+                  <tr key={metric.label} className="border-b border-app-border hover:bg-app-accent-light/30 transition-colors">
+                    <td className="py-2 px-4 text-xs text-app-text2">{metric.label}</td>
                     {values.map((v, i) => {
                       const isBest = metric.higherIsBetter ? v === maxVal : v === minVal;
                       const isWorst = metric.higherIsBetter ? v === minVal : v === maxVal;
                       const color = values.length > 1
-                        ? isBest ? 'text-emerald-600 font-semibold' : isWorst ? 'text-red-600' : 'text-slate-700'
-                        : 'text-slate-800';
+                        ? isBest ? 'text-emerald-600 font-semibold' : isWorst ? 'text-red-600' : 'text-app-text2'
+                        : 'text-app-text';
                       return (
                         <td key={i} className={`py-2 px-4 text-right text-xs ${color}`}>
                           {fmt(v, metric.format)}
@@ -107,7 +107,7 @@ export function DiffTable({ scenarios, computed }: Props) {
                     {diff !== null && (
                       <td className={`py-2 px-4 text-right text-xs font-medium ${
                         (metric.higherIsBetter ? diff > 0 : diff < 0) ? 'text-emerald-600' :
-                        (metric.higherIsBetter ? diff < 0 : diff > 0) ? 'text-red-600' : 'text-slate-400'
+                        (metric.higherIsBetter ? diff < 0 : diff > 0) ? 'text-red-600' : 'text-app-text4'
                       }`}>
                         {diff >= 0 ? '+' : ''}{fmt(diff, metric.format)}
                       </td>

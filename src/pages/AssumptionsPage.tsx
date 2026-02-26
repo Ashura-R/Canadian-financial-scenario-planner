@@ -36,8 +36,8 @@ const LockedCtx = createContext(false);
 
 type LockKey = 'cpp' | 'ei' | 'dividends' | 'fedBrackets' | 'provBrackets' | 'limits';
 
-const inputCls = "w-full text-right text-sm bg-white border border-slate-200 rounded px-2 py-1 text-slate-800 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-100 transition-colors disabled:bg-slate-50 disabled:cursor-not-allowed";
-const selectCls = "w-full text-sm bg-white border border-slate-200 rounded px-2 py-1 text-slate-800 outline-none focus:border-blue-500 transition-colors";
+const inputCls = "w-full text-right text-sm bg-app-surface border border-app-border rounded px-2 py-1 text-app-text outline-none focus:border-app-accent focus:ring-1 focus:ring-app-accent-light transition-colors disabled:bg-app-surface2 disabled:cursor-not-allowed";
+const selectCls = "w-full text-sm bg-app-surface border border-app-border rounded px-2 py-1 text-app-text outline-none focus:border-app-accent transition-colors";
 
 /* ─── Shared sub-components ─── */
 
@@ -52,11 +52,11 @@ function Section({ title, children, lockKey, locked, showConfirm, onRequestUnloc
     <LockedCtx.Provider value={locked ?? false}>
       <div className="mb-6 last:mb-0">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">{title}</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-app-text3">{title}</h3>
           {isLockable && (
             <div className="flex items-center gap-2">
               {!locked && onReset && (
-                <button onClick={onReset} className="text-[10px] text-slate-400 hover:text-amber-600 transition-colors">
+                <button onClick={onReset} className="text-[10px] text-app-text4 hover:text-amber-600 transition-colors">
                   Reset defaults
                 </button>
               )}
@@ -64,7 +64,7 @@ function Section({ title, children, lockKey, locked, showConfirm, onRequestUnloc
                 onClick={locked ? onRequestUnlock : onLock}
                 className={`text-[11px] px-2 py-0.5 rounded border transition-colors ${
                   locked
-                    ? 'border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300 bg-slate-50'
+                    ? 'border-app-border text-app-text4 hover:text-app-text2 hover:border-app-border2 bg-app-surface2'
                     : 'border-amber-200 text-amber-600 hover:bg-amber-50 bg-amber-50/50'
                 }`}
               >
@@ -77,7 +77,7 @@ function Section({ title, children, lockKey, locked, showConfirm, onRequestUnloc
           <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-100 rounded-lg flex items-center justify-between gap-3">
             <span className="text-[11px] text-amber-700">These are CRA regulatory defaults — override with caution.</span>
             <div className="flex gap-1.5 shrink-0">
-              <button onClick={onCancelUnlock} className="text-[11px] px-2 py-0.5 rounded border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
+              <button onClick={onCancelUnlock} className="text-[11px] px-2 py-0.5 rounded border border-app-border text-app-text2 hover:bg-app-surface2 transition-colors">Cancel</button>
               <button onClick={onConfirmUnlock} className="text-[11px] px-2 py-0.5 rounded bg-amber-500 text-white hover:bg-amber-600 transition-colors">Unlock</button>
             </div>
           </div>
@@ -91,15 +91,15 @@ function Section({ title, children, lockKey, locked, showConfirm, onRequestUnloc
 }
 
 function Divider() {
-  return <div className="border-t border-slate-200 my-6" />;
+  return <div className="border-t border-app-border my-6" />;
 }
 
 function FormRow({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
   return (
-    <div className="flex items-center justify-between py-1.5 border-b border-slate-50 last:border-0">
+    <div className="flex items-center justify-between py-1.5 border-b border-app-border last:border-0">
       <div className="flex flex-col mr-4 shrink-0">
-        <label className="text-sm text-slate-600">{label}</label>
-        {hint && <span className="text-[10px] text-slate-400">{hint}</span>}
+        <label className="text-sm text-app-text2">{label}</label>
+        {hint && <span className="text-[10px] text-app-text4">{hint}</span>}
       </div>
       <div className="w-36 shrink-0">{children}</div>
     </div>
@@ -108,7 +108,7 @@ function FormRow({ label, children, hint }: { label: string; children: React.Rea
 
 function SubHeader({ title }: { title: string }) {
   return (
-    <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 pt-3 pb-1 first:pt-0">
+    <div className="text-[10px] font-semibold uppercase tracking-wider text-app-text4 pt-3 pb-1 first:pt-0">
       {title}
     </div>
   );
@@ -148,14 +148,14 @@ function BracketTable({ brackets, onChange }: {
     });
     onChange(updated);
   }
-  const cellCls = "border border-slate-200 text-[11px] text-right px-1.5 py-1 bg-white text-slate-700 outline-none focus:border-blue-400 w-full rounded disabled:bg-slate-50 disabled:cursor-not-allowed";
+  const cellCls = "border border-app-border text-[11px] text-right px-1.5 py-1 bg-app-surface text-app-text2 outline-none focus:border-app-accent w-full rounded disabled:bg-app-surface2 disabled:cursor-not-allowed";
   return (
     <table className="w-full text-xs mt-1">
       <thead>
         <tr>
-          <th className="text-left pb-1 text-[10px] font-medium text-slate-400 pr-1">Min</th>
-          <th className="text-left pb-1 text-[10px] font-medium text-slate-400 pr-1">Max</th>
-          <th className="text-left pb-1 text-[10px] font-medium text-slate-400">Rate %</th>
+          <th className="text-left pb-1 text-[10px] font-medium text-app-text4 pr-1">Min</th>
+          <th className="text-left pb-1 text-[10px] font-medium text-app-text4 pr-1">Max</th>
+          <th className="text-left pb-1 text-[10px] font-medium text-app-text4">Rate %</th>
         </tr>
       </thead>
       <tbody>
@@ -181,15 +181,15 @@ function BalanceRow({ label, color, value, onChange }: { label: string; color: s
     setEditing(false);
   }
   return (
-    <div className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
+    <div className="flex items-center justify-between py-2 border-b border-app-border last:border-0">
       <div className="flex items-center gap-2">
         <div className={`w-2 h-2 rounded-full ${color}`} />
-        <span className="text-sm text-slate-600">{label}</span>
+        <span className="text-sm text-app-text2">{label}</span>
       </div>
       {editing ? (
         <input
           autoFocus
-          className="w-36 text-right text-sm bg-white border border-blue-400 rounded px-2 py-1 text-slate-800 outline-none"
+          className="w-36 text-right text-sm bg-app-surface border border-app-accent rounded px-2 py-1 text-app-text outline-none"
           value={raw}
           onChange={e => setRaw(e.target.value)}
           onBlur={commit}
@@ -197,7 +197,7 @@ function BalanceRow({ label, color, value, onChange }: { label: string; color: s
         />
       ) : (
         <span
-          className="text-sm text-slate-800 font-medium cursor-pointer hover:text-blue-600 transition-colors"
+          className="text-sm text-app-text font-medium cursor-pointer hover:text-app-accent transition-colors"
           onClick={start}
           title="Click to edit"
         >
@@ -321,18 +321,18 @@ export function AssumptionsPage() {
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-slate-50">
+    <div className="h-full overflow-y-auto bg-app-bg">
       <div className="max-w-5xl mx-auto px-6 py-5">
         {/* Tab bar */}
-        <div className="flex items-center justify-center gap-1 mb-6 border-b border-slate-200">
+        <div className="flex items-center justify-center gap-1 mb-6 border-b border-app-border">
           {TABS.map(t => (
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
               className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
                 tab === t.id
-                  ? 'border-blue-600 text-blue-600'
-                  : 'border-transparent text-slate-400 hover:text-slate-700 hover:border-slate-300'
+                  ? 'border-app-accent text-app-accent'
+                  : 'border-transparent text-app-text4 hover:text-app-text2 hover:border-app-border2'
               }`}
             >
               {t.label}
@@ -378,7 +378,7 @@ export function AssumptionsPage() {
                     type="checkbox"
                     checked={ass.cgInclusionTiered ?? false}
                     onChange={e => setAss('cgInclusionTiered', e.target.checked)}
-                    className="accent-blue-600 w-4 h-4"
+                    className="accent-[var(--app-accent)] w-4 h-4"
                   />
                 </div>
               </FormRow>
@@ -404,7 +404,7 @@ export function AssumptionsPage() {
             <Divider />
 
             <Section title="Asset Return Assumptions">
-              <div className="text-[11px] text-slate-400 mb-2">Set to 0 by default — enter your own return projections.</div>
+              <div className="text-[11px] text-app-text4 mb-2">Set to 0 by default — enter your own return projections.</div>
               <FormRow label="Equity">
                 <NumInput value={ass.assetReturns.equity} onChange={v => update(s => ({ ...s, assumptions: { ...s.assumptions, assetReturns: { ...s.assumptions.assetReturns, equity: v } } }))} pct />
               </FormRow>
@@ -482,7 +482,7 @@ export function AssumptionsPage() {
                       disabled={isLocked('ei')}
                       checked={ass.ei.seOptIn}
                       onChange={e => update(s => ({ ...s, assumptions: { ...s.assumptions, ei: { ...s.assumptions.ei, seOptIn: e.target.checked } } }))}
-                      className="accent-blue-600 w-4 h-4 disabled:cursor-not-allowed"
+                      className="accent-[var(--app-accent)] w-4 h-4 disabled:cursor-not-allowed"
                     />
                   </div>
                 </FormRow>
@@ -541,7 +541,7 @@ export function AssumptionsPage() {
         {tab === 'accounts' && (
           <div className="max-w-xl">
             <Section title="Opening Balances">
-              <BalanceRow label="RRSP" color="bg-blue-500" value={ob.rrsp} onChange={v => setBalance('rrsp', v)} />
+              <BalanceRow label="RRSP" color="bg-app-accent" value={ob.rrsp} onChange={v => setBalance('rrsp', v)} />
               <BalanceRow label="TFSA" color="bg-emerald-500" value={ob.tfsa} onChange={v => setBalance('tfsa', v)} />
               <BalanceRow label="FHSA" color="bg-cyan-500" value={ob.fhsa} onChange={v => setBalance('fhsa', v)} />
               <BalanceRow label="Non-Registered" color="bg-amber-500" value={ob.nonReg} onChange={v => setBalance('nonReg', v)} />
@@ -553,19 +553,19 @@ export function AssumptionsPage() {
             <Divider />
 
             <Section title="Opening Carry-Forwards">
-              <div className="text-[11px] text-slate-400 mb-2">Pre-existing room & losses from before start year.</div>
-              <BalanceRow label="RRSP Unused Room" color="bg-blue-500" value={cf.rrspUnusedRoom} onChange={v => setCF('rrspUnusedRoom', v)} />
+              <div className="text-[11px] text-app-text4 mb-2">Pre-existing room & losses from before start year.</div>
+              <BalanceRow label="RRSP Unused Room" color="bg-app-accent" value={cf.rrspUnusedRoom} onChange={v => setCF('rrspUnusedRoom', v)} />
               <BalanceRow label="TFSA Unused Room" color="bg-emerald-500" value={cf.tfsaUnusedRoom} onChange={v => setCF('tfsaUnusedRoom', v)} />
               <BalanceRow label="Capital Loss C/F" color="bg-red-500" value={cf.capitalLossCF} onChange={v => setCF('capitalLossCF', v)} />
               <BalanceRow label="FHSA Lifetime Contrib" color="bg-cyan-500" value={cf.fhsaContribLifetime} onChange={v => setCF('fhsaContribLifetime', v)} />
               <BalanceRow label="RESP CESG Lifetime" color="bg-rose-500" value={cf.respGrantsLifetime ?? 0} onChange={v => setCF('respGrantsLifetime', v)} />
-              <BalanceRow label="Prior Year Earned Income" color="bg-slate-400" value={cf.priorYearEarnedIncome ?? 0} onChange={v => setCF('priorYearEarnedIncome', v)} />
+              <BalanceRow label="Prior Year Earned Income" color="bg-app-text4" value={cf.priorYearEarnedIncome ?? 0} onChange={v => setCF('priorYearEarnedIncome', v)} />
             </Section>
 
             <Divider />
 
             <Section title="FHSA Disposition">
-              <div className="text-[11px] text-slate-400 mb-2">
+              <div className="text-[11px] text-app-text4 mb-2">
                 Control what happens to the FHSA account.
               </div>
               <FormRow label="Disposition">
@@ -605,14 +605,14 @@ export function AssumptionsPage() {
             <Divider />
 
             <Section title="Liabilities / Debts">
-              <div className="text-[11px] text-slate-400 mb-2">
+              <div className="text-[11px] text-app-text4 mb-2">
                 Add debts to subtract from net worth. Investment loan interest is tax-deductible (Smith Manoeuvre).
               </div>
               {(activeScenario.liabilities ?? []).map((l, idx) => (
-                <div key={l.id} className="mb-3 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg">
+                <div key={l.id} className="mb-3 px-3 py-2.5 bg-app-surface2 border border-app-border rounded-lg">
                   <div className="flex items-center justify-between mb-2">
                     <input
-                      className="text-sm font-medium text-slate-700 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 outline-none px-0 py-0.5"
+                      className="text-sm font-medium text-app-text2 bg-transparent border-b border-transparent hover:border-app-border2 focus:border-app-accent outline-none px-0 py-0.5"
                       value={l.label}
                       onChange={e => update(s => {
                         const libs = [...(s.liabilities ?? [])];
@@ -672,7 +672,7 @@ export function AssumptionsPage() {
                             libs[idx] = { ...libs[idx], isInvestmentLoan: e.target.checked };
                             return { ...s, liabilities: libs };
                           })}
-                          className="accent-blue-600 w-4 h-4"
+                          className="accent-[var(--app-accent)] w-4 h-4"
                         />
                       </div>
                     </FormRow>
@@ -691,7 +691,7 @@ export function AssumptionsPage() {
                     monthlyPayment: 0,
                   }],
                 }))}
-                className="text-xs text-blue-600 hover:text-blue-700 transition-colors"
+                className="text-xs text-app-accent hover:text-app-accent transition-colors"
               >
                 + Add Liability
               </button>
@@ -700,7 +700,7 @@ export function AssumptionsPage() {
             <Divider />
 
             <Section title="Adjusted Cost Base (Non-Reg)">
-              <div className="text-[11px] text-slate-400 mb-2">
+              <div className="text-[11px] text-app-text4 mb-2">
                 Track ACB for non-registered account to compute capital gains/losses on withdrawals.
               </div>
               <FormRow label="Enable ACB Tracking">
@@ -718,7 +718,7 @@ export function AssumptionsPage() {
                         });
                       }
                     }}
-                    className="accent-blue-600 w-4 h-4"
+                    className="accent-[var(--app-accent)] w-4 h-4"
                   />
                 </div>
               </FormRow>
@@ -742,7 +742,7 @@ export function AssumptionsPage() {
                           ...s,
                           acbConfig: { ...(s.acbConfig ?? { openingACB: s.openingBalances.nonReg }), autoComputeGains: e.target.checked },
                         }))}
-                        className="accent-blue-600 w-4 h-4"
+                        className="accent-[var(--app-accent)] w-4 h-4"
                       />
                     </div>
                   </FormRow>
@@ -772,7 +772,7 @@ export function AssumptionsPage() {
                     type="checkbox"
                     checked={ret.cppBenefit.enabled}
                     onChange={e => update(s => ({ ...s, assumptions: { ...s.assumptions, retirement: { ...getRet(s.assumptions), cppBenefit: { ...getRet(s.assumptions).cppBenefit, enabled: e.target.checked } } } }))}
-                    className="accent-blue-600 w-4 h-4"
+                    className="accent-[var(--app-accent)] w-4 h-4"
                   />
                 </div>
               </FormRow>
@@ -793,7 +793,7 @@ export function AssumptionsPage() {
                     type="checkbox"
                     checked={ret.oasBenefit.enabled}
                     onChange={e => update(s => ({ ...s, assumptions: { ...s.assumptions, retirement: { ...getRet(s.assumptions), oasBenefit: { ...getRet(s.assumptions).oasBenefit, enabled: e.target.checked } } } }))}
-                    className="accent-blue-600 w-4 h-4"
+                    className="accent-[var(--app-accent)] w-4 h-4"
                   />
                 </div>
               </FormRow>
@@ -816,7 +816,7 @@ export function AssumptionsPage() {
             <Divider />
 
             <Section title="RRSP Home Buyers' Plan (HBP)">
-              <div className="text-[11px] text-slate-400 mb-2">
+              <div className="text-[11px] text-app-text4 mb-2">
                 Tax-free RRSP withdrawal up to $35K for first home. Must repay 1/15 per year starting 2 years after withdrawal.
               </div>
               <FormRow label="Enable HBP">
@@ -834,7 +834,7 @@ export function AssumptionsPage() {
                         });
                       }
                     }}
-                    className="accent-blue-600 w-4 h-4"
+                    className="accent-[var(--app-accent)] w-4 h-4"
                   />
                 </div>
               </FormRow>

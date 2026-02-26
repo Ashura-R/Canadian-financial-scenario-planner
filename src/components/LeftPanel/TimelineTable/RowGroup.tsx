@@ -49,7 +49,6 @@ export function RowGroup({
   const open = isControlled ? controlledOpen : internalOpen;
 
   function toggle() {
-    // Suppress click after drag
     if (didDragRef.current) {
       didDragRef.current = false;
       return;
@@ -72,14 +71,12 @@ export function RowGroup({
 
   function handleDragEnd(e: React.DragEvent) {
     onDragEnd?.(e);
-    // Keep didDragRef true — the click event fires after dragEnd
-    // It will be reset in toggle()
   }
 
   return (
     <>
       <tr
-        className={`cursor-pointer select-none bg-slate-50 hover:bg-slate-100 transition-colors border-y border-slate-200 ${isDragOver ? 'border-t-2 border-t-blue-500' : ''}`}
+        className={`cursor-pointer select-none bg-app-surface2 hover:bg-app-surface2 transition-colors border-y border-app-border ${isDragOver ? 'border-t-2 border-t-app-accent' : ''}`}
         onClick={toggle}
         draggable={isDraggable}
         onDragStart={handleDragStart}
@@ -88,15 +85,15 @@ export function RowGroup({
         onDrop={onDrop}
         onDragEnd={handleDragEnd}
       >
-        <td colSpan={999} className="py-0 px-0 text-[10px] font-semibold text-slate-500 uppercase tracking-wider relative">
+        <td colSpan={999} className="py-0 px-0 text-[10px] font-semibold text-app-text3 uppercase tracking-wider relative">
           <div className="sticky left-0 inline-flex items-center gap-1.5 py-1.5 px-3 bg-inherit">
             {isDraggable && (
               <span
-                className="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing text-[9px] leading-none"
+                className="text-app-text4 hover:text-app-text3 cursor-grab active:cursor-grabbing text-[9px] leading-none"
                 title="Drag to reorder"
               >⠿</span>
             )}
-            <span className="text-slate-400">{open ? '▼' : '▶'}</span>
+            <span className="text-app-text4">{open ? '▼' : '▶'}</span>
             {title}
           </div>
         </td>

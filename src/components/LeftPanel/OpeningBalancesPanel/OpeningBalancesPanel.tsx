@@ -24,12 +24,12 @@ function BalanceRow({ label, value, onChange }: BalanceRowProps) {
   }
 
   return (
-    <div className="flex items-center justify-between py-1.5 border-b border-[#1e2d3d] last:border-0">
-      <span className="text-xs text-[#9ca3af]">{label}</span>
+    <div className="flex items-center justify-between py-1.5 border-b border-app-border last:border-0">
+      <span className="text-xs text-app-text3">{label}</span>
       {editing ? (
         <input
           autoFocus
-          className="w-28 text-right text-xs bg-[#1e2d3d] border border-[#3b82f6] rounded px-2 py-0.5 text-[#f9fafb] outline-none"
+          className="w-28 text-right text-xs bg-app-surface2 border border-app-accent rounded px-2 py-0.5 text-app-text outline-none"
           value={raw}
           onChange={e => setRaw(e.target.value)}
           onBlur={commit}
@@ -37,7 +37,7 @@ function BalanceRow({ label, value, onChange }: BalanceRowProps) {
         />
       ) : (
         <span
-          className="text-xs text-[#f9fafb] cursor-pointer hover:text-[#3b82f6] transition-colors"
+          className="text-xs text-app-text cursor-pointer hover:text-app-accent transition-colors"
           onClick={start}
           title="Click to edit"
         >
@@ -60,9 +60,9 @@ export function OpeningBalancesPanel() {
   }
 
   return (
-    <div className="bg-[#111827] border border-[#1e2d3d] rounded-lg">
-      <div className="px-3 py-2 border-b border-[#1e2d3d]">
-        <h3 className="text-xs font-semibold text-[#f9fafb] uppercase tracking-wider">Opening Balances</h3>
+    <div className="bg-app-surface border border-app-border rounded-lg">
+      <div className="px-3 py-2 border-b border-app-border">
+        <h3 className="text-xs font-semibold text-app-text uppercase tracking-wider">Opening Balances</h3>
       </div>
       <div className="px-3 py-1">
         <BalanceRow label="RRSP" value={ob.rrsp} onChange={v => setBalance('rrsp', v)} />

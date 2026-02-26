@@ -16,15 +16,15 @@ const PROVINCES: { code: Province; label: string }[] = [
 function Section({ title, children, defaultOpen = false }: { title: string; children: React.ReactNode; defaultOpen?: boolean }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="bg-[#111827] border border-[#1e2d3d] rounded-lg">
+    <div className="bg-app-surface border border-app-border rounded-lg">
       <button
-        className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-[#f9fafb] uppercase tracking-wider hover:bg-[#1f2937] transition-colors rounded-lg"
+        className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-app-text uppercase tracking-wider hover:bg-app-surface2 transition-colors rounded-lg"
         onClick={() => setOpen(o => !o)}
       >
         {title}
-        <span className="text-[#6b7280]">{open ? '▲' : '▼'}</span>
+        <span className="text-app-text4">{open ? '▲' : '▼'}</span>
       </button>
-      {open && <div className="px-3 pb-3 pt-1 border-t border-[#1e2d3d] space-y-2">{children}</div>}
+      {open && <div className="px-3 pb-3 pt-1 border-t border-app-border space-y-2">{children}</div>}
     </div>
   );
 }
@@ -32,7 +32,7 @@ function Section({ title, children, defaultOpen = false }: { title: string; chil
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <label className="text-xs text-[#9ca3af] shrink-0">{label}</label>
+      <label className="text-xs text-app-text3 shrink-0">{label}</label>
       <div className="w-36">{children}</div>
     </div>
   );
@@ -46,7 +46,7 @@ function NumInput({ value, onChange, pct = false, step }: {
     <input
       type="number"
       step={step ?? (pct ? 0.01 : 1)}
-      className="w-full text-right text-xs bg-[#1f2937] border border-[#374151] rounded px-2 py-1 text-[#f9fafb] outline-none focus:border-[#3b82f6]"
+      className="w-full text-right text-xs bg-app-surface2 border border-app-border2 rounded px-2 py-1 text-app-text outline-none focus:border-app-accent"
       value={display}
       onChange={e => {
         const n = parseFloat(e.target.value);
@@ -71,12 +71,12 @@ function BracketTable({ brackets, onChange }: {
     onChange(updated);
   }
 
-  const cellCls = "border border-[#374151] text-xs text-right px-1 py-0.5 bg-[#1f2937] text-[#f9fafb] outline-none focus:border-[#3b82f6] w-full";
+  const cellCls = "border border-app-border2 text-xs text-right px-1 py-0.5 bg-app-surface2 text-app-text outline-none focus:border-app-accent w-full";
 
   return (
     <table className="w-full text-xs">
       <thead>
-        <tr className="text-[#6b7280]">
+        <tr className="text-app-text4">
           <th className="text-left py-1">Min</th>
           <th className="text-left py-1">Max</th>
           <th className="text-left py-1">Rate %</th>
@@ -130,7 +130,7 @@ export function AssumptionsPanel() {
       <Section title="General Settings" defaultOpen>
         <Row label="Province">
           <select
-            className="w-full text-xs bg-[#1f2937] border border-[#374151] rounded px-2 py-1 text-[#f9fafb] outline-none focus:border-[#3b82f6]"
+            className="w-full text-xs bg-app-surface2 border border-app-border2 rounded px-2 py-1 text-app-text outline-none focus:border-app-accent"
             value={ass.province}
             onChange={e => changeProvince(e.target.value as Province)}
           >
@@ -160,11 +160,11 @@ export function AssumptionsPanel() {
       </Section>
 
       <Section title="Dividend Rates">
-        <div className="text-xs text-[#9ca3af] mb-1">Eligible Dividends</div>
+        <div className="text-xs text-app-text3 mb-1">Eligible Dividends</div>
         <Row label="Gross-up"><NumInput value={ass.dividendRates.eligible.grossUp} onChange={v => update(s => ({ ...s, assumptions: { ...s.assumptions, dividendRates: { ...s.assumptions.dividendRates, eligible: { ...s.assumptions.dividendRates.eligible, grossUp: v } } } }))} pct /></Row>
         <Row label="Fed Credit %"><NumInput value={ass.dividendRates.eligible.federalCredit} onChange={v => update(s => ({ ...s, assumptions: { ...s.assumptions, dividendRates: { ...s.assumptions.dividendRates, eligible: { ...s.assumptions.dividendRates.eligible, federalCredit: v } } } }))} pct /></Row>
         <Row label="Prov Credit %"><NumInput value={ass.dividendRates.eligible.provincialCredit} onChange={v => update(s => ({ ...s, assumptions: { ...s.assumptions, dividendRates: { ...s.assumptions.dividendRates, eligible: { ...s.assumptions.dividendRates.eligible, provincialCredit: v } } } }))} pct /></Row>
-        <div className="text-xs text-[#9ca3af] mt-2 mb-1">Non-Eligible Dividends</div>
+        <div className="text-xs text-app-text3 mt-2 mb-1">Non-Eligible Dividends</div>
         <Row label="Gross-up"><NumInput value={ass.dividendRates.nonEligible.grossUp} onChange={v => update(s => ({ ...s, assumptions: { ...s.assumptions, dividendRates: { ...s.assumptions.dividendRates, nonEligible: { ...s.assumptions.dividendRates.nonEligible, grossUp: v } } } }))} pct /></Row>
         <Row label="Fed Credit %"><NumInput value={ass.dividendRates.nonEligible.federalCredit} onChange={v => update(s => ({ ...s, assumptions: { ...s.assumptions, dividendRates: { ...s.assumptions.dividendRates, nonEligible: { ...s.assumptions.dividendRates.nonEligible, federalCredit: v } } } }))} pct /></Row>
         <Row label="Prov Credit %"><NumInput value={ass.dividendRates.nonEligible.provincialCredit} onChange={v => update(s => ({ ...s, assumptions: { ...s.assumptions, dividendRates: { ...s.assumptions.dividendRates, nonEligible: { ...s.assumptions.dividendRates.nonEligible, provincialCredit: v } } } }))} pct /></Row>
@@ -182,7 +182,7 @@ export function AssumptionsPanel() {
         <Row label="Max Insurable"><NumInput value={ass.ei.maxInsurableEarnings} onChange={v => update(s => ({ ...s, assumptions: { ...s.assumptions, ei: { ...s.assumptions.ei, maxInsurableEarnings: v } } }))} /></Row>
         <Row label="Employee Rate %"><NumInput value={ass.ei.employeeRate} onChange={v => update(s => ({ ...s, assumptions: { ...s.assumptions, ei: { ...s.assumptions.ei, employeeRate: v } } }))} pct /></Row>
         <Row label="SE Opt-In">
-          <input type="checkbox" checked={ass.ei.seOptIn} onChange={e => update(s => ({ ...s, assumptions: { ...s.assumptions, ei: { ...s.assumptions.ei, seOptIn: e.target.checked } } }))} className="accent-[#3b82f6]" />
+          <input type="checkbox" checked={ass.ei.seOptIn} onChange={e => update(s => ({ ...s, assumptions: { ...s.assumptions, ei: { ...s.assumptions.ei, seOptIn: e.target.checked } } }))} className="accent-[var(--app-accent)]" />
         </Row>
       </Section>
 

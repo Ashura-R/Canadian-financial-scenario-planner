@@ -17,15 +17,15 @@ export function sliceByRange<T>(arr: T[], range: ChartRange): T[] {
 
 export function ChartRangeSelector({ value, onChange }: { value: ChartRange; onChange: (v: ChartRange) => void }) {
   return (
-    <div className="flex border border-slate-200 rounded overflow-hidden">
+    <div className="flex border border-app-border rounded overflow-hidden">
       {RANGE_OPTIONS.map(o => (
         <button
           key={o.value}
           onClick={() => onChange(o.value)}
           className={`px-2.5 py-1 text-[10px] font-medium transition-colors ${
             value === o.value
-              ? 'bg-blue-600 text-white'
-              : 'bg-white text-slate-500 hover:bg-slate-50'
+              ? 'bg-app-accent text-white'
+              : 'bg-app-surface text-app-text3 hover:bg-app-surface2'
           }`}
         >
           {o.label}

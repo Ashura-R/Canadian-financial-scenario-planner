@@ -132,7 +132,7 @@ const OPERATORS: { value: ConditionOperator; label: string }[] = [
   { value: 'between', label: 'between' },
 ];
 
-const cellBase = "border border-slate-200 text-[11px] px-1.5 py-1 bg-white text-slate-700 outline-none focus:border-blue-400 rounded";
+const cellBase = "border border-app-border text-[11px] px-1.5 py-1 bg-app-surface text-app-text2 outline-none focus:border-app-accent rounded";
 
 /** Map a scheduled field to the validation warning field names it could trigger */
 function getWarningFieldsForScheduledField(field: ScheduledField): string[] {
@@ -159,7 +159,7 @@ function GanttView({ items, startYear, endYear }: { items: ScheduledItem[]; star
   if (collapsed) {
     return (
       <div className="mb-4">
-        <button onClick={() => setCollapsed(false)} className="text-[10px] text-blue-500 hover:text-blue-700 transition-colors">
+        <button onClick={() => setCollapsed(false)} className="text-[10px] text-app-accent hover:text-app-accent transition-colors">
           ▶ Show Schedule Timeline
         </button>
       </div>
@@ -167,10 +167,10 @@ function GanttView({ items, startYear, endYear }: { items: ScheduledItem[]; star
   }
 
   return (
-    <div className="mb-4 bg-white border border-slate-200 rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100">
-        <div className="text-xs font-semibold text-slate-700">Schedule Timeline</div>
-        <button onClick={() => setCollapsed(true)} className="text-[10px] text-slate-400 hover:text-slate-600 transition-colors">▼ Hide</button>
+    <div className="mb-4 bg-app-surface border border-app-border rounded-lg overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-app-border">
+        <div className="text-xs font-semibold text-app-text2">Schedule Timeline</div>
+        <button onClick={() => setCollapsed(true)} className="text-[10px] text-app-text4 hover:text-app-text2 transition-colors">▼ Hide</button>
       </div>
       <div className="px-4 py-3 overflow-x-auto">
         {/* Year labels */}
@@ -178,7 +178,7 @@ function GanttView({ items, startYear, endYear }: { items: ScheduledItem[]; star
           {Array.from({ length: totalYears }, (_, i) => (
             <div
               key={i}
-              className="text-[8px] text-slate-400 text-center shrink-0"
+              className="text-[8px] text-app-text4 text-center shrink-0"
               style={{ width: `${100 / totalYears}%`, minWidth: 20 }}
             >
               {(startYear + i) % 5 === 0 || i === 0 || i === totalYears - 1 ? startYear + i : ''}
@@ -196,10 +196,10 @@ function GanttView({ items, startYear, endYear }: { items: ScheduledItem[]; star
 
           return (
             <div key={item.id} className="flex items-center gap-2 mb-1 group" style={{ height: 20 }}>
-              <div className="text-[10px] text-slate-500 truncate shrink-0 w-[132px] text-right pr-1" title={label}>
-                <span className="text-[9px] text-slate-300 mr-1">#{idx + 1}</span>{label}
+              <div className="text-[10px] text-app-text3 truncate shrink-0 w-[132px] text-right pr-1" title={label}>
+                <span className="text-[9px] text-app-text4 mr-1">#{idx + 1}</span>{label}
               </div>
-              <div className="flex-1 relative bg-slate-50 rounded-sm" style={{ height: 14 }}>
+              <div className="flex-1 relative bg-app-surface2 rounded-sm" style={{ height: 14 }}>
                 <div
                   className="absolute top-0 rounded-sm transition-all group-hover:brightness-110"
                   style={{
@@ -427,13 +427,13 @@ export function SchedulingPage() {
   }
 
   return (
-    <div className="h-full overflow-auto bg-slate-50">
+    <div className="h-full overflow-auto bg-app-bg">
       <div className="max-w-7xl mx-auto px-6 py-5">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
           <div>
-            <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-400 mb-1">Scheduling Rules</div>
-            <div className="text-xs text-slate-500">
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-app-text4 mb-1">Scheduling Rules</div>
+            <div className="text-xs text-app-text3">
               Auto-fill recurring amounts across years. Supports fixed dollar amounts or percentage of computed values.
               Per-year overrides in the Timeline take priority. Conditional & percentage rules evaluate against Pass 1 computed values.
             </div>
@@ -443,7 +443,7 @@ export function SchedulingPage() {
               <>
                 <button
                   onClick={discardDraft}
-                  className="px-3 py-1.5 text-xs font-medium border border-slate-200 text-slate-500 rounded hover:bg-slate-100 transition-colors"
+                  className="px-3 py-1.5 text-xs font-medium border border-app-border text-app-text3 rounded hover:bg-app-surface2 transition-colors"
                 >
                   Discard
                 </button>
@@ -457,7 +457,7 @@ export function SchedulingPage() {
             )}
             <button
               onClick={addItem}
-              className="px-3 py-1.5 text-xs font-medium bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+              className="px-3 py-1.5 text-xs font-medium bg-app-accent text-white rounded hover:bg-app-accent/90 transition-colors"
             >
               + Add Rule
             </button>
@@ -466,7 +466,7 @@ export function SchedulingPage() {
 
         {/* Quick Templates */}
         <div className="mb-4">
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Quick Templates</div>
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-app-text4 mb-2">Quick Templates</div>
           <div className="flex flex-wrap gap-2">
             {([
               {
@@ -524,7 +524,7 @@ export function SchedulingPage() {
                   setItems([...items, newItem]);
                   setExpandedId(newItem.id);
                 }}
-                className="px-3 py-1.5 text-[11px] bg-white border border-slate-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors text-slate-600 hover:text-blue-700"
+                className="px-3 py-1.5 text-[11px] bg-app-surface border border-app-border rounded-lg hover:border-app-accent hover:bg-app-accent-light transition-colors text-app-text2 hover:text-app-accent"
                 title={tpl.desc}
               >
                 {tpl.label}
@@ -590,7 +590,7 @@ export function SchedulingPage() {
               Delete Rule #{(items.findIndex(i => i.id === pendingDelete) + 1)} "<strong>{items.find(i => i.id === pendingDelete)?.label || 'Untitled'}</strong>"? This cannot be undone after saving.
             </span>
             <div className="flex items-center gap-2 shrink-0">
-              <button onClick={cancelRemoveItem} className="px-2.5 py-1 text-[11px] rounded border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors">Cancel</button>
+              <button onClick={cancelRemoveItem} className="px-2.5 py-1 text-[11px] rounded border border-app-border text-app-text2 hover:bg-app-surface2 transition-colors">Cancel</button>
               <button onClick={confirmRemoveItem} className="px-2.5 py-1 text-[11px] rounded bg-red-600 text-white hover:bg-red-700 transition-colors">Delete</button>
             </div>
           </div>
@@ -602,25 +602,25 @@ export function SchedulingPage() {
         )}
 
         {items.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-lg p-8 text-center text-slate-400 text-sm">
+          <div className="bg-app-surface border border-app-border rounded-lg p-8 text-center text-app-text4 text-sm">
             No scheduling rules yet. Click "+ Add Rule" to create one.
           </div>
         ) : (
-          <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+          <div className="bg-app-surface border border-app-border rounded-lg overflow-hidden">
             <table className="w-full text-xs">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="text-center py-2.5 px-1.5 text-[10px] text-slate-500 font-semibold uppercase w-8">#</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] text-slate-500 font-semibold uppercase w-32">Label</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] text-slate-500 font-semibold uppercase">Field</th>
-                  <th className="text-center py-2.5 px-1 text-[10px] text-slate-500 font-semibold uppercase w-10">Type</th>
-                  <th className="text-right py-2.5 px-3 text-[10px] text-slate-500 font-semibold uppercase w-20">Amount</th>
-                  <th className="text-left py-2.5 px-2 text-[10px] text-slate-500 font-semibold uppercase w-36">Reference</th>
-                  <th className="text-center py-2.5 px-2 text-[10px] text-slate-500 font-semibold uppercase w-20">Start</th>
-                  <th className="text-center py-2.5 px-2 text-[10px] text-slate-500 font-semibold uppercase w-20">End</th>
-                  <th className="text-right py-2.5 px-2 text-[10px] text-slate-500 font-semibold uppercase w-16">Growth</th>
-                  <th className="text-center py-2.5 px-2 text-[10px] text-slate-500 font-semibold uppercase w-20">Grow By</th>
-                  <th className="text-center py-2.5 px-2 text-[10px] text-slate-500 font-semibold uppercase w-20">Settings</th>
+                <tr className="bg-app-surface2 border-b border-app-border">
+                  <th className="text-center py-2.5 px-1.5 text-[10px] text-app-text3 font-semibold uppercase w-8">#</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] text-app-text3 font-semibold uppercase w-32">Label</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] text-app-text3 font-semibold uppercase">Field</th>
+                  <th className="text-center py-2.5 px-1 text-[10px] text-app-text3 font-semibold uppercase w-10">Type</th>
+                  <th className="text-right py-2.5 px-3 text-[10px] text-app-text3 font-semibold uppercase w-20">Amount</th>
+                  <th className="text-left py-2.5 px-2 text-[10px] text-app-text3 font-semibold uppercase w-36">Reference</th>
+                  <th className="text-center py-2.5 px-2 text-[10px] text-app-text3 font-semibold uppercase w-20">Start</th>
+                  <th className="text-center py-2.5 px-2 text-[10px] text-app-text3 font-semibold uppercase w-20">End</th>
+                  <th className="text-right py-2.5 px-2 text-[10px] text-app-text3 font-semibold uppercase w-16">Growth</th>
+                  <th className="text-center py-2.5 px-2 text-[10px] text-app-text3 font-semibold uppercase w-20">Grow By</th>
+                  <th className="text-center py-2.5 px-2 text-[10px] text-app-text3 font-semibold uppercase w-20">Settings</th>
                   <th className="w-14"></th>
                 </tr>
               </thead>
@@ -643,18 +643,18 @@ export function SchedulingPage() {
                       <tr
                         ref={el => { if (el) rowRefs.current.set(item.id, el); else rowRefs.current.delete(item.id); }}
                         className={`border-b transition-all duration-300 ${
-                          isBeingDeleted ? 'bg-red-50/50 opacity-50 border-slate-100' :
+                          isBeingDeleted ? 'bg-red-50/50 opacity-50 border-app-border' :
                           isFlashing ? 'bg-red-100 border-red-300 ring-2 ring-red-400 ring-inset' :
                           hasErrors ? 'bg-red-50 border-l-2 border-l-red-400 border-b-red-100' :
                           hasWarnings ? 'bg-amber-50/60 border-l-2 border-l-amber-400 border-b-amber-100' :
-                          'border-slate-100 hover:bg-blue-50/30'
+                          'border-app-border hover:bg-app-accent-light/30'
                         }`}>
                         {/* Rule # */}
                         <td className="py-1.5 px-1.5 text-center">
                           <span className={`inline-flex items-center justify-center w-5 h-5 rounded text-[10px] font-bold ${
                             hasErrors ? 'bg-red-100 text-red-600 border border-red-200' :
                             hasWarnings ? 'bg-amber-100 text-amber-600 border border-amber-200' :
-                            'bg-slate-100 text-slate-400'
+                            'bg-app-surface2 text-app-text4'
                           }`}>
                             {ruleNum}
                           </span>
@@ -690,7 +690,7 @@ export function SchedulingPage() {
                             className={`text-[10px] font-bold px-1.5 py-0.5 rounded border transition-colors ${
                               isPct
                                 ? 'bg-emerald-50 border-emerald-300 text-emerald-700 hover:bg-emerald-100'
-                                : 'bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100'
+                                : 'bg-app-surface2 border-app-border text-app-text3 hover:bg-app-surface2'
                             }`}
                             title={isPct ? 'Percentage of reference — click for fixed $' : 'Fixed dollar — click for percentage'}
                           >
@@ -724,7 +724,7 @@ export function SchedulingPage() {
                               `${cellBase} text-left w-full`,
                             )
                           ) : (
-                            <span className="text-[10px] text-slate-300 px-1">—</span>
+                            <span className="text-[10px] text-app-text4 px-1">—</span>
                           )}
                         </td>
                         {/* Start */}
@@ -780,8 +780,8 @@ export function SchedulingPage() {
                             onClick={() => setExpandedId(isExpanded ? null : item.id)}
                             className={`text-[10px] px-2 py-0.5 rounded border transition-colors ${
                               settingsCount > 0
-                                ? 'bg-blue-50 border-blue-200 text-blue-600 hover:bg-blue-100'
-                                : 'bg-slate-50 border-slate-200 text-slate-400 hover:bg-slate-100 hover:text-slate-600'
+                                ? 'bg-app-accent-light border-app-accent text-app-accent hover:bg-app-accent-light'
+                                : 'bg-app-surface2 border-app-border text-app-text4 hover:bg-app-surface2 hover:text-app-text2'
                             }`}
                           >
                             {settingsCount > 0 ? `${settingsCount} set` : 'more'}
@@ -791,12 +791,12 @@ export function SchedulingPage() {
                         <td className="py-1.5 px-1 text-center whitespace-nowrap">
                           <button
                             onClick={() => duplicateItem(item)}
-                            className="text-slate-300 hover:text-blue-500 transition-colors text-sm leading-none mr-1"
+                            className="text-app-text4 hover:text-app-accent transition-colors text-sm leading-none mr-1"
                             title="Duplicate"
                           >⧉</button>
                           <button
                             onClick={() => requestRemoveItem(item.id)}
-                            className="text-slate-300 hover:text-red-500 transition-colors text-sm leading-none"
+                            className="text-app-text4 hover:text-red-500 transition-colors text-sm leading-none"
                             title="Remove"
                           >×</button>
                         </td>
@@ -825,7 +825,7 @@ export function SchedulingPage() {
                       {/* Expanded settings */}
                       {isExpanded && (
                         <tr>
-                          <td colSpan={12} className="bg-slate-50 px-6 py-3 border-b border-slate-200">
+                          <td colSpan={12} className="bg-app-surface2 px-6 py-3 border-b border-app-border">
                             {/* Show warnings in expanded view too */}
                             {itemWarnings.length > 0 && (
                               <div className="mb-3 px-3 py-2 bg-red-50 border border-red-100 rounded">
@@ -844,11 +844,11 @@ export function SchedulingPage() {
                             <div className="grid grid-cols-2 gap-6">
                               {/* Left: Min/Max Caps */}
                               <div>
-                                <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                                <div className="text-[10px] font-semibold text-app-text3 uppercase tracking-wider mb-2">
                                   Amount Caps
                                 </div>
                                 <div className="flex items-center gap-3 mb-2">
-                                  <label className="text-[10px] text-slate-500 w-8">Min</label>
+                                  <label className="text-[10px] text-app-text3 w-8">Min</label>
                                   <input
                                     type="number"
                                     className={`${cellBase} text-right w-28`}
@@ -859,10 +859,10 @@ export function SchedulingPage() {
                                       updateItem(item.id, { amountMin: v === '' ? undefined : (parseFloat(v) || 0) });
                                     }}
                                   />
-                                  <span className="text-[9px] text-slate-400">Computed amount won't go below this</span>
+                                  <span className="text-[9px] text-app-text4">Computed amount won't go below this</span>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                  <label className="text-[10px] text-slate-500 w-8">Max</label>
+                                  <label className="text-[10px] text-app-text3 w-8">Max</label>
                                   <input
                                     type="number"
                                     className={`${cellBase} text-right w-28`}
@@ -873,10 +873,10 @@ export function SchedulingPage() {
                                       updateItem(item.id, { amountMax: v === '' ? undefined : (parseFloat(v) || 0) });
                                     }}
                                   />
-                                  <span className="text-[9px] text-slate-400">Computed amount won't exceed this</span>
+                                  <span className="text-[9px] text-app-text4">Computed amount won't exceed this</span>
                                 </div>
                                 <div className="flex items-center gap-3 mt-2">
-                                  <label className="text-[10px] text-slate-500 w-8">Limit</label>
+                                  <label className="text-[10px] text-app-text3 w-8">Limit</label>
                                   <select
                                     className={`${cellBase} text-left w-40`}
                                     value={item.amountMaxRef ?? ''}
@@ -894,7 +894,7 @@ export function SchedulingPage() {
                                       ));
                                     })()}
                                   </select>
-                                  <span className="text-[9px] text-slate-400">Cap amount to this computed limit each year</span>
+                                  <span className="text-[9px] text-app-text4">Cap amount to this computed limit each year</span>
                                 </div>
                                 {(isPct || item.amountMaxRef) && (
                                   <div className="mt-2 text-[9px] text-emerald-600 bg-emerald-50 rounded px-2 py-1 border border-emerald-100">
@@ -908,8 +908,8 @@ export function SchedulingPage() {
 
                               {/* Right: Conditions */}
                               <div>
-                                <div className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">
-                                  Conditions <span className="font-normal text-slate-400">(all must pass)</span>
+                                <div className="text-[10px] font-semibold text-app-text3 uppercase tracking-wider mb-2">
+                                  Conditions <span className="font-normal text-app-text4">(all must pass)</span>
                                 </div>
                                 {(item.conditions ?? []).map((cond, ci) => (
                                   <div key={ci} className="flex items-center gap-2 mb-1.5">
@@ -936,7 +936,7 @@ export function SchedulingPage() {
                                     />
                                     {cond.operator === 'between' && (
                                       <>
-                                        <span className="text-[10px] text-slate-400">and</span>
+                                        <span className="text-[10px] text-app-text4">and</span>
                                         <input
                                           type="number"
                                           className={`${cellBase} text-right w-28`}
@@ -947,14 +947,14 @@ export function SchedulingPage() {
                                     )}
                                     <button
                                       onClick={() => removeCondition(item.id, ci)}
-                                      className="text-slate-300 hover:text-red-500 transition-colors text-sm"
+                                      className="text-app-text4 hover:text-red-500 transition-colors text-sm"
                                       title="Remove condition"
                                     >×</button>
                                   </div>
                                 ))}
                                 <button
                                   onClick={() => addCondition(item.id)}
-                                  className="text-[10px] text-blue-600 hover:text-blue-800 transition-colors mt-1"
+                                  className="text-[10px] text-app-accent hover:text-app-accent transition-colors mt-1"
                                 >
                                   + Add condition
                                 </button>

@@ -4,6 +4,7 @@ import {
 } from 'recharts';
 import type { ComputedYear } from '../../../types/computed';
 import { formatShort, formatPct } from '../../../utils/formatters';
+import { useChartColors } from '../../../hooks/useChartColors';
 
 interface Props { years: ComputedYear[]; realMode?: boolean; diffMode?: boolean }
 
@@ -19,20 +20,20 @@ function NetWorthTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   const total = payload.reduce((s: number, p: any) => s + (p.value ?? 0), 0);
   return (
-    <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-3 text-xs min-w-[160px]">
-      <div className="font-semibold text-slate-700 mb-2 pb-1.5 border-b border-slate-100">{label}</div>
+    <div className="bg-app-surface border border-app-border rounded-lg shadow-sm p-3 text-xs min-w-[160px]">
+      <div className="font-semibold text-app-text2 mb-2 pb-1.5 border-b border-app-border">{label}</div>
       {[...payload].reverse().map((p: any) => (
         <div key={p.dataKey} className="flex items-center justify-between gap-3 py-0.5">
           <div className="flex items-center gap-1.5">
             <div className="w-2 h-2 rounded-full" style={{ backgroundColor: p.fill }} />
-            <span className="text-slate-600">{p.dataKey}</span>
+            <span className="text-app-text3">{p.dataKey}</span>
           </div>
-          <span className="font-medium text-slate-800 tabular-nums">{formatShort(p.value)}</span>
+          <span className="font-medium text-app-text tabular-nums">{formatShort(p.value)}</span>
         </div>
       ))}
-      <div className="flex items-center justify-between gap-3 pt-1.5 mt-1.5 border-t border-slate-100">
-        <span className="font-semibold text-slate-700">Total</span>
-        <span className="font-bold text-slate-900 tabular-nums">{formatShort(total)}</span>
+      <div className="flex items-center justify-between gap-3 pt-1.5 mt-1.5 border-t border-app-border">
+        <span className="font-semibold text-app-text2">Total</span>
+        <span className="font-bold text-app-text tabular-nums">{formatShort(total)}</span>
       </div>
     </div>
   );
@@ -44,24 +45,24 @@ function DiffTooltip({ active, payload, label }: any) {
   const real = payload.find((p: any) => p.dataKey === 'Real NW')?.value ?? 0;
   const erosion = nominal > 0 ? (nominal - real) / nominal : 0;
   return (
-    <div className="bg-white border border-slate-200 rounded-lg shadow-sm p-3 text-xs min-w-[180px]">
-      <div className="font-semibold text-slate-700 mb-2 pb-1.5 border-b border-slate-100">{label}</div>
+    <div className="bg-app-surface border border-app-border rounded-lg shadow-sm p-3 text-xs min-w-[180px]">
+      <div className="font-semibold text-app-text2 mb-2 pb-1.5 border-b border-app-border">{label}</div>
       <div className="flex items-center justify-between gap-3 py-0.5">
         <div className="flex items-center gap-1.5">
-          <div className="w-2 h-2 rounded-full bg-slate-500" />
-          <span className="text-slate-600">Nominal NW</span>
+          <div className="w-2 h-2 rounded-full bg-app-text3" />
+          <span className="text-app-text3">Nominal NW</span>
         </div>
-        <span className="font-medium text-slate-800 tabular-nums">{formatShort(nominal)}</span>
+        <span className="font-medium text-app-text tabular-nums">{formatShort(nominal)}</span>
       </div>
       <div className="flex items-center justify-between gap-3 py-0.5">
         <div className="flex items-center gap-1.5">
-          <div className="w-2 h-2 rounded-full bg-blue-500" />
-          <span className="text-blue-600">Real NW</span>
+          <div className="w-2 h-2 rounded-full bg-app-accent" />
+          <span className="text-app-accent">Real NW</span>
         </div>
-        <span className="font-medium text-blue-700 tabular-nums">{formatShort(real)}</span>
+        <span className="font-medium text-app-accent tabular-nums">{formatShort(real)}</span>
       </div>
       {erosion > 0 && (
-        <div className="flex items-center justify-between gap-3 pt-1.5 mt-1.5 border-t border-slate-100">
+        <div className="flex items-center justify-between gap-3 pt-1.5 mt-1.5 border-t border-app-border">
           <span className="text-orange-600">Inflation Erosion</span>
           <span className="font-semibold text-orange-600 tabular-nums">-{formatPct(erosion)}</span>
         </div>
@@ -71,6 +72,8 @@ function DiffTooltip({ active, payload, label }: any) {
 }
 
 export function NetWorthChart({ years, realMode, diffMode }: Props) {
+  const cc = useChartColors();
+
   if (diffMode) {
     const data = years.map(y => ({
       year: y.year,
@@ -81,11 +84,11 @@ export function NetWorthChart({ years, realMode, diffMode }: Props) {
     return (
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-          <XAxis dataKey="year" tick={{ fill: '#94a3b8', fontSize: 10 }} />
-          <YAxis tickFormatter={v => formatShort(v)} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+          <CartesianGrid strokeDasharray="3 3" stroke={cc.gridStroke} />
+          <XAxis dataKey="year" tick={cc.axisTick} />
+          <YAxis tickFormatter={v => formatShort(v)} tick={cc.axisTick} />
           <Tooltip content={<DiffTooltip />} />
-          <Legend wrapperStyle={{ fontSize: 11, color: '#64748b' }} />
+          <Legend wrapperStyle={cc.legendStyle} />
           <Area
             type="monotone"
             dataKey="Nominal NW"
@@ -120,11 +123,11 @@ export function NetWorthChart({ years, realMode, diffMode }: Props) {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <AreaChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-        <XAxis dataKey="year" tick={{ fill: '#94a3b8', fontSize: 10 }} />
-        <YAxis tickFormatter={v => formatShort(v)} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+        <CartesianGrid strokeDasharray="3 3" stroke={cc.gridStroke} />
+        <XAxis dataKey="year" tick={cc.axisTick} />
+        <YAxis tickFormatter={v => formatShort(v)} tick={cc.axisTick} />
         <Tooltip content={<NetWorthTooltip />} />
-        <Legend wrapperStyle={{ fontSize: 11, color: '#64748b' }} />
+        <Legend wrapperStyle={cc.legendStyle} />
         {ACCOUNTS.map(a => (
           <Area
             key={a.key}

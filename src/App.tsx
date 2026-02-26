@@ -34,7 +34,7 @@ export default function App() {
 
   return (
     <ScenarioProvider>
-      <div className="flex flex-col h-screen bg-slate-50 overflow-hidden">
+      <div className="flex flex-col h-screen bg-app-bg overflow-hidden">
         <TopBar onCompare={() => setCompareOpen(true)} page={page} onPageChange={setPage} />
         <ScenarioBar onCompare={() => setCompareOpen(true)} />
         <div className={`flex-1 min-h-0 overflow-hidden ${isSettings ? '' : 'page-scale'}`}>

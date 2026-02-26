@@ -4,10 +4,13 @@ import {
 } from 'recharts';
 import type { ComputedYear } from '../../../types/computed';
 import { formatShort } from '../../../utils/formatters';
+import { useChartColors } from '../../../hooks/useChartColors';
 
 interface Props { years: ComputedYear[]; realMode?: boolean; diffMode?: boolean }
 
 export function TaxWaterfallChart({ years, realMode, diffMode }: Props) {
+  const cc = useChartColors();
+
   if (diffMode) {
     const data = years.map(y => ({
       year: y.year,
@@ -18,15 +21,15 @@ export function TaxWaterfallChart({ years, realMode, diffMode }: Props) {
     return (
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-          <XAxis dataKey="year" tick={{ fill: '#94a3b8', fontSize: 10 }} />
-          <YAxis tickFormatter={v => formatShort(v)} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+          <CartesianGrid strokeDasharray="3 3" stroke={cc.gridStroke} />
+          <XAxis dataKey="year" tick={cc.axisTick} />
+          <YAxis tickFormatter={v => formatShort(v)} tick={cc.axisTick} />
           <Tooltip
-            contentStyle={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 11 }}
-            labelStyle={{ color: '#0f172a' }}
+            contentStyle={cc.tooltipStyle}
+            labelStyle={cc.labelStyle}
             formatter={(v: number, name: string) => [formatShort(v), name]}
           />
-          <Legend wrapperStyle={{ fontSize: 11, color: '#64748b' }} />
+          <Legend wrapperStyle={cc.legendStyle} />
           <Bar dataKey="Total Tax (Nom)" fill="#f87171" fillOpacity={0.85} />
           <Bar dataKey="Total Tax (Real)" fill="#60a5fa" fillOpacity={0.85} />
         </BarChart>
@@ -49,15 +52,15 @@ export function TaxWaterfallChart({ years, realMode, diffMode }: Props) {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-        <XAxis dataKey="year" tick={{ fill: '#94a3b8', fontSize: 10 }} />
-        <YAxis tickFormatter={v => formatShort(v)} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+        <CartesianGrid strokeDasharray="3 3" stroke={cc.gridStroke} />
+        <XAxis dataKey="year" tick={cc.axisTick} />
+        <YAxis tickFormatter={v => formatShort(v)} tick={cc.axisTick} />
         <Tooltip
-          contentStyle={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 11 }}
-          labelStyle={{ color: '#0f172a' }}
+          contentStyle={cc.tooltipStyle}
+          labelStyle={cc.labelStyle}
           formatter={(v: number, name: string) => [formatShort(v), name]}
         />
-        <Legend wrapperStyle={{ fontSize: 11, color: '#64748b' }} />
+        <Legend wrapperStyle={cc.legendStyle} />
         <Bar dataKey="After-Tax" stackId="a" fill="#059669" fillOpacity={0.85} />
         <Bar dataKey="Federal Tax" stackId="a" fill="#dc2626" fillOpacity={0.85} />
         <Bar dataKey="Provincial Tax" stackId="a" fill="#ea580c" fillOpacity={0.85} />

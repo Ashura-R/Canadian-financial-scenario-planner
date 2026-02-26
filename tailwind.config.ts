@@ -6,16 +6,23 @@ export default {
   theme: {
     extend: {
       colors: {
-        bg: '#0a0d14',
-        surface: '#111827',
-        surface2: '#1f2937',
-        border: '#1e2d3d',
-        border2: '#374151',
-        accent: '#3b82f6',
-        positive: '#10b981',
-        negative: '#ef4444',
-        textPrimary: '#f9fafb',
-        textSecondary: '#9ca3af',
+        app: {
+          bg: 'var(--app-bg)',
+          surface: 'var(--app-surface)',
+          surface2: 'var(--app-surface2)',
+          border: 'var(--app-border)',
+          border2: 'var(--app-border2)',
+          text: 'var(--app-text)',
+          text2: 'var(--app-text2)',
+          text3: 'var(--app-text3)',
+          text4: 'var(--app-text4)',
+          accent: 'var(--app-accent)',
+          'accent-hover': 'var(--app-accent-hover)',
+          'accent-light': 'var(--app-accent-light)',
+          positive: 'var(--app-positive)',
+          negative: 'var(--app-negative)',
+          warning: 'var(--app-warning)',
+        },
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

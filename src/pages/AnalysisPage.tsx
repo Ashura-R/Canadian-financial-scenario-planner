@@ -9,6 +9,7 @@ import { computeSensitivity } from '../engine/sensitivityEngine';
 import { computeWithdrawalStrategies } from '../engine/optimizerEngine';
 import { ChartRangeSelector, sliceByRange } from '../components/ChartRangeSelector';
 import { formatShort, formatPct } from '../utils/formatters';
+import { useChartColors } from '../hooks/useChartColors';
 import type { ChartRange } from '../components/ChartRangeSelector';
 import type { DeferralScenario } from '../engine/retirementAnalysis';
 import type { SensitivityAnalysis } from '../engine/sensitivityEngine';
@@ -17,9 +18,6 @@ import type { ComputedYear, ComputedScenario } from '../types/computed';
 
 // ── Shared styles ────────────────────────────────────────────────────
 const COLORS = ['#2563eb', '#059669', '#d97706', '#7c3aed', '#dc2626', '#0891b2'];
-const TOOLTIP_STYLE = { background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 11 } as const;
-const AXIS_TICK = { fill: '#94a3b8', fontSize: 10 } as const;
-const GRID_STROKE = '#f1f5f9';
 
 const tooltipFmt = (v: number, name: string) => [formatShort(v), name];
 const pctFmt = (v: number) => formatPct(v);
@@ -28,10 +26,10 @@ const pctTooltipFmt = (v: number, name: string) => [formatPct(v), name];
 // ── KPI card ─────────────────────────────────────────────────────────
 function KPI({ label, value, sub, cls }: { label: string; value: string; sub?: string; cls?: string }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-lg px-4 py-3 min-w-0">
-      <div className="text-[10px] text-slate-400 uppercase tracking-wider font-medium truncate">{label}</div>
-      <div className={`text-lg font-bold tabular-nums mt-0.5 ${cls ?? 'text-slate-900'}`}>{value}</div>
-      {sub && <div className="text-[10px] text-slate-400 mt-0.5">{sub}</div>}
+    <div className="bg-app-surface border border-app-border rounded-lg px-4 py-3 min-w-0">
+      <div className="text-[10px] text-app-text4 uppercase tracking-wider font-medium truncate">{label}</div>
+      <div className={`text-lg font-bold tabular-nums mt-0.5 ${cls ?? 'text-app-text'}`}>{value}</div>
+      {sub && <div className="text-[10px] text-app-text4 mt-0.5">{sub}</div>}
     </div>
   );
 }
@@ -45,9 +43,9 @@ function AnalysisChartCard({ title, range, onRangeChange, children, height = 240
   height?: number;
 }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-lg">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-slate-100">
-        <div className="text-xs font-semibold text-slate-700">{title}</div>
+    <div className="bg-app-surface border border-app-border rounded-lg">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-app-border">
+        <div className="text-xs font-semibold text-app-text2">{title}</div>
         {range && onRangeChange && <ChartRangeSelector value={range} onChange={onRangeChange} />}
       </div>
       <div style={{ height, padding: '12px 12px 8px' }}>
@@ -61,7 +59,7 @@ function AnalysisChartCard({ title, range, onRangeChange, children, height = 240
 function SectionHeader({ title, children }: { title: string; children?: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-4 mb-3">
-      <h3 className="text-sm font-bold text-slate-800">{title}</h3>
+      <h3 className="text-sm font-bold text-app-text">{title}</h3>
       {children && <div className="flex items-center gap-3">{children}</div>}
     </div>
   );
@@ -72,13 +70,13 @@ function InlineInput({ label, value, onChange, width = 'w-24' }: {
   label: string; value: number; onChange: (v: number) => void; width?: string;
 }) {
   return (
-    <label className="flex items-center gap-1.5 text-[11px] text-slate-500">
+    <label className="flex items-center gap-1.5 text-[11px] text-app-text3">
       {label}
       <input
         type="number"
         value={value}
         onChange={e => onChange(Number(e.target.value) || 0)}
-        className={`${width} px-2 py-1 text-xs border border-slate-300 rounded tabular-nums`}
+        className={`${width} px-2 py-1 text-xs border border-app-border2 rounded tabular-nums`}
       />
     </label>
   );
@@ -89,6 +87,7 @@ function InlineInput({ label, value, onChange, width = 'w-24' }: {
 // ══════════════════════════════════════════════════════════════════════
 function TaxEfficiencySection({ computed }: { computed: ComputedScenario }) {
   const { analytics, years } = computed;
+  const chartColors = useChartColors();
 
   const chartData = useMemo(() =>
     years.map((y, i) => ({
@@ -121,11 +120,11 @@ function TaxEfficiencySection({ computed }: { computed: ComputedScenario }) {
         <AnalysisChartCard title="Cumulative Tax vs After-Tax Income">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
-              <XAxis dataKey="year" tick={AXIS_TICK} />
-              <YAxis tickFormatter={v => formatShort(v)} tick={AXIS_TICK} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={tooltipFmt} />
-              <Legend wrapperStyle={{ fontSize: 10 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
+              <XAxis dataKey="year" tick={chartColors.axisTick} />
+              <YAxis tickFormatter={v => formatShort(v)} tick={chartColors.axisTick} />
+              <Tooltip contentStyle={chartColors.tooltipStyle} formatter={tooltipFmt} />
+              <Legend wrapperStyle={chartColors.legendStyle10} />
               <Area type="monotone" dataKey="Cumulative After-Tax" stackId="1" stroke="#059669" fill="#059669" fillOpacity={0.3} />
               <Area type="monotone" dataKey="Cumulative Tax" stackId="1" stroke="#dc2626" fill="#dc2626" fillOpacity={0.3} />
             </AreaChart>
@@ -135,11 +134,11 @@ function TaxEfficiencySection({ computed }: { computed: ComputedScenario }) {
         <AnalysisChartCard title="Effective Tax Rate Over Time">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={rateData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
-              <XAxis dataKey="year" tick={AXIS_TICK} />
-              <YAxis tickFormatter={pctFmt} tick={AXIS_TICK} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={pctTooltipFmt} />
-              <Legend wrapperStyle={{ fontSize: 10 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
+              <XAxis dataKey="year" tick={chartColors.axisTick} />
+              <YAxis tickFormatter={pctFmt} tick={chartColors.axisTick} />
+              <Tooltip contentStyle={chartColors.tooltipStyle} formatter={pctTooltipFmt} />
+              <Legend wrapperStyle={chartColors.legendStyle10} />
               <Line type="monotone" dataKey="Avg Income Tax Rate" stroke="#d97706" strokeWidth={2} dot={false} />
               <Line type="monotone" dataKey="Avg All-In Rate" stroke="#dc2626" strokeWidth={2} dot={false} />
             </LineChart>
@@ -155,6 +154,7 @@ function TaxEfficiencySection({ computed }: { computed: ComputedScenario }) {
 // ══════════════════════════════════════════════════════════════════════
 function RateTimelineSection({ computed }: { computed: ComputedScenario }) {
   const { years } = computed;
+  const chartColors = useChartColors();
 
   const marginalData = useMemo(() =>
     years.map(y => ({
@@ -185,11 +185,11 @@ function RateTimelineSection({ computed }: { computed: ComputedScenario }) {
         <AnalysisChartCard title="Marginal Tax Rate Timeline">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={marginalData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
-              <XAxis dataKey="year" tick={AXIS_TICK} />
-              <YAxis tickFormatter={pctFmt} tick={AXIS_TICK} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={pctTooltipFmt} />
-              <Legend wrapperStyle={{ fontSize: 10 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
+              <XAxis dataKey="year" tick={chartColors.axisTick} />
+              <YAxis tickFormatter={pctFmt} tick={chartColors.axisTick} />
+              <Tooltip contentStyle={chartColors.tooltipStyle} formatter={pctTooltipFmt} />
+              <Legend wrapperStyle={chartColors.legendStyle10} />
               <Line type="monotone" dataKey="Federal" stroke="#2563eb" strokeWidth={2} dot={false} />
               <Line type="monotone" dataKey="Provincial" stroke="#059669" strokeWidth={2} dot={false} />
               <Line type="monotone" dataKey="Combined" stroke="#dc2626" strokeWidth={2} dot={false} />
@@ -201,11 +201,11 @@ function RateTimelineSection({ computed }: { computed: ComputedScenario }) {
           <AnalysisChartCard title="Retirement Income Sources">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={retirementData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
-                <XAxis dataKey="year" tick={AXIS_TICK} />
-                <YAxis tickFormatter={v => formatShort(v)} tick={AXIS_TICK} />
-                <Tooltip contentStyle={TOOLTIP_STYLE} formatter={tooltipFmt} />
-                <Legend wrapperStyle={{ fontSize: 10 }} />
+                <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
+                <XAxis dataKey="year" tick={chartColors.axisTick} />
+                <YAxis tickFormatter={v => formatShort(v)} tick={chartColors.axisTick} />
+                <Tooltip contentStyle={chartColors.tooltipStyle} formatter={tooltipFmt} />
+                <Legend wrapperStyle={chartColors.legendStyle10} />
                 <Area type="monotone" dataKey="CPP" stackId="1" stroke="#2563eb" fill="#2563eb" fillOpacity={0.4} />
                 <Area type="monotone" dataKey="OAS" stackId="1" stroke="#059669" fill="#059669" fillOpacity={0.4} />
                 <Area type="monotone" dataKey="GIS" stackId="1" stroke="#7c3aed" fill="#7c3aed" fillOpacity={0.4} />
@@ -213,8 +213,8 @@ function RateTimelineSection({ computed }: { computed: ComputedScenario }) {
             </ResponsiveContainer>
           </AnalysisChartCard>
         ) : (
-          <div className="bg-white border border-slate-200 rounded-lg flex items-center justify-center h-[280px]">
-            <p className="text-xs text-slate-400">Configure retirement age &amp; birth year to see retirement income sources.</p>
+          <div className="bg-app-surface border border-app-border rounded-lg flex items-center justify-center h-[280px]">
+            <p className="text-xs text-app-text4">Configure retirement age &amp; birth year to see retirement income sources.</p>
           </div>
         )}
       </div>
@@ -233,6 +233,7 @@ function DeferralChart({ scenarios, startAge, endAge, keyAges, label }: {
   keyAges: number[];
   label: string;
 }) {
+  const chartColors = useChartColors();
   const deferralColors = ['#dc2626', '#d97706', '#2563eb', '#059669', '#7c3aed', '#0891b2'];
   const filtered = scenarios.filter(s => keyAges.includes(s.startAge));
 
@@ -259,17 +260,17 @@ function DeferralChart({ scenarios, startAge, endAge, keyAges, label }: {
   return (
     <div>
       <div className="grid grid-cols-2 gap-3 mb-3">
-        <KPI label={`Optimal ${label} Start (by 85)`} value={`Age ${optimal?.startAge ?? '?'}`} cls="text-blue-600" />
+        <KPI label={`Optimal ${label} Start (by 85)`} value={`Age ${optimal?.startAge ?? '?'}`} cls="text-app-accent" />
         <KPI label="Deferring to 70 vs 65 (by 85)" value={diff70vs65 > 0 ? `+${formatShort(diff70vs65)}` : formatShort(diff70vs65)} cls={diff70vs65 > 0 ? 'text-emerald-600' : 'text-red-600'} />
       </div>
       <AnalysisChartCard title={`${label} Cumulative Benefit by Start Age`} height={220}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
-            <XAxis dataKey="age" tick={AXIS_TICK} />
-            <YAxis tickFormatter={v => formatShort(v)} tick={AXIS_TICK} />
-            <Tooltip contentStyle={TOOLTIP_STYLE} formatter={tooltipFmt} />
-            <Legend wrapperStyle={{ fontSize: 10 }} />
+            <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
+            <XAxis dataKey="age" tick={chartColors.axisTick} />
+            <YAxis tickFormatter={v => formatShort(v)} tick={chartColors.axisTick} />
+            <Tooltip contentStyle={chartColors.tooltipStyle} formatter={tooltipFmt} />
+            <Legend wrapperStyle={chartColors.legendStyle10} />
             {filtered.map((s, i) => (
               <Line
                 key={s.startAge}
@@ -341,21 +342,21 @@ function DeferralTable({ scenarios, cumulativeAgeLabel, cumulativeIdx }: {
   cumulativeIdx: number;
 }) {
   return (
-    <div className="bg-white rounded-lg border border-slate-200 p-3 overflow-x-auto">
+    <div className="bg-app-surface rounded-lg border border-app-border p-3 overflow-x-auto">
       <table className="text-xs w-full">
         <thead>
-          <tr className="border-b border-slate-200">
-            <th className="text-left py-1.5 pr-3 text-slate-500 font-medium">Start</th>
-            <th className="text-right py-1.5 px-2 text-slate-500 font-medium">Adj.</th>
-            <th className="text-right py-1.5 px-2 text-slate-500 font-medium">Monthly</th>
-            <th className="text-right py-1.5 px-2 text-slate-500 font-medium">Annual</th>
-            <th className="text-right py-1.5 px-2 text-slate-500 font-medium">Cumul. @ {cumulativeAgeLabel}</th>
-            <th className="text-right py-1.5 pl-2 text-slate-500 font-medium">Break-Even</th>
+          <tr className="border-b border-app-border">
+            <th className="text-left py-1.5 pr-3 text-app-text3 font-medium">Start</th>
+            <th className="text-right py-1.5 px-2 text-app-text3 font-medium">Adj.</th>
+            <th className="text-right py-1.5 px-2 text-app-text3 font-medium">Monthly</th>
+            <th className="text-right py-1.5 px-2 text-app-text3 font-medium">Annual</th>
+            <th className="text-right py-1.5 px-2 text-app-text3 font-medium">Cumul. @ {cumulativeAgeLabel}</th>
+            <th className="text-right py-1.5 pl-2 text-app-text3 font-medium">Break-Even</th>
           </tr>
         </thead>
         <tbody>
           {scenarios.map(s => (
-            <tr key={s.startAge} className={`border-b border-slate-100 ${s.startAge === 65 ? 'bg-blue-50 font-semibold' : ''}`}>
+            <tr key={s.startAge} className={`border-b border-app-border ${s.startAge === 65 ? 'bg-app-accent-light font-semibold' : ''}`}>
               <td className="py-1.5 pr-3">{s.startAge}</td>
               <td className="text-right py-1.5 px-2">
                 <span className={s.adjustmentPct < 0 ? 'text-red-600' : s.adjustmentPct > 0 ? 'text-green-600' : ''}>
@@ -381,6 +382,7 @@ function DeferralTable({ scenarios, cumulativeAgeLabel, cumulativeIdx }: {
 // ══════════════════════════════════════════════════════════════════════
 function SensitivitySection({ analysis, years }: { analysis: SensitivityAnalysis; years: ComputedYear[] }) {
   const [range, setRange] = useState<ChartRange>('all');
+  const chartColors = useChartColors();
 
   const lineStyles: Record<string, { color: string; dash?: string; width: number }> = {
     '-4%': { color: '#dc2626', dash: '5 3', width: 1.5 },
@@ -426,11 +428,11 @@ function SensitivitySection({ analysis, years }: { analysis: SensitivityAnalysis
       <AnalysisChartCard title="Net Worth Fan Chart" range={range} onRangeChange={setRange} height={260}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={sliced} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
-            <XAxis dataKey="year" tick={AXIS_TICK} />
-            <YAxis tickFormatter={v => formatShort(v)} tick={AXIS_TICK} />
-            <Tooltip contentStyle={TOOLTIP_STYLE} formatter={tooltipFmt} />
-            <Legend wrapperStyle={{ fontSize: 10 }} />
+            <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
+            <XAxis dataKey="year" tick={chartColors.axisTick} />
+            <YAxis tickFormatter={v => formatShort(v)} tick={chartColors.axisTick} />
+            <Tooltip contentStyle={chartColors.tooltipStyle} formatter={tooltipFmt} />
+            <Legend wrapperStyle={chartColors.legendStyle10} />
             {analysis.scenarios.map(s => {
               const style = lineStyles[s.label] ?? { color: '#64748b', width: 1.5 };
               return (
@@ -449,20 +451,20 @@ function SensitivitySection({ analysis, years }: { analysis: SensitivityAnalysis
         </ResponsiveContainer>
       </AnalysisChartCard>
 
-      <div className="mt-3 bg-white rounded-lg border border-slate-200 p-3 overflow-x-auto">
+      <div className="mt-3 bg-app-surface rounded-lg border border-app-border p-3 overflow-x-auto">
         <table className="text-xs w-full">
           <thead>
-            <tr className="border-b border-slate-200">
-              <th className="text-left py-1.5 pr-3 text-slate-500 font-medium">Scenario</th>
-              <th className="text-right py-1.5 px-2 text-slate-500 font-medium">Final Net Worth</th>
-              <th className="text-right py-1.5 px-2 text-slate-500 font-medium">Real Net Worth</th>
-              <th className="text-right py-1.5 px-2 text-slate-500 font-medium">Lifetime After-Tax</th>
-              <th className="text-right py-1.5 pl-2 text-slate-500 font-medium">Lifetime Tax</th>
+            <tr className="border-b border-app-border">
+              <th className="text-left py-1.5 pr-3 text-app-text3 font-medium">Scenario</th>
+              <th className="text-right py-1.5 px-2 text-app-text3 font-medium">Final Net Worth</th>
+              <th className="text-right py-1.5 px-2 text-app-text3 font-medium">Real Net Worth</th>
+              <th className="text-right py-1.5 px-2 text-app-text3 font-medium">Lifetime After-Tax</th>
+              <th className="text-right py-1.5 pl-2 text-app-text3 font-medium">Lifetime Tax</th>
             </tr>
           </thead>
           <tbody>
             {analysis.scenarios.map(s => (
-              <tr key={s.label} className={`border-b border-slate-100 ${s.equityOffset === 0 ? 'bg-blue-50 font-semibold' : ''}`}>
+              <tr key={s.label} className={`border-b border-app-border ${s.equityOffset === 0 ? 'bg-app-accent-light font-semibold' : ''}`}>
                 <td className="py-1.5 pr-3">{s.label}</td>
                 <td className="text-right py-1.5 px-2 tabular-nums">{formatShort(s.finalNetWorth)}</td>
                 <td className="text-right py-1.5 px-2 tabular-nums">{formatShort(s.finalRealNetWorth)}</td>
@@ -487,6 +489,7 @@ function WithdrawalSection({ strategies, years, withdrawalTarget, onTargetChange
   onTargetChange: (v: number) => void;
 }) {
   const [range, setRange] = useState<ChartRange>('all');
+  const chartColors = useChartColors();
 
   if (strategies.length === 0) return null;
 
@@ -539,18 +542,18 @@ function WithdrawalSection({ strategies, years, withdrawalTarget, onTargetChange
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
         <KPI label="Best Strategy" value={best.name} cls="text-emerald-600" />
         <KPI label="Tax Savings vs Worst" value={formatShort(taxSavingsVsWorst)} cls="text-emerald-600" />
-        <KPI label="Tax Savings vs Equal Split" value={formatShort(taxSavingsVsEqual)} cls="text-blue-600" />
+        <KPI label="Tax Savings vs Equal Split" value={formatShort(taxSavingsVsEqual)} cls="text-app-accent" />
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-3">
         <AnalysisChartCard title="Net Worth by Strategy" range={range} onRangeChange={setRange} height={220}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={slicedNW} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
-              <XAxis dataKey="year" tick={AXIS_TICK} />
-              <YAxis tickFormatter={v => formatShort(v)} tick={AXIS_TICK} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={tooltipFmt} />
-              <Legend wrapperStyle={{ fontSize: 10 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
+              <XAxis dataKey="year" tick={chartColors.axisTick} />
+              <YAxis tickFormatter={v => formatShort(v)} tick={chartColors.axisTick} />
+              <Tooltip contentStyle={chartColors.tooltipStyle} formatter={tooltipFmt} />
+              <Legend wrapperStyle={chartColors.legendStyle10} />
               {strategies.map((s, i) => (
                 <Line key={s.name} type="monotone" dataKey={s.name} stroke={stratColors[i]} strokeWidth={s === best ? 2.5 : 1.5} dot={false} />
               ))}
@@ -561,11 +564,11 @@ function WithdrawalSection({ strategies, years, withdrawalTarget, onTargetChange
         <AnalysisChartCard title="Cumulative Tax by Strategy" range={range} onRangeChange={setRange} height={220}>
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={slicedTax} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={GRID_STROKE} />
-              <XAxis dataKey="year" tick={AXIS_TICK} />
-              <YAxis tickFormatter={v => formatShort(v)} tick={AXIS_TICK} />
-              <Tooltip contentStyle={TOOLTIP_STYLE} formatter={tooltipFmt} />
-              <Legend wrapperStyle={{ fontSize: 10 }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
+              <XAxis dataKey="year" tick={chartColors.axisTick} />
+              <YAxis tickFormatter={v => formatShort(v)} tick={chartColors.axisTick} />
+              <Tooltip contentStyle={chartColors.tooltipStyle} formatter={tooltipFmt} />
+              <Legend wrapperStyle={chartColors.legendStyle10} />
               {strategies.map((s, i) => (
                 <Line key={s.name} type="monotone" dataKey={s.name} stroke={stratColors[i]} strokeWidth={s === best ? 2.5 : 1.5} dot={false} />
               ))}
@@ -574,20 +577,20 @@ function WithdrawalSection({ strategies, years, withdrawalTarget, onTargetChange
         </AnalysisChartCard>
       </div>
 
-      <div className="bg-white rounded-lg border border-slate-200 p-3 overflow-x-auto">
+      <div className="bg-app-surface rounded-lg border border-app-border p-3 overflow-x-auto">
         <table className="text-xs w-full">
           <thead>
-            <tr className="border-b border-slate-200">
-              <th className="text-left py-1.5 pr-3 text-slate-500 font-medium">Strategy</th>
-              <th className="text-right py-1.5 px-2 text-slate-500 font-medium">Lifetime Tax</th>
-              <th className="text-right py-1.5 px-2 text-slate-500 font-medium">Lifetime After-Tax</th>
-              <th className="text-right py-1.5 px-2 text-slate-500 font-medium">Final Net Worth</th>
-              <th className="text-right py-1.5 pl-2 text-slate-500 font-medium">Avg Tax Rate</th>
+            <tr className="border-b border-app-border">
+              <th className="text-left py-1.5 pr-3 text-app-text3 font-medium">Strategy</th>
+              <th className="text-right py-1.5 px-2 text-app-text3 font-medium">Lifetime Tax</th>
+              <th className="text-right py-1.5 px-2 text-app-text3 font-medium">Lifetime After-Tax</th>
+              <th className="text-right py-1.5 px-2 text-app-text3 font-medium">Final Net Worth</th>
+              <th className="text-right py-1.5 pl-2 text-app-text3 font-medium">Avg Tax Rate</th>
             </tr>
           </thead>
           <tbody>
             {strategies.map(s => (
-              <tr key={s.name} className={`border-b border-slate-100 ${s === best ? 'bg-green-50 font-semibold' : ''}`}>
+              <tr key={s.name} className={`border-b border-app-border ${s === best ? 'bg-app-accent-light font-semibold' : ''}`}>
                 <td className="py-1.5 pr-3">
                   {s.name}
                   {s === best && <span className="ml-1 text-[9px] text-green-600 font-bold">BEST</span>}
@@ -600,7 +603,7 @@ function WithdrawalSection({ strategies, years, withdrawalTarget, onTargetChange
             ))}
           </tbody>
           <tfoot>
-            <tr><td colSpan={5} className="pt-2 text-[10px] text-slate-400">{strategies.map(s => s.description).join(' | ')}</td></tr>
+            <tr><td colSpan={5} className="pt-2 text-[10px] text-app-text4">{strategies.map(s => s.description).join(' | ')}</td></tr>
           </tfoot>
         </table>
       </div>
@@ -643,7 +646,7 @@ export function AnalysisPage() {
 
   return (
     <div className="h-full overflow-y-auto p-4 space-y-6">
-      <h2 className="text-lg font-bold text-slate-800">Advanced Analysis</h2>
+      <h2 className="text-lg font-bold text-app-text">Advanced Analysis</h2>
 
       {/* Section 1: Lifetime Tax Efficiency */}
       <TaxEfficiencySection computed={activeComputed} />

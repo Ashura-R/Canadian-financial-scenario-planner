@@ -10,11 +10,12 @@ import {
 } from 'recharts';
 import type { ComputedYear } from '../types/computed';
 import type { YearData, OpeningBalances } from '../types/scenario';
+import { useChartColors } from '../hooks/useChartColors';
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-      <div className="px-4 py-2.5 border-b border-slate-100 text-xs font-semibold text-slate-700 uppercase tracking-wide">{title}</div>
+    <div className="bg-app-surface border border-app-border rounded-lg overflow-hidden">
+      <div className="px-4 py-2.5 border-b border-app-border text-xs font-semibold text-app-text2 uppercase tracking-wide">{title}</div>
       <div className="px-4 py-3">{children}</div>
     </div>
   );
@@ -22,9 +23,9 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 
 function Row({ label, value, cls }: { label: string; value: string; cls?: string }) {
   return (
-    <div className="flex items-center justify-between py-1 border-b border-slate-50 last:border-0">
-      <span className="text-xs text-slate-500">{label}</span>
-      <span className={`text-xs font-medium tabular-nums ${cls ?? 'text-slate-800'}`}>{value}</span>
+    <div className="flex items-center justify-between py-1 border-b border-app-border last:border-0">
+      <span className="text-xs text-app-text3">{label}</span>
+      <span className={`text-xs font-medium tabular-nums ${cls ?? 'text-app-text'}`}>{value}</span>
     </div>
   );
 }
@@ -115,34 +116,34 @@ function AccountFlowTable({ flows }: { flows: AccountFlowData[] }) {
   return (
     <table className="w-full text-xs">
       <thead>
-        <tr className="border-b border-slate-200">
-          <th className="text-left py-1.5 text-[10px] text-slate-400 font-medium">Account</th>
-          <th className="text-right py-1.5 text-[10px] text-slate-400 font-medium">Opening</th>
-          <th className="text-right py-1.5 text-[10px] text-slate-400 font-medium">+Contribution</th>
-          <th className="text-right py-1.5 text-[10px] text-slate-400 font-medium">-Withdrawal</th>
-          <th className="text-right py-1.5 text-[10px] text-slate-400 font-medium">Return</th>
-          <th className="text-right py-1.5 text-[10px] text-slate-400 font-medium">EOY</th>
+        <tr className="border-b border-app-border">
+          <th className="text-left py-1.5 text-[10px] text-app-text4 font-medium">Account</th>
+          <th className="text-right py-1.5 text-[10px] text-app-text4 font-medium">Opening</th>
+          <th className="text-right py-1.5 text-[10px] text-app-text4 font-medium">+Contribution</th>
+          <th className="text-right py-1.5 text-[10px] text-app-text4 font-medium">-Withdrawal</th>
+          <th className="text-right py-1.5 text-[10px] text-app-text4 font-medium">Return</th>
+          <th className="text-right py-1.5 text-[10px] text-app-text4 font-medium">EOY</th>
         </tr>
       </thead>
       <tbody>
         {flows.map(f => (
-          <tr key={f.label} className="border-b border-slate-50 hover:bg-blue-50/30">
-            <td className="py-1.5 text-slate-600 font-medium">{f.label}</td>
-            <td className="py-1.5 text-right text-slate-600">{formatCAD(f.opening)}</td>
+          <tr key={f.label} className="border-b border-app-border hover:bg-app-accent-light/30">
+            <td className="py-1.5 text-app-text2 font-medium">{f.label}</td>
+            <td className="py-1.5 text-right text-app-text2">{formatCAD(f.opening)}</td>
             <td className="py-1.5 text-right text-emerald-600">{f.contribution > 0 ? '+' + formatCAD(f.contribution) : '—'}</td>
             <td className="py-1.5 text-right text-red-600">{f.withdrawal > 0 ? '-' + formatCAD(f.withdrawal) : '—'}</td>
-            <td className="py-1.5 text-right text-blue-600">{formatCAD(f.returnAmt)}</td>
-            <td className={`py-1.5 text-right font-semibold ${f.hasOverride ? 'text-amber-600' : 'text-slate-800'}`}>
+            <td className="py-1.5 text-right text-app-accent">{formatCAD(f.returnAmt)}</td>
+            <td className={`py-1.5 text-right font-semibold ${f.hasOverride ? 'text-amber-600' : 'text-app-text'}`}>
               {formatCAD(f.eoy)}{f.hasOverride ? ' *' : ''}
             </td>
           </tr>
         ))}
-        <tr className="border-t border-slate-200 bg-slate-50">
-          <td className="py-1.5 font-semibold text-slate-700">Total</td>
+        <tr className="border-t border-app-border bg-app-surface2">
+          <td className="py-1.5 font-semibold text-app-text2">Total</td>
           <td className="py-1.5 text-right font-semibold">{formatCAD(flows.reduce((s, f) => s + f.opening, 0))}</td>
           <td className="py-1.5 text-right font-semibold text-emerald-600">{formatCAD(flows.reduce((s, f) => s + f.contribution, 0))}</td>
           <td className="py-1.5 text-right font-semibold text-red-600">{formatCAD(flows.reduce((s, f) => s + f.withdrawal, 0))}</td>
-          <td className="py-1.5 text-right font-semibold text-blue-600">{formatCAD(flows.reduce((s, f) => s + f.returnAmt, 0))}</td>
+          <td className="py-1.5 text-right font-semibold text-app-accent">{formatCAD(flows.reduce((s, f) => s + f.returnAmt, 0))}</td>
           <td className="py-1.5 text-right font-bold">{formatCAD(flows.reduce((s, f) => s + f.eoy, 0))}</td>
         </tr>
       </tbody>
@@ -205,29 +206,29 @@ function SingleYearView({ yr, rawYd, prevBalances }: {
         <Section title="Liabilities">
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-slate-200">
-                <th className="text-left py-1.5 text-[10px] text-slate-400 font-medium">Liability</th>
-                <th className="text-right py-1.5 text-[10px] text-slate-400 font-medium">Opening</th>
-                <th className="text-right py-1.5 text-[10px] text-slate-400 font-medium">Interest</th>
-                <th className="text-right py-1.5 text-[10px] text-slate-400 font-medium">Principal</th>
-                <th className="text-right py-1.5 text-[10px] text-slate-400 font-medium">Payment</th>
-                <th className="text-right py-1.5 text-[10px] text-slate-400 font-medium">Closing</th>
+              <tr className="border-b border-app-border">
+                <th className="text-left py-1.5 text-[10px] text-app-text4 font-medium">Liability</th>
+                <th className="text-right py-1.5 text-[10px] text-app-text4 font-medium">Opening</th>
+                <th className="text-right py-1.5 text-[10px] text-app-text4 font-medium">Interest</th>
+                <th className="text-right py-1.5 text-[10px] text-app-text4 font-medium">Principal</th>
+                <th className="text-right py-1.5 text-[10px] text-app-text4 font-medium">Payment</th>
+                <th className="text-right py-1.5 text-[10px] text-app-text4 font-medium">Closing</th>
               </tr>
             </thead>
             <tbody>
               {yr.liabilities.map(l => (
-                <tr key={l.id} className="border-b border-slate-50 hover:bg-red-50/30">
-                  <td className="py-1.5 text-slate-600 font-medium">{l.label}</td>
-                  <td className="py-1.5 text-right text-slate-600">{formatCAD(l.openingBalance)}</td>
+                <tr key={l.id} className="border-b border-app-border hover:bg-red-50/30">
+                  <td className="py-1.5 text-app-text2 font-medium">{l.label}</td>
+                  <td className="py-1.5 text-right text-app-text2">{formatCAD(l.openingBalance)}</td>
                   <td className="py-1.5 text-right text-red-600">{formatCAD(l.interestPaid)}</td>
                   <td className="py-1.5 text-right text-emerald-600">{formatCAD(l.principalPaid)}</td>
-                  <td className="py-1.5 text-right text-slate-700">{formatCAD(l.totalPayment)}</td>
+                  <td className="py-1.5 text-right text-app-text2">{formatCAD(l.totalPayment)}</td>
                   <td className="py-1.5 text-right font-semibold text-red-700">{formatCAD(l.closingBalance)}</td>
                 </tr>
               ))}
               {yr.liabilities.length > 1 && (
-                <tr className="border-t border-slate-200 bg-slate-50">
-                  <td className="py-1.5 font-semibold text-slate-700">Total</td>
+                <tr className="border-t border-app-border bg-app-surface2">
+                  <td className="py-1.5 font-semibold text-app-text2">Total</td>
                   <td className="py-1.5 text-right font-semibold">{formatCAD(yr.liabilities.reduce((s, l) => s + l.openingBalance, 0))}</td>
                   <td className="py-1.5 text-right font-semibold text-red-600">{formatCAD(yr.totalInterestPaid ?? 0)}</td>
                   <td className="py-1.5 text-right font-semibold text-emerald-600">{formatCAD(yr.liabilities.reduce((s, l) => s + l.principalPaid, 0))}</td>
@@ -243,7 +244,7 @@ function SingleYearView({ yr, rawYd, prevBalances }: {
       <Section title="Net Worth Breakdown">
         <div className="grid grid-cols-5 gap-4 text-center">
           {[
-            { label: 'RRSP', value: yr.accounts.rrspEOY, color: 'text-blue-600' },
+            { label: 'RRSP', value: yr.accounts.rrspEOY, color: 'text-app-accent' },
             { label: 'TFSA', value: yr.accounts.tfsaEOY, color: 'text-emerald-600' },
             { label: 'FHSA', value: yr.accounts.fhsaEOY, color: 'text-cyan-600' },
             { label: 'Non-Reg', value: yr.accounts.nonRegEOY, color: 'text-amber-600' },
@@ -253,15 +254,15 @@ function SingleYearView({ yr, rawYd, prevBalances }: {
           ].filter(a => a.value > 0 || a.label === 'RRSP' || a.label === 'TFSA').map(a => (
             <div key={a.label}>
               <div className={`text-lg font-bold tabular-nums ${a.color}`}>{formatShort(a.value)}</div>
-              <div className="text-xs text-slate-500">{a.label}</div>
-              <div className="text-[10px] text-slate-400">
+              <div className="text-xs text-app-text3">{a.label}</div>
+              <div className="text-[10px] text-app-text4">
                 {yr.accounts.netWorth > 0 ? formatPct(a.value / yr.accounts.netWorth) : '—'}
               </div>
             </div>
           ))}
         </div>
         {(yr.totalDebt ?? 0) > 0 && (
-          <div className="mt-3 pt-2 border-t border-slate-200 flex items-center justify-between">
+          <div className="mt-3 pt-2 border-t border-app-border flex items-center justify-between">
             <span className="text-xs text-red-600 font-medium">Total Debt</span>
             <span className="text-xs font-bold text-red-700">-{formatShort(yr.totalDebt ?? 0)}</span>
           </div>
@@ -276,13 +277,9 @@ function AllYearsView({ years, rawYears, openingBalances }: {
   rawYears: YearData[];
   openingBalances: OpeningBalances;
 }) {
+  const chartColors = useChartColors();
   const [chartRange, setChartRange] = useState<ChartRange>('all');
   const chartYears = sliceByRange(years, chartRange);
-
-  const tooltipStyle = {
-    contentStyle: { background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 11 },
-    labelStyle: { color: '#0f172a' },
-  };
 
   // Stacked bar chart data
   const barData = chartYears.map(yr => ({
@@ -311,20 +308,20 @@ function AllYearsView({ years, rawYears, openingBalances }: {
   return (
     <div className="space-y-4">
       {/* Net Worth Composition chart */}
-      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100">
-          <div className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Net Worth Composition Over Time</div>
+      <div className="bg-app-surface border border-app-border rounded-lg overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-app-border">
+          <div className="text-xs font-semibold text-app-text2 uppercase tracking-wide">Net Worth Composition Over Time</div>
           <ChartRangeSelector value={chartRange} onChange={setChartRange} />
         </div>
         <div className="px-4 py-3">
         <div style={{ height: 280 }}>
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={barData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="year" tick={{ fill: '#94a3b8', fontSize: 10 }} />
-              <YAxis tickFormatter={v => formatShort(v as number)} tick={{ fill: '#94a3b8', fontSize: 10 }} />
-              <Tooltip {...tooltipStyle} formatter={(v: number, name: string) => [formatShort(v), name]} />
-              <Legend wrapperStyle={{ fontSize: 11, color: '#64748b' }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
+              <XAxis dataKey="year" tick={chartColors.axisTick} />
+              <YAxis tickFormatter={v => formatShort(v as number)} tick={chartColors.axisTick} />
+              <Tooltip contentStyle={chartColors.tooltipStyle} labelStyle={chartColors.labelStyle} formatter={(v: number, name: string) => [formatShort(v), name]} />
+              <Legend wrapperStyle={chartColors.legendStyle} />
               <Bar dataKey="RRSP" stackId="a" fill="#3b82f6" />
               <Bar dataKey="TFSA" stackId="a" fill="#10b981" />
               <Bar dataKey="FHSA" stackId="a" fill="#06b6d4" />
@@ -339,20 +336,20 @@ function AllYearsView({ years, rawYears, openingBalances }: {
       </div>
 
       {/* Return Performance chart */}
-      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100">
-          <div className="text-xs font-semibold text-slate-700 uppercase tracking-wide">Blended Return % by Account</div>
+      <div className="bg-app-surface border border-app-border rounded-lg overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-2.5 border-b border-app-border">
+          <div className="text-xs font-semibold text-app-text2 uppercase tracking-wide">Blended Return % by Account</div>
           <ChartRangeSelector value={chartRange} onChange={setChartRange} />
         </div>
         <div className="px-4 py-3">
         <div style={{ height: 220 }}>
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={returnData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-              <XAxis dataKey="year" tick={{ fill: '#94a3b8', fontSize: 10 }} />
-              <YAxis tickFormatter={v => `${v}%`} tick={{ fill: '#94a3b8', fontSize: 10 }} />
-              <Tooltip {...tooltipStyle} formatter={(v: number, name: string) => [`${v.toFixed(2)}%`, name]} />
-              <Legend wrapperStyle={{ fontSize: 11, color: '#64748b' }} />
+              <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
+              <XAxis dataKey="year" tick={chartColors.axisTick} />
+              <YAxis tickFormatter={v => `${v}%`} tick={chartColors.axisTick} />
+              <Tooltip contentStyle={chartColors.tooltipStyle} labelStyle={chartColors.labelStyle} formatter={(v: number, name: string) => [`${v.toFixed(2)}%`, name]} />
+              <Legend wrapperStyle={chartColors.legendStyle} />
               <Line type="monotone" dataKey="RRSP" stroke="#3b82f6" strokeWidth={2} dot={false} />
               <Line type="monotone" dataKey="TFSA" stroke="#10b981" strokeWidth={2} dot={false} />
               <Line type="monotone" dataKey="FHSA" stroke="#06b6d4" strokeWidth={2} dot={false} />
@@ -371,23 +368,23 @@ function AllYearsView({ years, rawYears, openingBalances }: {
         <div className="overflow-x-auto">
           <table className="w-full text-xs border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="py-1.5 px-2 text-left text-[10px] text-slate-500 font-semibold">Year</th>
-                <th className="py-1.5 px-2 text-right text-[10px] text-blue-600 font-semibold">RRSP</th>
+              <tr className="border-b border-app-border bg-app-surface2">
+                <th className="py-1.5 px-2 text-left text-[10px] text-app-text3 font-semibold">Year</th>
+                <th className="py-1.5 px-2 text-right text-[10px] text-app-accent font-semibold">RRSP</th>
                 <th className="py-1.5 px-2 text-right text-[10px] text-emerald-600 font-semibold">TFSA</th>
                 <th className="py-1.5 px-2 text-right text-[10px] text-cyan-600 font-semibold">FHSA</th>
                 <th className="py-1.5 px-2 text-right text-[10px] text-amber-600 font-semibold">Non-Reg</th>
                 <th className="py-1.5 px-2 text-right text-[10px] text-sky-600 font-semibold">Savings</th>
                 <th className="py-1.5 px-2 text-right text-[10px] text-purple-600 font-semibold">LIRA/LIF</th>
                 <th className="py-1.5 px-2 text-right text-[10px] text-rose-600 font-semibold">RESP</th>
-                <th className="py-1.5 px-2 text-right text-[10px] text-slate-700 font-bold">Net Worth</th>
+                <th className="py-1.5 px-2 text-right text-[10px] text-app-text2 font-bold">Net Worth</th>
               </tr>
             </thead>
             <tbody>
               {years.map((yr, i) => (
-                <tr key={yr.year} className={`border-b border-slate-100 hover:bg-blue-50/30 ${i % 2 === 1 ? 'bg-slate-50/50' : ''}`}>
-                  <td className="py-1 px-2 text-slate-700 font-medium">{yr.year}</td>
-                  <td className="py-1 px-2 text-right text-blue-600">{formatShort(yr.accounts.rrspEOY)}</td>
+                <tr key={yr.year} className={`border-b border-app-border hover:bg-app-accent-light/30 ${i % 2 === 1 ? 'bg-app-surface2/50' : ''}`}>
+                  <td className="py-1 px-2 text-app-text2 font-medium">{yr.year}</td>
+                  <td className="py-1 px-2 text-right text-app-accent">{formatShort(yr.accounts.rrspEOY)}</td>
                   <td className="py-1 px-2 text-right text-emerald-600">{formatShort(yr.accounts.tfsaEOY)}</td>
                   <td className="py-1 px-2 text-right text-cyan-600">{formatShort(yr.accounts.fhsaEOY)}</td>
                   <td className="py-1 px-2 text-right text-amber-600">{formatShort(yr.accounts.nonRegEOY)}</td>
@@ -407,19 +404,19 @@ function AllYearsView({ years, rawYears, openingBalances }: {
         <div className="overflow-x-auto">
           <table className="w-full text-xs border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="py-1.5 px-2 text-left text-[10px] text-slate-500 font-semibold">Year</th>
-                <th className="py-1.5 px-2 text-right text-[10px] text-slate-500 font-semibold">RRSP Unused Room</th>
-                <th className="py-1.5 px-2 text-right text-[10px] text-slate-500 font-semibold">TFSA Unused Room</th>
-                <th className="py-1.5 px-2 text-right text-[10px] text-slate-500 font-semibold">FHSA Lifetime</th>
-                <th className="py-1.5 px-2 text-right text-[10px] text-slate-500 font-semibold">FHSA Unused Room</th>
-                <th className="py-1.5 px-2 text-right text-[10px] text-slate-500 font-semibold">Capital Loss C/F</th>
+              <tr className="border-b border-app-border bg-app-surface2">
+                <th className="py-1.5 px-2 text-left text-[10px] text-app-text3 font-semibold">Year</th>
+                <th className="py-1.5 px-2 text-right text-[10px] text-app-text3 font-semibold">RRSP Unused Room</th>
+                <th className="py-1.5 px-2 text-right text-[10px] text-app-text3 font-semibold">TFSA Unused Room</th>
+                <th className="py-1.5 px-2 text-right text-[10px] text-app-text3 font-semibold">FHSA Lifetime</th>
+                <th className="py-1.5 px-2 text-right text-[10px] text-app-text3 font-semibold">FHSA Unused Room</th>
+                <th className="py-1.5 px-2 text-right text-[10px] text-app-text3 font-semibold">Capital Loss C/F</th>
               </tr>
             </thead>
             <tbody>
               {years.map((yr, i) => (
-                <tr key={yr.year} className={`border-b border-slate-100 ${i % 2 === 1 ? 'bg-slate-50/50' : ''}`}>
-                  <td className="py-1 px-2 text-slate-700 font-medium">{yr.year}</td>
+                <tr key={yr.year} className={`border-b border-app-border ${i % 2 === 1 ? 'bg-app-surface2/50' : ''}`}>
+                  <td className="py-1 px-2 text-app-text2 font-medium">{yr.year}</td>
                   <td className="py-1 px-2 text-right">{formatCAD(yr.rrspUnusedRoom)}</td>
                   <td className="py-1 px-2 text-right">{formatCAD(yr.tfsaUnusedRoom)}</td>
                   <td className="py-1 px-2 text-right">{formatCAD(yr.fhsaContribLifetime)}</td>
@@ -443,7 +440,7 @@ export function AccountsPage() {
   function setViewMode(v: 'single' | 'all') { setViewModeRaw(v); try { localStorage.setItem('cdn-tax-accounts-view', v); } catch {} }
 
   if (!activeComputed || !activeScenario) {
-    return <div className="p-8 text-slate-400 text-sm">No scenario data.</div>;
+    return <div className="p-8 text-app-text4 text-sm">No scenario data.</div>;
   }
 
   const years = activeComputed.years;
@@ -457,14 +454,14 @@ export function AccountsPage() {
   const prevBalances = buildPrevBalances(selectedYearIdx, years, activeScenario.openingBalances);
 
   return (
-    <div className="h-full overflow-auto bg-slate-50">
+    <div className="h-full overflow-auto bg-app-bg">
       <div className="max-w-7xl mx-auto px-6 py-5">
         <div className="flex items-center justify-between mb-4">
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-slate-400">Accounts</div>
+          <div className="text-[10px] font-semibold uppercase tracking-widest text-app-text4">Accounts</div>
           <div className="flex items-center gap-3">
             {viewMode === 'single' && (
               <select
-                className="text-xs border border-slate-200 rounded px-2 py-1 bg-white text-slate-700 outline-none focus:border-blue-500"
+                className="text-xs border border-app-border rounded px-2 py-1 bg-app-surface text-app-text2 outline-none focus:border-app-accent"
                 value={selectedYearIdx}
                 onChange={e => setSelectedYearIdx(Number(e.target.value))}
               >
@@ -473,14 +470,14 @@ export function AccountsPage() {
                 ))}
               </select>
             )}
-            <div className="flex border border-slate-200 rounded overflow-hidden">
+            <div className="flex border border-app-border rounded overflow-hidden">
               <button
                 onClick={() => setViewMode('single')}
-                className={`px-3 py-1 text-xs transition-colors ${viewMode === 'single' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                className={`px-3 py-1 text-xs transition-colors ${viewMode === 'single' ? 'bg-app-accent text-white' : 'bg-app-surface text-app-text2 hover:bg-app-surface2'}`}
               >Single Year</button>
               <button
                 onClick={() => setViewMode('all')}
-                className={`px-3 py-1 text-xs transition-colors ${viewMode === 'all' ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-50'}`}
+                className={`px-3 py-1 text-xs transition-colors ${viewMode === 'all' ? 'bg-app-accent text-white' : 'bg-app-surface text-app-text2 hover:bg-app-surface2'}`}
               >All Years</button>
             </div>
           </div>

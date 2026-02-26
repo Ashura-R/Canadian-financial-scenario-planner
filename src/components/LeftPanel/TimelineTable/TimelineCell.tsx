@@ -10,7 +10,6 @@ interface Props {
   dimmed?: boolean;
   onNext?: () => void;
   scheduledValue?: number;
-  // Grid navigation props
   isFocused?: boolean;
   isSelected?: boolean;
   isEditing?: boolean;
@@ -32,7 +31,6 @@ export const TimelineCell = React.memo(function TimelineCell({
   const inputRef = useRef<HTMLInputElement>(null);
   const committedRef = useRef(false);
 
-  // Determine if we're in grid-nav mode (parent controls editing) or legacy mode
   const gridMode = onCellClick !== undefined;
   const editing = gridMode ? (isEditing ?? false) : localEditing;
 
@@ -41,7 +39,6 @@ export const TimelineCell = React.memo(function TimelineCell({
   const isUserOverride = hasSchedule && value !== 0;
   const displayValue = isScheduleFilling ? scheduledValue : value;
 
-  // When parent-controlled editing starts, populate raw and focus
   useEffect(() => {
     if (gridMode && isEditing) {
       committedRef.current = false;
@@ -51,12 +48,10 @@ export const TimelineCell = React.memo(function TimelineCell({
         const editVal = isScheduleFilling ? scheduledValue : value;
         setRaw(pct ? (editVal * 100).toFixed(0) : String(Math.round(editVal)));
       }
-      // Focus after render
       requestAnimationFrame(() => inputRef.current?.focus());
     }
   }, [isEditing, gridMode]);
 
-  // Legacy mode: select on local edit start
   useEffect(() => {
     if (!gridMode && localEditing) inputRef.current?.select();
   }, [localEditing, gridMode]);
@@ -75,7 +70,6 @@ export const TimelineCell = React.memo(function TimelineCell({
     setRaw(pct ? (editVal * 100).toFixed(0) : String(Math.round(editVal)));
   }
 
-  /** Parse shorthand like 50k → 50000, 1.5m → 1500000 */
   function parseShorthand(input: string): number {
     const cleaned = input.replace(/[$,%\s]/g, '').replace(/,/g, '');
     const match = cleaned.match(/^(-?\d*\.?\d+)\s*([kKmMbB]?)$/);
@@ -88,7 +82,6 @@ export const TimelineCell = React.memo(function TimelineCell({
     return num;
   }
 
-  /** Parse and apply the edit, returning the final numeric value (or undefined if invalid) */
   function commit(): number | undefined {
     const n = parseShorthand(raw);
     if (!isNaN(n)) {
@@ -123,21 +116,20 @@ export const TimelineCell = React.memo(function TimelineCell({
   const baseCls = [
     'w-full text-right text-[10px] px-1 py-px rounded transition-colors select-none relative group',
     readOnly ? 'cursor-default' : 'cursor-pointer',
-    isScheduleFilling ? 'text-blue-600' : isUserOverride ? 'text-slate-900 font-medium' : dimmed ? 'text-slate-400' : 'text-slate-700',
+    isScheduleFilling ? 'text-app-accent' : isUserOverride ? 'text-app-text font-medium' : dimmed ? 'text-app-text4' : 'text-app-text2',
     hasWarning ? 'bg-red-50 text-red-600' : '',
-    hasOverride && !hasWarning ? 'bg-blue-50' : '',
-    isScheduleFilling && !hasWarning ? 'bg-blue-50/40' : '',
-    !readOnly && !hasWarning ? 'hover:bg-slate-100' : '',
-    // Grid navigation visual styles
-    isFocused ? 'ring-2 ring-blue-500 ring-inset !rounded' : '',
-    isSelected && !isFocused ? 'bg-blue-100' : '',
+    hasOverride && !hasWarning ? 'bg-app-accent-light' : '',
+    isScheduleFilling && !hasWarning ? 'bg-app-accent-light/40' : '',
+    !readOnly && !hasWarning ? 'hover:bg-app-surface2' : '',
+    isFocused ? 'ring-2 ring-app-accent ring-inset !rounded' : '',
+    isSelected && !isFocused ? 'bg-app-accent-light' : '',
   ].join(' ');
 
   if (editing) {
     return (
       <input
         ref={inputRef}
-        className="w-full text-right text-[10px] px-1 py-px bg-blue-50 border border-blue-400 rounded outline-none text-slate-800"
+        className="w-full text-right text-[10px] px-1 py-px bg-app-accent-light border border-app-accent rounded outline-none text-app-text"
         value={raw}
         onChange={e => setRaw(e.target.value)}
         onBlur={() => {
@@ -202,12 +194,12 @@ export const TimelineCell = React.memo(function TimelineCell({
       }
     >
       {hasWarning && <span className="mr-0.5 text-red-500">!</span>}
-      {hasOverride && !hasWarning && !isUserOverride && <span className="mr-0.5 text-blue-500">↗</span>}
-      {isScheduleFilling && !hasWarning && <span className="mr-0.5 text-blue-400">⚡</span>}
+      {hasOverride && !hasWarning && !isUserOverride && <span className="mr-0.5 text-app-accent">↗</span>}
+      {isScheduleFilling && !hasWarning && <span className="mr-0.5 text-app-accent">⚡</span>}
       {fmt(displayValue)}
       {isUserOverride && !readOnly && (
         <button
-          className="absolute -top-0.5 -right-0.5 hidden group-hover:flex items-center justify-center w-3 h-3 rounded-full bg-slate-400 hover:bg-red-500 text-white text-[7px] leading-none transition-colors"
+          className="absolute -top-0.5 -right-0.5 hidden group-hover:flex items-center justify-center w-3 h-3 rounded-full bg-app-text4 hover:bg-red-500 text-white text-[7px] leading-none transition-colors"
           onClick={undoOverride}
           title="Revert to schedule value"
         >
