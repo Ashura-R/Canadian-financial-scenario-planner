@@ -1,5 +1,5 @@
-import type { Scenario, OpeningBalances, ScheduledItem, YearData, ScheduleCondition } from '../types/scenario';
-import type { ComputedScenario, ComputedYear, ComputedRetirement, ComputedTaxDetail, ComputedACB } from '../types/computed';
+import type { Scenario, OpeningBalances, ScheduledItem, YearData, ScheduleCondition, Assumptions, Liability } from '../types/scenario';
+import type { ComputedScenario, ComputedYear, ComputedRetirement, ComputedTaxDetail, ComputedACB, ComputedLiability } from '../types/computed';
 import { computeCPP, computeEI, computeTax } from './taxEngine';
 import type { RetirementIncome } from './taxEngine';
 import { computeAccounts, computeWaterfall } from './accountEngine';
@@ -21,6 +21,46 @@ function getRRIFFactor(age: number): number {
   if (age < 71) return 0;
   if (age >= 95) return 0.20;
   return RRIF_FACTORS[age] ?? 0.20;
+}
+
+/** Compute one year of liability amortization */
+function computeLiabilityYear(
+  liabilities: Liability[],
+  prevBalances: number[], // opening balance per liability
+): { computed: ComputedLiability[]; newBalances: number[] } {
+  const computed: ComputedLiability[] = [];
+  const newBalances: number[] = [];
+
+  for (let i = 0; i < liabilities.length; i++) {
+    const l = liabilities[i];
+    const opening = prevBalances[i];
+    if (opening <= 0) {
+      computed.push({ id: l.id, label: l.label, openingBalance: 0, interestPaid: 0, principalPaid: 0, totalPayment: 0, closingBalance: 0 });
+      newBalances.push(0);
+      continue;
+    }
+
+    // Simplified annual amortization: interest accrues on opening balance
+    const annualInterest = opening * l.annualRate;
+    const annualPayment = l.monthlyPayment * 12;
+    const actualPayment = Math.min(annualPayment, opening + annualInterest);
+    const interestPaid = Math.min(annualInterest, actualPayment);
+    const principalPaid = Math.max(0, actualPayment - interestPaid);
+    const closing = Math.max(0, opening - principalPaid);
+
+    computed.push({
+      id: l.id,
+      label: l.label,
+      openingBalance: opening,
+      interestPaid,
+      principalPaid,
+      totalPayment: actualPayment,
+      closingBalance: closing,
+    });
+    newBalances.push(closing);
+  }
+
+  return { computed, newBalances };
 }
 
 /** Evaluate a single condition against computed values */
@@ -382,6 +422,16 @@ export function compute(scenario: Scenario): ComputedScenario {
   let prevACB = acbConfig?.openingACB ?? openingBalances.nonReg;
   let priorYearEarnedIncome = ocf?.priorYearEarnedIncome ?? 0;
 
+  // HBP tracking
+  const hbpSettings = assumptions.hbp;
+  let hbpBalance = 0; // remaining balance to repay
+  let hbpOriginalAmount = 0; // original withdrawal amount (for 1/15 calc)
+  let hbpRepaymentStartYear = 0; // year repayments start
+
+  // Liability tracking
+  const liabilities = scenario.liabilities ?? [];
+  let liabilityBalances = liabilities.map(l => l.openingBalance);
+
   const computedYears: ComputedYear[] = [];
 
   for (const rawYd of years) {
@@ -462,6 +512,46 @@ export function compute(scenario: Scenario): ComputedScenario {
       fhsaOpeningYear = rawYd.year;
     }
 
+    // --- HBP: Home Buyers' Plan ---
+    let hbpRepaymentRequired = 0;
+    let hbpRepaymentMade = 0;
+    let hbpTaxableShortfall = 0;
+    let hbpWithdrawalThisYear = 0;
+
+    if (hbpSettings && rawYd.year === hbpSettings.withdrawalYear && hbpBalance === 0) {
+      // HBP withdrawal year: tax-free RRSP withdrawal
+      hbpWithdrawalThisYear = Math.min(hbpSettings.withdrawalAmount, prevBalances.rrsp);
+      if (hbpWithdrawalThisYear > 0) {
+        // Reduce RRSP balance directly (tax-free, so don't add to rrspWithdrawal which is taxable)
+        prevBalances = { ...prevBalances, rrsp: prevBalances.rrsp - hbpWithdrawalThisYear };
+        hbpBalance = hbpWithdrawalThisYear;
+        hbpOriginalAmount = hbpWithdrawalThisYear;
+        const delay = hbpSettings.repaymentStartDelay ?? 2;
+        hbpRepaymentStartYear = rawYd.year + delay;
+      }
+    }
+
+    if (hbpBalance > 0 && rawYd.year >= hbpRepaymentStartYear) {
+      // Annual required repayment: 1/15 of original amount (or remaining balance if less)
+      hbpRepaymentRequired = Math.min(hbpBalance, Math.ceil(hbpOriginalAmount / 15));
+      // Repayment comes from RRSP contributions (designated as HBP repayment)
+      // These contributions don't generate RRSP deductions — they repay HBP
+      hbpRepaymentMade = Math.min(ydWithFHSA.rrspContribution, hbpRepaymentRequired);
+      hbpTaxableShortfall = Math.max(0, hbpRepaymentRequired - hbpRepaymentMade);
+      // Shortfall is added to taxable income
+      if (hbpTaxableShortfall > 0) {
+        ydWithFHSA = { ...ydWithFHSA };
+        ydWithFHSA.otherTaxableIncome = (ydWithFHSA.otherTaxableIncome || 0) + hbpTaxableShortfall;
+      }
+      // HBP repayment portion of RRSP contributions should not generate RRSP deductions
+      if (hbpRepaymentMade > 0) {
+        ydWithFHSA = { ...ydWithFHSA };
+        ydWithFHSA.rrspDeductionClaimed = Math.max(0, ydWithFHSA.rrspDeductionClaimed - hbpRepaymentMade);
+      }
+      // Reduce HBP balance
+      hbpBalance = Math.max(0, hbpBalance - hbpRepaymentRequired);
+    }
+
     // TFSA room for this year: annual limit + prior-year withdrawals restore room
     // TFSA room only accrues from age 18 (when birthYear is known)
     const age = assumptions.birthYear != null ? rawYd.year - assumptions.birthYear : null;
@@ -469,6 +559,17 @@ export function compute(scenario: Scenario): ComputedScenario {
     const tfsaRoomGenerated = tfsaEligible
       ? assumptions.tfsaAnnualLimit + prevYearTfsaWithdrawals
       : 0;
+
+    // Deductible interest from investment loans (computed from prior year's liability balances)
+    if (liabilities.length > 0) {
+      const deductibleInt = liabilities.reduce((s, l, i) =>
+        l.isInvestmentLoan ? s + liabilityBalances[i] * l.annualRate : s, 0);
+      if (deductibleInt > 0) {
+        ydWithFHSA = { ...ydWithFHSA };
+        // Subtract from other taxable income as a deduction (can go negative → net deduction)
+        ydWithFHSA.otherTaxableIncome = (ydWithFHSA.otherTaxableIncome || 0) - deductibleInt;
+      }
+    }
 
     // Pass 1: Apply non-conditional scheduled items
     const ydPass1 = applySchedules(ydWithFHSA, schedules, assumptions.inflationRate, null, false,
@@ -511,7 +612,41 @@ export function compute(scenario: Scenario): ComputedScenario {
       }
     }
 
-    computedYears.push(finalResult.computed);
+    // Attach HBP tracking fields to computed year
+    const computedYear = finalResult.computed;
+    if (hbpBalance > 0 || hbpWithdrawalThisYear > 0) {
+      computedYear.hbpBalance = hbpBalance;
+    }
+    if (hbpRepaymentRequired > 0) {
+      computedYear.hbpRepaymentRequired = hbpRepaymentRequired;
+      computedYear.hbpRepaymentMade = hbpRepaymentMade;
+      computedYear.hbpTaxableShortfall = hbpTaxableShortfall;
+    }
+
+    // Compute liabilities
+    if (liabilities.length > 0) {
+      const liabResult = computeLiabilityYear(liabilities, liabilityBalances);
+      computedYear.liabilities = liabResult.computed;
+      const totalDebt = liabResult.newBalances.reduce((s, b) => s + b, 0);
+      const totalPayment = liabResult.computed.reduce((s, c) => s + c.totalPayment, 0);
+      const totalInterest = liabResult.computed.reduce((s, c) => s + c.interestPaid, 0);
+      const deductibleInterest = liabResult.computed.reduce((s, c, i) =>
+        s + (liabilities[i].isInvestmentLoan ? c.interestPaid : 0), 0);
+      computedYear.totalDebt = totalDebt;
+      computedYear.totalDebtPayment = totalPayment;
+      computedYear.totalInterestPaid = totalInterest;
+      computedYear.deductibleInterest = deductibleInterest;
+      // Adjust net worth to subtract total debt
+      computedYear.accounts = { ...computedYear.accounts, netWorth: computedYear.accounts.netWorth - totalDebt };
+      // Adjust real net worth
+      computedYear.realNetWorth = computedYear.accounts.netWorth / inflationFactor;
+      // Adjust net cash flow to subtract debt payments
+      computedYear.waterfall = { ...computedYear.waterfall, netCashFlow: computedYear.waterfall.netCashFlow - totalPayment };
+      computedYear.realNetCashFlow = computedYear.waterfall.netCashFlow / inflationFactor;
+      liabilityBalances = liabResult.newBalances;
+    }
+
+    computedYears.push(computedYear);
 
     // Track TFSA withdrawals for next year's room restoration
     prevYearTfsaWithdrawals = rawYd.tfsaWithdrawal;

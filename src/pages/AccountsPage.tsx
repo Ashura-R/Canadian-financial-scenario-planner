@@ -179,6 +179,45 @@ function SingleYearView({ yr, rawYd, prevBalances }: {
         </Section>
       </div>
 
+      {yr.liabilities && yr.liabilities.length > 0 && (
+        <Section title="Liabilities">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-slate-200">
+                <th className="text-left py-1.5 text-[10px] text-slate-400 font-medium">Liability</th>
+                <th className="text-right py-1.5 text-[10px] text-slate-400 font-medium">Opening</th>
+                <th className="text-right py-1.5 text-[10px] text-slate-400 font-medium">Interest</th>
+                <th className="text-right py-1.5 text-[10px] text-slate-400 font-medium">Principal</th>
+                <th className="text-right py-1.5 text-[10px] text-slate-400 font-medium">Payment</th>
+                <th className="text-right py-1.5 text-[10px] text-slate-400 font-medium">Closing</th>
+              </tr>
+            </thead>
+            <tbody>
+              {yr.liabilities.map(l => (
+                <tr key={l.id} className="border-b border-slate-50 hover:bg-red-50/30">
+                  <td className="py-1.5 text-slate-600 font-medium">{l.label}</td>
+                  <td className="py-1.5 text-right text-slate-600">{formatCAD(l.openingBalance)}</td>
+                  <td className="py-1.5 text-right text-red-600">{formatCAD(l.interestPaid)}</td>
+                  <td className="py-1.5 text-right text-emerald-600">{formatCAD(l.principalPaid)}</td>
+                  <td className="py-1.5 text-right text-slate-700">{formatCAD(l.totalPayment)}</td>
+                  <td className="py-1.5 text-right font-semibold text-red-700">{formatCAD(l.closingBalance)}</td>
+                </tr>
+              ))}
+              {yr.liabilities.length > 1 && (
+                <tr className="border-t border-slate-200 bg-slate-50">
+                  <td className="py-1.5 font-semibold text-slate-700">Total</td>
+                  <td className="py-1.5 text-right font-semibold">{formatCAD(yr.liabilities.reduce((s, l) => s + l.openingBalance, 0))}</td>
+                  <td className="py-1.5 text-right font-semibold text-red-600">{formatCAD(yr.totalInterestPaid ?? 0)}</td>
+                  <td className="py-1.5 text-right font-semibold text-emerald-600">{formatCAD(yr.liabilities.reduce((s, l) => s + l.principalPaid, 0))}</td>
+                  <td className="py-1.5 text-right font-semibold">{formatCAD(yr.totalDebtPayment ?? 0)}</td>
+                  <td className="py-1.5 text-right font-bold text-red-700">{formatCAD(yr.totalDebt ?? 0)}</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </Section>
+      )}
+
       <Section title="Net Worth Breakdown">
         <div className="grid grid-cols-5 gap-4 text-center">
           {[
@@ -197,6 +236,12 @@ function SingleYearView({ yr, rawYd, prevBalances }: {
             </div>
           ))}
         </div>
+        {(yr.totalDebt ?? 0) > 0 && (
+          <div className="mt-3 pt-2 border-t border-slate-200 flex items-center justify-between">
+            <span className="text-xs text-red-600 font-medium">Total Debt</span>
+            <span className="text-xs font-bold text-red-700">-{formatShort(yr.totalDebt ?? 0)}</span>
+          </div>
+        )}
       </Section>
     </div>
   );

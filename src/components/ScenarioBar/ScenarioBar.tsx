@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { useScenario } from '../../store/ScenarioContext';
 import { makeDefaultScenario } from '../../store/defaults';
+import type { Scenario } from '../../types/scenario';
 
 interface Props {
   onCompare: () => void;
@@ -39,6 +40,41 @@ export function ScenarioBar({ onCompare }: Props) {
   function deleteScenario(id: string) {
     if (state.scenarios.length <= 1) return;
     dispatch({ type: 'DELETE_SCENARIO', id });
+  }
+
+  function exportScenario() {
+    const sc = state.scenarios.find(s => s.id === state.activeId);
+    if (!sc) return;
+    const json = JSON.stringify(sc, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${sc.name.replace(/[^a-zA-Z0-9]/g, '_')}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function importScenario(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const raw = JSON.parse(reader.result as string) as Scenario;
+        // Assign a new ID to avoid collisions
+        const imported: Scenario = { ...raw, id: crypto.randomUUID(), name: raw.name + ' (Imported)' };
+        dispatch({ type: 'ADD_SCENARIO', scenario: imported });
+      } catch (err) {
+        console.error('Failed to import scenario:', err);
+        alert('Failed to import scenario. Please check the JSON file format.');
+      }
+    };
+    reader.readAsText(file);
+    // Reset input so the same file can be imported again
+    e.target.value = '';
   }
 
   return (
@@ -88,6 +124,9 @@ export function ScenarioBar({ onCompare }: Props) {
         <button onClick={addScenario} className={btnCls}>+ New</button>
         <button onClick={duplicateActive} className={btnCls}>Duplicate</button>
         <button onClick={onCompare} className={btnCls}>Compare</button>
+        <button onClick={exportScenario} className={btnCls}>Export</button>
+        <button onClick={() => fileInputRef.current?.click()} className={btnCls}>Import</button>
+        <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={importScenario} />
       </div>
     </div>
   );

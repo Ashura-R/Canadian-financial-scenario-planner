@@ -116,6 +116,12 @@ export interface Assumptions {
   };
   // OAS clawback
   oasClawbackThreshold?: number; // default 86912
+  // Home Buyers' Plan (HBP)
+  hbp?: {
+    withdrawalYear: number;       // year of HBP withdrawal from RRSP
+    withdrawalAmount: number;     // up to $35,000 (2024)
+    repaymentStartDelay: number;  // years after withdrawal before repayment starts (default 2)
+  };
 }
 
 // Fields that can be targeted by a scheduled item
@@ -240,6 +246,19 @@ export interface ACBConfig {
   autoComputeGains?: boolean;    // replace manual CG with ACB-computed
 }
 
+export type LiabilityType = 'mortgage' | 'student-loan' | 'loc' | 'other';
+
+export interface Liability {
+  id: string;
+  label: string;
+  type: LiabilityType;
+  openingBalance: number;        // balance at start of simulation
+  annualRate: number;            // annual interest rate (e.g. 0.05 for 5%)
+  monthlyPayment: number;       // fixed monthly payment (principal + interest)
+  isInvestmentLoan?: boolean;    // if true, interest is tax-deductible (Smith Manoeuvre)
+  amortizationYears?: number;    // optional: for reference/display
+}
+
 export interface Scenario {
   id: string;
   name: string;
@@ -249,4 +268,5 @@ export interface Scenario {
   years: YearData[];
   scheduledItems?: ScheduledItem[];
   acbConfig?: ACBConfig;
+  liabilities?: Liability[];
 }

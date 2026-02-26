@@ -8,6 +8,7 @@ import { getScheduledAmount } from '../engine/index';
 import type { YearData, ScheduledItem, Scenario } from '../types/scenario';
 import type { ComputedYear } from '../types/computed';
 import type { CellCoord, NavRow, GridNavigation } from '../hooks/useGridNavigation';
+import { buildTimelineCSV, downloadCSV } from '../utils/exportCSV';
 
 type YDKey = keyof YearData;
 
@@ -96,7 +97,7 @@ function buildScheduleOverlay(
 const DEFAULT_GROUP_ORDER = [
   'Income', 'RRSP', 'TFSA', 'FHSA', 'Non-Reg & Savings',
   'Asset Allocation', 'Capital Loss', 'ACB Tracking',
-  'EOY Overrides', 'Retirement (Computed)', 'Rate Overrides',
+  'EOY Overrides', 'Retirement (Computed)', 'Liabilities (Computed)', 'Rate Overrides',
   'Contribution Room', 'Tax Results (Computed)',
 ];
 
@@ -111,6 +112,7 @@ const GROUP_DEFAULTS: Record<string, boolean> = {
   'ACB Tracking': false,
   'EOY Overrides': false,
   'Retirement (Computed)': false,
+  'Liabilities (Computed)': false,
   'Rate Overrides': false,
   'Contribution Room': false,
   'Tax Results (Computed)': true,
@@ -199,6 +201,13 @@ const ROW_REGISTRY: RowEntry[] = [
   { rowId: '_computed_oasIncome', editable: false, group: 'Retirement (Computed)' },
   { rowId: '_computed_rrifStatus', editable: false, group: 'Retirement (Computed)' },
   { rowId: '_computed_rrifMin', editable: false, group: 'Retirement (Computed)' },
+  { rowId: '_computed_hbpBalance', editable: false, group: 'Retirement (Computed)' },
+  { rowId: '_computed_hbpRepayReq', editable: false, group: 'Retirement (Computed)' },
+  { rowId: '_computed_hbpShortfall', editable: false, group: 'Retirement (Computed)' },
+  // Liabilities (Computed)
+  { rowId: '_computed_totalDebt', editable: false, group: 'Liabilities (Computed)' },
+  { rowId: '_computed_debtPayment', editable: false, group: 'Liabilities (Computed)' },
+  { rowId: '_computed_interestPaid', editable: false, group: 'Liabilities (Computed)' },
   // Rate Overrides
   { rowId: 'inflationRateOverride', editable: true, group: 'Rate Overrides', pct: true, isOverride: true },
   { rowId: 'equityReturnOverride', editable: true, group: 'Rate Overrides', pct: true, isOverride: true },
@@ -886,6 +895,9 @@ export function TimelinePage() {
             {renderComputedRow('_computed_oasIncome', 'OAS Income', i => { const v = computed[i]?.retirement?.oasIncome ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
             {renderComputedRow('_computed_rrifStatus', 'RRIF Status', i => computed[i]?.retirement?.isRRIF ? 'RRIF' : 'RRSP')}
             {renderComputedRow('_computed_rrifMin', 'RRIF Min Withdrawal', i => { const v = computed[i]?.retirement?.rrifMinWithdrawal ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
+            {renderComputedRow('_computed_hbpBalance', 'HBP Balance', i => { const v = computed[i]?.hbpBalance ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
+            {renderComputedRow('_computed_hbpRepayReq', 'HBP Repay Required', i => { const v = computed[i]?.hbpRepaymentRequired ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
+            {renderComputedRow('_computed_hbpShortfall', 'HBP Shortfall (Taxable)', i => { const v = computed[i]?.hbpTaxableShortfall ?? 0; return v > 0 ? '$' + Math.round(v).toLocaleString() : '—'; })}
           </>
         );
 
@@ -897,6 +909,15 @@ export function TimelinePage() {
             {renderOverrideRow('fixedIncomeReturnOverride', 'Fixed Income Return', true)}
             {renderOverrideRow('cashReturnOverride', 'Cash Return', true)}
             {renderOverrideRow('savingsReturnOverride', 'Savings Return', true)}
+          </>
+        );
+
+      case 'Liabilities (Computed)':
+        return (
+          <>
+            {renderComputedRow('_computed_totalDebt', 'Total Debt', i => { const v = computed[i]?.totalDebt ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
+            {renderComputedRow('_computed_debtPayment', 'Debt Payment', i => { const v = computed[i]?.totalDebtPayment ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
+            {renderComputedRow('_computed_interestPaid', 'Interest Paid', i => { const v = computed[i]?.totalInterestPaid ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
           </>
         );
 
@@ -1013,6 +1034,17 @@ export function TimelinePage() {
               title="Zoom in"
             >+</button>
           </div>
+          <button
+            onClick={() => {
+              if (computed.length > 0 && years.length > 0) {
+                const csv = buildTimelineCSV(computed, years);
+                const name = activeScenario?.name ?? 'scenario';
+                downloadCSV(csv, `${name.replace(/[^a-zA-Z0-9]/g, '_')}_timeline.csv`);
+              }
+            }}
+            className="px-2 py-0.5 rounded border border-blue-200 bg-white text-blue-600 hover:bg-blue-100 text-[10px] font-medium"
+            title="Export timeline as CSV"
+          >CSV</button>
         </div>
       </div>
       <div style={{ zoom }}>

@@ -117,6 +117,16 @@ export interface ComputedACB {
   dispositionProceeds: number;
 }
 
+export interface ComputedLiability {
+  id: string;
+  label: string;
+  openingBalance: number;
+  interestPaid: number;
+  principalPaid: number;
+  totalPayment: number;
+  closingBalance: number;
+}
+
 export interface ComputedYear {
   year: number;
   cpp: ComputedCPP;
@@ -142,6 +152,17 @@ export interface ComputedYear {
   fhsaUnusedRoom: number;
   // ACB tracking (optional)
   acb?: ComputedACB;
+  // Liability tracking (optional)
+  liabilities?: ComputedLiability[];
+  totalDebt?: number;             // sum of all closing balances
+  totalDebtPayment?: number;      // sum of all payments this year
+  totalInterestPaid?: number;     // sum of all interest this year
+  deductibleInterest?: number;    // interest on investment loans (tax-deductible)
+  // HBP tracking (optional)
+  hbpBalance?: number;           // remaining HBP repayment balance (0 if no HBP)
+  hbpRepaymentRequired?: number; // annual required repayment (1/15 of original)
+  hbpRepaymentMade?: number;     // actual repayment (from RRSP contribution)
+  hbpTaxableShortfall?: number;  // shortfall added to taxable income
   // Warnings
   warnings: ValidationWarning[];
 }

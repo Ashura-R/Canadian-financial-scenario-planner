@@ -2,7 +2,7 @@ import React, { useState, createContext, useContext } from 'react';
 import { useScenario, useUpdateScenario } from '../store/ScenarioContext';
 import { PROVINCIAL_BRACKETS, PROVINCIAL_BPA, PROVINCIAL_DIV_CREDITS, DEFAULT_ASSUMPTIONS } from '../store/defaults';
 import { formatCAD } from '../utils/formatters';
-import type { Province, TaxBracket, Assumptions, FHSADisposition, OpeningCarryForwards, ACBConfig } from '../types/scenario';
+import type { Province, TaxBracket, Assumptions, FHSADisposition, OpeningCarryForwards, ACBConfig, Liability, LiabilityType } from '../types/scenario';
 
 const PROVINCES: { code: Province; label: string }[] = [
   { code: 'AB', label: 'Alberta' }, { code: 'BC', label: 'British Columbia' },
@@ -600,6 +600,101 @@ export function AssumptionsPage() {
 
             <Divider />
 
+            <Section title="Liabilities / Debts">
+              <div className="text-[11px] text-slate-400 mb-2">
+                Add debts to subtract from net worth. Investment loan interest is tax-deductible (Smith Manoeuvre).
+              </div>
+              {(activeScenario.liabilities ?? []).map((l, idx) => (
+                <div key={l.id} className="mb-3 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <input
+                      className="text-sm font-medium text-slate-700 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-blue-500 outline-none px-0 py-0.5"
+                      value={l.label}
+                      onChange={e => update(s => {
+                        const libs = [...(s.liabilities ?? [])];
+                        libs[idx] = { ...libs[idx], label: e.target.value };
+                        return { ...s, liabilities: libs };
+                      })}
+                    />
+                    <button
+                      onClick={() => update(s => {
+                        const libs = (s.liabilities ?? []).filter((_, i) => i !== idx);
+                        return { ...s, liabilities: libs.length > 0 ? libs : undefined };
+                      })}
+                      className="text-[10px] text-red-400 hover:text-red-600 transition-colors"
+                    >Remove</button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                    <FormRow label="Type">
+                      <select className={selectCls} value={l.type} onChange={e => update(s => {
+                        const libs = [...(s.liabilities ?? [])];
+                        libs[idx] = { ...libs[idx], type: e.target.value as LiabilityType };
+                        return { ...s, liabilities: libs };
+                      })}>
+                        <option value="mortgage">Mortgage</option>
+                        <option value="student-loan">Student Loan</option>
+                        <option value="loc">LOC / HELOC</option>
+                        <option value="other">Other</option>
+                      </select>
+                    </FormRow>
+                    <FormRow label="Opening Balance">
+                      <NumInput value={l.openingBalance} onChange={v => update(s => {
+                        const libs = [...(s.liabilities ?? [])];
+                        libs[idx] = { ...libs[idx], openingBalance: v };
+                        return { ...s, liabilities: libs };
+                      })} />
+                    </FormRow>
+                    <FormRow label="Annual Rate %">
+                      <NumInput value={l.annualRate} onChange={v => update(s => {
+                        const libs = [...(s.liabilities ?? [])];
+                        libs[idx] = { ...libs[idx], annualRate: v };
+                        return { ...s, liabilities: libs };
+                      })} pct />
+                    </FormRow>
+                    <FormRow label="Monthly Payment">
+                      <NumInput value={l.monthlyPayment} onChange={v => update(s => {
+                        const libs = [...(s.liabilities ?? [])];
+                        libs[idx] = { ...libs[idx], monthlyPayment: v };
+                        return { ...s, liabilities: libs };
+                      })} />
+                    </FormRow>
+                    <FormRow label="Investment Loan" hint="Interest is tax-deductible">
+                      <div className="flex justify-end items-center h-full">
+                        <input
+                          type="checkbox"
+                          checked={l.isInvestmentLoan ?? false}
+                          onChange={e => update(s => {
+                            const libs = [...(s.liabilities ?? [])];
+                            libs[idx] = { ...libs[idx], isInvestmentLoan: e.target.checked };
+                            return { ...s, liabilities: libs };
+                          })}
+                          className="accent-blue-600 w-4 h-4"
+                        />
+                      </div>
+                    </FormRow>
+                  </div>
+                </div>
+              ))}
+              <button
+                onClick={() => update(s => ({
+                  ...s,
+                  liabilities: [...(s.liabilities ?? []), {
+                    id: crypto.randomUUID(),
+                    label: 'New Debt',
+                    type: 'mortgage' as LiabilityType,
+                    openingBalance: 0,
+                    annualRate: 0.05,
+                    monthlyPayment: 0,
+                  }],
+                }))}
+                className="text-xs text-blue-600 hover:text-blue-700 transition-colors"
+              >
+                + Add Liability
+              </button>
+            </Section>
+
+            <Divider />
+
             <Section title="Adjusted Cost Base (Non-Reg)">
               <div className="text-[11px] text-slate-400 mb-2">
                 Track ACB for non-registered account to compute capital gains/losses on withdrawals.
@@ -712,6 +807,46 @@ export function AssumptionsPage() {
               <FormRow label="Clawback Threshold" hint="15% recovery tax on income above this threshold">
                 <NumInput value={ass.oasClawbackThreshold ?? 86912} onChange={v => setAss('oasClawbackThreshold', v)} />
               </FormRow>
+            </Section>
+
+            <Divider />
+
+            <Section title="RRSP Home Buyers' Plan (HBP)">
+              <div className="text-[11px] text-slate-400 mb-2">
+                Tax-free RRSP withdrawal up to $35K for first home. Must repay 1/15 per year starting 2 years after withdrawal.
+              </div>
+              <FormRow label="Enable HBP">
+                <div className="flex justify-end items-center h-full">
+                  <input
+                    type="checkbox"
+                    checked={!!ass.hbp}
+                    onChange={e => {
+                      if (e.target.checked) {
+                        update(s => ({ ...s, assumptions: { ...s.assumptions, hbp: { withdrawalYear: s.assumptions.startYear, withdrawalAmount: 35000, repaymentStartDelay: 2 } } }));
+                      } else {
+                        update(s => {
+                          const { hbp: _, ...restAss } = s.assumptions;
+                          return { ...s, assumptions: restAss as typeof s.assumptions };
+                        });
+                      }
+                    }}
+                    className="accent-blue-600 w-4 h-4"
+                  />
+                </div>
+              </FormRow>
+              {ass.hbp && (
+                <>
+                  <FormRow label="Withdrawal Year">
+                    <NumInput value={ass.hbp.withdrawalYear} onChange={v => update(s => ({ ...s, assumptions: { ...s.assumptions, hbp: { ...s.assumptions.hbp!, withdrawalYear: Math.round(v) } } }))} />
+                  </FormRow>
+                  <FormRow label="Withdrawal Amount" hint="Max $35,000">
+                    <NumInput value={ass.hbp.withdrawalAmount} onChange={v => update(s => ({ ...s, assumptions: { ...s.assumptions, hbp: { ...s.assumptions.hbp!, withdrawalAmount: Math.min(35000, Math.max(0, v)) } } }))} />
+                  </FormRow>
+                  <FormRow label="Repayment Delay" hint="Years after withdrawal before repayment starts">
+                    <NumInput value={ass.hbp.repaymentStartDelay} onChange={v => update(s => ({ ...s, assumptions: { ...s.assumptions, hbp: { ...s.assumptions.hbp!, repaymentStartDelay: Math.max(0, Math.round(v)) } } }))} />
+                  </FormRow>
+                </>
+              )}
             </Section>
           </div>
         )}
