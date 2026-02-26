@@ -55,6 +55,7 @@ export const DEFAULT_ASSUMPTIONS: Assumptions = {
     cash: 0,
     savings: 0,
   },
+  federalEmploymentAmount: 1368,
   rrspLimit: 31560,
   rrspPctEarnedIncome: 0.18,
   tfsaAnnualLimit: 7000,
@@ -218,6 +219,11 @@ export const PROVINCIAL_BPA: Record<string, number> = {
   ON: 11865, BC: 11981, AB: 21003, QC: 17183, MB: 15780,
   SK: 17661, NS: 8481, NB: 12458, NL: 10818, PE: 12000,
   NT: 16593, NU: 17925, YT: 15705,
+};
+
+export const PROVINCIAL_EMPLOYMENT_AMOUNT: Record<string, number> = {
+  ON: 1368, BC: 1000, AB: 1368, QC: 0, MB: 1368, SK: 1368,
+  NS: 1368, NB: 1368, NL: 1368, PE: 1368, NT: 1368, NU: 1368, YT: 1368,
 };
 
 export const PROVINCIAL_DIV_CREDITS: Record<string, { eligibleProvCredit: number; nonEligibleProvCredit: number }> = {

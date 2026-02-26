@@ -10,11 +10,13 @@ export interface ComputedTaxDetail {
   fedBPACredit: number;
   fedCPPCredit: number;
   fedEICredit: number;
+  fedEmploymentCredit: number;
   fedEligibleDivCredit: number;
   fedNonEligibleDivCredit: number;
   provBPACredit: number;
   provCPPCredit: number;
   provEICredit: number;
+  provEmploymentCredit: number;
   provEligibleDivCredit: number;
   provNonEligibleDivCredit: number;
   federalBracketDetail: BracketDetail[];
@@ -47,6 +49,7 @@ export interface ComputedTax {
   federalTaxBeforeCredits: number;
   federalCredits: number;
   federalTaxPayable: number;
+  quebecAbatement: number;
   provincialTaxBeforeCredits: number;
   provincialCredits: number;
   provincialTaxPayable: number;

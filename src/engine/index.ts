@@ -187,6 +187,8 @@ function computeOneYear(
   acbEnabled: boolean = false,
   prevACB: number = 0,
   autoComputeGains: boolean = false,
+  priorYearEarnedIncome: number = 0,
+  fhsaOpeningYear: number | null = null,
 ): {
   computed: ComputedYear;
   newCapitalLossCF: number;
@@ -240,6 +242,7 @@ function computeOneYear(
   const warnings = validateYear(
     ydEffective, assumptions, rrspUnusedRoom, fhsaContribLifetime, capitalLossCF,
     tfsaUnusedRoom + tfsaRoomGenerated, prevBalances, isRRIF, fhsaDisposed, fhsaUnusedRoom,
+    fhsaOpeningYear, age, yd.year,
   );
 
   let lossCFBeforeApply = capitalLossCF + ydEffective.capitalLossesRealized;
@@ -323,10 +326,9 @@ function computeOneYear(
 
   const newCapitalLossCF = Math.max(0, lossCFBeforeApply - lossApplied);
 
-  const earnedIncome = ydEffective.employmentIncome + ydEffective.selfEmploymentIncome;
   const newRrspRoom = isRRIF
     ? 0
-    : Math.min(earnedIncome * assumptions.rrspPctEarnedIncome, assumptions.rrspLimit);
+    : Math.min(priorYearEarnedIncome * assumptions.rrspPctEarnedIncome, assumptions.rrspLimit);
   const newRrspUnusedRoom = Math.max(0, rrspUnusedRoom + newRrspRoom - ydEffective.rrspDeductionClaimed);
 
   const newFhsaContribLifetime = fhsaContribLifetime + ydEffective.fhsaContribution;
@@ -373,7 +375,12 @@ export function compute(scenario: Scenario): ComputedScenario {
   let prevYearTfsaWithdrawals = 0;
   let inflationFactor = 1;
   let fhsaDisposed = false;
+  // FHSA opening year tracking: opened if there's an opening balance or first contribution
+  let fhsaOpeningYear: number | null = openingBalances.fhsa > 0 || fhsaContribLifetime > 0
+    ? (assumptions.startYear - 1) // assume opened before start year if has balance/contribs
+    : null;
   let prevACB = acbConfig?.openingACB ?? openingBalances.nonReg;
+  let priorYearEarnedIncome = ocf?.priorYearEarnedIncome ?? 0;
 
   const computedYears: ComputedYear[] = [];
 
@@ -432,8 +439,36 @@ export function compute(scenario: Scenario): ComputedScenario {
       }
     }
 
+    // FHSA 15-year / age-71 auto-close
+    if (!fhsaDisposed && prevBalances.fhsa > 0) {
+      // Track opening year from first contribution
+      if (fhsaOpeningYear === null && (ydWithFHSA.fhsaContribution > 0 || prevBalances.fhsa > 0)) {
+        fhsaOpeningYear = rawYd.year;
+      }
+      const yearsOpen = fhsaOpeningYear !== null ? rawYd.year - fhsaOpeningYear : 0;
+      const fhsaAge = assumptions.birthYear != null ? rawYd.year - assumptions.birthYear : null;
+      const mustClose = yearsOpen >= 15 || (fhsaAge !== null && fhsaAge >= 71);
+
+      if (mustClose && !fhsaDisposed) {
+        // Auto-transfer to RRSP (CRA default)
+        const fhsaBalance = prevBalances.fhsa;
+        ydWithFHSA.fhsaWithdrawal = fhsaBalance;
+        ydWithFHSA.fhsaContribution = 0;
+        ydWithFHSA.fhsaDeductionClaimed = 0;
+        fhsaDisposed = true;
+        // Transfer to RRSP will be handled below like 'transfer-rrsp' disposition
+      }
+    } else if (!fhsaDisposed && fhsaOpeningYear === null && ydWithFHSA.fhsaContribution > 0) {
+      fhsaOpeningYear = rawYd.year;
+    }
+
     // TFSA room for this year: annual limit + prior-year withdrawals restore room
-    const tfsaRoomGenerated = assumptions.tfsaAnnualLimit + prevYearTfsaWithdrawals;
+    // TFSA room only accrues from age 18 (when birthYear is known)
+    const age = assumptions.birthYear != null ? rawYd.year - assumptions.birthYear : null;
+    const tfsaEligible = age === null || age >= 18;
+    const tfsaRoomGenerated = tfsaEligible
+      ? assumptions.tfsaAnnualLimit + prevYearTfsaWithdrawals
+      : 0;
 
     // Pass 1: Apply non-conditional scheduled items
     const ydPass1 = applySchedules(ydWithFHSA, schedules, assumptions.inflationRate, null, false,
@@ -445,6 +480,7 @@ export function compute(scenario: Scenario): ComputedScenario {
       tfsaUnusedRoom, tfsaRoomGenerated,
       inflationFactor, returnOverrides, fhsaDisposed,
       acbEnabled, prevACB, autoComputeGains,
+      priorYearEarnedIncome, fhsaOpeningYear,
     );
 
     // Pass 2: Check if conditional schedules apply, if so recompute
@@ -470,6 +506,7 @@ export function compute(scenario: Scenario): ComputedScenario {
           tfsaUnusedRoom, tfsaRoomGenerated,
           inflationFactor, returnOverrides, fhsaDisposed,
           acbEnabled, prevACB, autoComputeGains,
+          priorYearEarnedIncome, fhsaOpeningYear,
         );
       }
     }
@@ -486,11 +523,16 @@ export function compute(scenario: Scenario): ComputedScenario {
     fhsaUnusedRoom = finalResult.newFhsaUnusedRoom;
     tfsaUnusedRoom = finalResult.newTfsaUnusedRoom;
     prevACB = finalResult.newACB;
+    priorYearEarnedIncome = rawYd.employmentIncome + rawYd.selfEmploymentIncome;
     prevBalances = { ...finalResult.newBalances };
 
     // FHSA transfer-rrsp: add FHSA balance to RRSP for next year
-    if (fhsaSettings?.disposition === 'transfer-rrsp' &&
-        fhsaSettings.dispositionYear === rawYd.year) {
+    // Applies to explicit transfer-rrsp disposition AND auto-close (which defaults to RRSP transfer)
+    const isExplicitTransfer = fhsaSettings?.disposition === 'transfer-rrsp' && fhsaSettings.dispositionYear === rawYd.year;
+    const isAutoClose = fhsaDisposed && prevBalances.fhsa > 0 && !isExplicitTransfer &&
+      !(fhsaSettings?.disposition === 'home-purchase' && fhsaSettings?.dispositionYear === rawYd.year) &&
+      !(fhsaSettings?.disposition === 'taxable-close' && fhsaSettings?.dispositionYear === rawYd.year);
+    if (isExplicitTransfer || isAutoClose) {
       prevBalances.rrsp += prevBalances.fhsa;
       prevBalances.fhsa = 0;
     }

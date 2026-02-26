@@ -86,6 +86,7 @@ export interface Assumptions {
   provincialBrackets: TaxBracket[];
   federalBPA: number;
   provincialBPA: number;
+  federalEmploymentAmount: number;
   assetReturns: {
     equity: number;
     fixedIncome: number;
@@ -225,6 +226,7 @@ export interface OpeningCarryForwards {
   tfsaUnusedRoom: number;    // cumulative unused TFSA room
   capitalLossCF: number;     // net capital losses from prior years
   fhsaContribLifetime: number; // lifetime FHSA contributions made before start year
+  priorYearEarnedIncome?: number; // prior-year earned income for year-1 RRSP room calculation
 }
 
 export interface ACBConfig {

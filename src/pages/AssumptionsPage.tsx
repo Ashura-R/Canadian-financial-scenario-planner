@@ -406,6 +406,9 @@ export function AssumptionsPage() {
                   <FormRow label="Federal BPA">
                     <NumInput value={ass.federalBPA} onChange={v => setAss('federalBPA', v)} />
                   </FormRow>
+                  <FormRow label="Employment Amount">
+                    <NumInput value={ass.federalEmploymentAmount} onChange={v => setAss('federalEmploymentAmount', v)} />
+                  </FormRow>
                   <BracketTable brackets={ass.federalBrackets} onChange={b => setAss('federalBrackets', b)} />
                 </Section>
               </div>

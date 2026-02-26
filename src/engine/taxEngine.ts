@@ -1,5 +1,6 @@
 import type { Assumptions, YearData, TaxBracket } from '../types/scenario';
 import type { ComputedCPP, ComputedEI, ComputedTax, ComputedTaxDetail, BracketDetail } from '../types/computed';
+import { PROVINCIAL_EMPLOYMENT_AMOUNT } from '../store/defaults';
 
 function applyBrackets(income: number, brackets: TaxBracket[]): number {
   let tax = 0;
@@ -36,20 +37,32 @@ export function computeCPP(
 ): ComputedCPP {
   const { basicExemption, ympe, yampe, employeeRate, cpp2Rate } = cpp;
 
-  // Employee CPP1
-  const empPensionable = Math.max(0, Math.min(empIncome, ympe) - basicExemption);
-  const cppEmployee = empIncome > 0 ? empPensionable * employeeRate : 0;
+  // CPP1 max pensionable earnings (shared ceiling across employment + SE)
+  const maxPensionable = Math.max(0, ympe - basicExemption);
 
-  // Employee CPP2 (on earnings between YMPE and YAMPE)
+  // Employee CPP1 — computed first, gets priority
+  const empPensionable = empIncome > 0
+    ? Math.max(0, Math.min(empIncome, ympe) - basicExemption)
+    : 0;
+  const cppEmployee = empPensionable * employeeRate;
+
+  // Self-employed CPP1 — only on remaining pensionable room
+  const remainingPensionable = Math.max(0, maxPensionable - empPensionable);
+  const sePensionableRaw = seIncome > 0
+    ? Math.max(0, Math.min(seIncome, ympe) - basicExemption)
+    : 0;
+  const sePensionable = Math.min(sePensionableRaw, remainingPensionable);
+  const cppSE = sePensionable * employeeRate * 2; // SE pays both halves
+
+  // CPP2: earnings between YMPE and YAMPE (also shared ceiling)
+  const maxCPP2Earnings = Math.max(0, yampe - ympe);
+
   const empAboveYMPE = empIncome > 0 ? Math.max(0, Math.min(empIncome, yampe) - ympe) : 0;
   const cpp2Employee = empAboveYMPE * cpp2Rate;
 
-  // Self-employed CPP1 (pays both employee + employer)
-  const sePensionable = Math.max(0, Math.min(seIncome, ympe) - basicExemption);
-  const cppSE = seIncome > 0 ? sePensionable * employeeRate * 2 : 0;
-
-  // Self-employed CPP2
-  const seAboveYMPE = seIncome > 0 ? Math.max(0, Math.min(seIncome, yampe) - ympe) : 0;
+  const remainingCPP2 = Math.max(0, maxCPP2Earnings - empAboveYMPE);
+  const seAboveYMPERaw = seIncome > 0 ? Math.max(0, Math.min(seIncome, yampe) - ympe) : 0;
+  const seAboveYMPE = Math.min(seAboveYMPERaw, remainingCPP2);
   const cpp2SE = seAboveYMPE * cpp2Rate * 2;
 
   // SE employer half deduction
@@ -104,7 +117,7 @@ export function computeTax(
   retirementIncome: RetirementIncome = { cppBenefitIncome: 0, oasIncome: 0 },
   province?: string
 ): ComputedTax & { detail: ComputedTaxDetail } {
-  const { capitalGainsInclusionRate, dividendRates, federalBrackets, provincialBrackets, federalBPA, provincialBPA } = ass;
+  const { capitalGainsInclusionRate, dividendRates, federalBrackets, provincialBrackets, federalBPA, provincialBPA, federalEmploymentAmount } = ass;
 
   // Gross-up dividends
   const grossedUpEligibleDiv = yd.eligibleDividends * (1 + dividendRates.eligible.grossUp);
@@ -146,27 +159,39 @@ export function computeTax(
   const bpaCredit = federalBPA * bpaCreditRate;
   const cppCredit = cpp.totalCPPForCredit * bpaCreditRate;
   const eiCredit = ei.totalEI * bpaCreditRate;
+  const fedEmploymentCredit = yd.employmentIncome > 0
+    ? Math.min(yd.employmentIncome, federalEmploymentAmount ?? 0) * bpaCreditRate
+    : 0;
   const eligibleDivCredit = grossedUpEligibleDiv * dividendRates.eligible.federalCredit;
   const nonEligibleDivCredit = grossedUpNonEligibleDiv * dividendRates.nonEligible.federalCredit;
 
-  const federalCredits = bpaCredit + cppCredit + eiCredit + eligibleDivCredit + nonEligibleDivCredit;
-  const federalTaxPayable = Math.max(0, federalTaxBeforeCredits - federalCredits);
+  const federalCredits = bpaCredit + cppCredit + eiCredit + fedEmploymentCredit + eligibleDivCredit + nonEligibleDivCredit;
+  let federalTaxPayable = Math.max(0, federalTaxBeforeCredits - federalCredits);
 
-  // --- Provincial Tax ---
+  // --- Quebec Abatement (16.5% reduction of basic federal tax) ---
+  const prov = province ?? ass.province;
+  let quebecAbatement = 0;
+  if (prov === 'QC') {
+    quebecAbatement = federalTaxPayable * 0.165;
+    federalTaxPayable = Math.max(0, federalTaxPayable - quebecAbatement);
+  }
   const provincialTaxBeforeCredits = applyBrackets(netTaxableIncome, provincialBrackets);
 
   const provBPACredit = provincialBPA * (provincialBrackets[0]?.rate ?? 0.0505);
   const provCPPCredit = cpp.totalCPPForCredit * (provincialBrackets[0]?.rate ?? 0.0505);
   const provEICredit = ei.totalEI * (provincialBrackets[0]?.rate ?? 0.0505);
+  const provEmploymentAmt = PROVINCIAL_EMPLOYMENT_AMOUNT[prov] ?? 0;
+  const provEmploymentCredit = yd.employmentIncome > 0
+    ? Math.min(yd.employmentIncome, provEmploymentAmt) * (provincialBrackets[0]?.rate ?? 0.0505)
+    : 0;
   const provEligibleDivCredit = grossedUpEligibleDiv * dividendRates.eligible.provincialCredit;
   const provNonEligibleDivCredit = grossedUpNonEligibleDiv * dividendRates.nonEligible.provincialCredit;
 
-  const provincialCredits = provBPACredit + provCPPCredit + provEICredit + provEligibleDivCredit + provNonEligibleDivCredit;
+  const provincialCredits = provBPACredit + provCPPCredit + provEICredit + provEmploymentCredit + provEligibleDivCredit + provNonEligibleDivCredit;
   let provincialTaxPayable = Math.max(0, provincialTaxBeforeCredits - provincialCredits);
 
   // Ontario surtax
   let ontarioSurtax = 0;
-  const prov = province ?? ass.province;
   if (prov === 'ON') {
     ontarioSurtax = 0.20 * Math.max(0, provincialTaxPayable - 4991) + 0.36 * Math.max(0, provincialTaxPayable - 6387);
     provincialTaxPayable += ontarioSurtax;
@@ -201,11 +226,13 @@ export function computeTax(
     fedBPACredit: bpaCredit,
     fedCPPCredit: cppCredit,
     fedEICredit: eiCredit,
+    fedEmploymentCredit: fedEmploymentCredit,
     fedEligibleDivCredit: eligibleDivCredit,
     fedNonEligibleDivCredit: nonEligibleDivCredit,
     provBPACredit: provBPACredit,
     provCPPCredit: provCPPCredit,
     provEICredit: provEICredit,
+    provEmploymentCredit: provEmploymentCredit,
     provEligibleDivCredit: provEligibleDivCredit,
     provNonEligibleDivCredit: provNonEligibleDivCredit,
     federalBracketDetail: computeBracketDetail(netTaxableIncome, federalBrackets),
@@ -221,6 +248,7 @@ export function computeTax(
     federalTaxBeforeCredits,
     federalCredits,
     federalTaxPayable,
+    quebecAbatement,
     provincialTaxBeforeCredits,
     provincialCredits,
     provincialTaxPayable,

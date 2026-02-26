@@ -12,6 +12,9 @@ export function validateYear(
   isRRIF: boolean = false,
   fhsaDisposed: boolean = false,
   fhsaUnusedRoom: number = 0,
+  fhsaOpeningYear: number | null = null,
+  age: number | null = null,
+  year: number = 0,
 ): ValidationWarning[] {
   const warnings: ValidationWarning[] = [];
 
@@ -268,6 +271,25 @@ export function validateYear(
   }
   if (yd.savingsEOYOverride !== undefined) {
     warnings.push({ field: 'savingsEOYOverride', message: 'Savings EOY Override active', severity: 'warning' });
+  }
+
+  // === FHSA 15-year / age-71 limit warning ===
+  if (fhsaOpeningYear !== null && !fhsaDisposed && year > 0) {
+    const yearsOpen = year - fhsaOpeningYear;
+    if (yearsOpen >= 14) { // warn 1 year before forced close
+      warnings.push({
+        field: 'fhsaContribution',
+        message: `FHSA has been open ${yearsOpen} years — must close by year ${fhsaOpeningYear + 15}`,
+        severity: 'warning',
+      });
+    }
+    if (age !== null && age >= 70) {
+      warnings.push({
+        field: 'fhsaContribution',
+        message: `FHSA must close by end of year holder turns 71 (age ${age} now)`,
+        severity: 'warning',
+      });
+    }
   }
 
   return warnings;

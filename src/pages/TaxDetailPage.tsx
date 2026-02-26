@@ -102,8 +102,12 @@ function SingleYearView({ yr, rawYd }: { yr: ComputedYear; rawYd: import('../typ
           <Row label="BPA Credit" value={`(${formatCAD(taxDetail.fedBPACredit)})`} cls="text-emerald-600" />
           <Row label="CPP Credit" value={`(${formatCAD(taxDetail.fedCPPCredit)})`} cls="text-emerald-600" />
           <Row label="EI Credit" value={`(${formatCAD(taxDetail.fedEICredit)})`} cls="text-emerald-600" />
+          <Row label="Employment Amount Credit" value={`(${formatCAD(taxDetail.fedEmploymentCredit)})`} cls="text-emerald-600" />
           <Row label="Eligible Div Credit" value={`(${formatCAD(taxDetail.fedEligibleDivCredit)})`} cls="text-emerald-600" />
           <Row label="Non-Eligible Div Credit" value={`(${formatCAD(taxDetail.fedNonEligibleDivCredit)})`} cls="text-emerald-600" />
+          {tax.quebecAbatement > 0 && (
+            <Row label="Quebec Abatement (16.5%)" value={`(${formatCAD(tax.quebecAbatement)})`} cls="text-emerald-600" />
+          )}
           <TotalRow label="Federal Tax Payable" value={formatCAD(tax.federalTaxPayable)} cls="text-red-600" />
         </div>
       </Section>
@@ -119,6 +123,7 @@ function SingleYearView({ yr, rawYd }: { yr: ComputedYear; rawYd: import('../typ
           <Row label="BPA Credit" value={`(${formatCAD(taxDetail.provBPACredit)})`} cls="text-emerald-600" />
           <Row label="CPP Credit" value={`(${formatCAD(taxDetail.provCPPCredit)})`} cls="text-emerald-600" />
           <Row label="EI Credit" value={`(${formatCAD(taxDetail.provEICredit)})`} cls="text-emerald-600" />
+          <Row label="Employment Amount Credit" value={`(${formatCAD(taxDetail.provEmploymentCredit)})`} cls="text-emerald-600" />
           <Row label="Eligible Div Credit" value={`(${formatCAD(taxDetail.provEligibleDivCredit)})`} cls="text-emerald-600" />
           <Row label="Non-Eligible Div Credit" value={`(${formatCAD(taxDetail.provNonEligibleDivCredit)})`} cls="text-emerald-600" />
           {tax.ontarioSurtax > 0 && (
