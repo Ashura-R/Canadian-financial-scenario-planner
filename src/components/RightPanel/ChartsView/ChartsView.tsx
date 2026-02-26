@@ -32,7 +32,7 @@ export function ChartsView() {
         <TaxWaterfallChart years={activeComputed.years} />
       </ChartCard>
       <ChartCard title="Income Breakdown by Type">
-        <IncomeBreakdownChart years={activeComputed.years} rawYears={activeScenario.years} />
+        <IncomeBreakdownChart years={activeComputed.years} rawYears={activeComputed.effectiveYears} />
       </ChartCard>
       <ChartCard title="Cash Flow (Annual + Cumulative)">
         <CumulativeCashFlowChart computed={activeComputed} />

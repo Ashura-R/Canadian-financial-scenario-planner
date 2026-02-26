@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { DashboardView } from './DashboardView/DashboardView';
 import { ChartsView } from './ChartsView/ChartsView';
+import { usePersistedState } from '../../utils/usePersistedState';
 
 type Tab = 'dashboard' | 'charts';
 
 export function RightPanel() {
-  const [tab, setTab] = useState<Tab>('dashboard');
+  const [tab, setTab] = usePersistedState<Tab>('cdn-tax-right-panel-tab', 'dashboard');
 
   return (
     <div className="flex flex-col h-full">

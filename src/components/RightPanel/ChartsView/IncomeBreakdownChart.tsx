@@ -3,7 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import type { ComputedYear } from '../../../types/computed';
-import { formatShort } from '../../../utils/formatters';
+import { formatShort, safe } from '../../../utils/formatters';
 import { useChartColors } from '../../../hooks/useChartColors';
 
 interface Props {
@@ -18,8 +18,8 @@ export function IncomeBreakdownChart({ years, rawYears, diffMode }: Props) {
   if (diffMode) {
     const data = years.map((y, i) => ({
       year: y.year,
-      'Gross Income (Nom)': Math.round(y.waterfall.grossIncome),
-      'Gross Income (Real)': Math.round(y.realGrossIncome),
+      'Gross Income (Nom)': Math.round(safe(y.waterfall.grossIncome)),
+      'Gross Income (Real)': Math.round(safe(y.realGrossIncome)),
     }));
 
     return (
@@ -43,13 +43,13 @@ export function IncomeBreakdownChart({ years, rawYears, diffMode }: Props) {
 
   const data = years.map((y, i) => ({
     year: y.year,
-    Employment: Math.round(rawYears[i]?.employmentIncome ?? 0),
-    'Self-Empl.': Math.round(rawYears[i]?.selfEmploymentIncome ?? 0),
-    'Elig. Div.': Math.round(rawYears[i]?.eligibleDividends ?? 0),
-    'Non-Elig. Div.': Math.round(rawYears[i]?.nonEligibleDividends ?? 0),
-    Interest: Math.round(rawYears[i]?.interestIncome ?? 0),
-    'Cap. Gains': Math.round(rawYears[i]?.capitalGainsRealized ?? 0),
-    Other: Math.round(rawYears[i]?.otherTaxableIncome ?? 0),
+    Employment: Math.round(safe(rawYears[i]?.employmentIncome ?? 0)),
+    'Self-Empl.': Math.round(safe(rawYears[i]?.selfEmploymentIncome ?? 0)),
+    'Elig. Div.': Math.round(safe(rawYears[i]?.eligibleDividends ?? 0)),
+    'Non-Elig. Div.': Math.round(safe(rawYears[i]?.nonEligibleDividends ?? 0)),
+    Interest: Math.round(safe(rawYears[i]?.interestIncome ?? 0)),
+    'Cap. Gains': Math.round(safe(rawYears[i]?.capitalGainsRealized ?? 0)),
+    Other: Math.round(safe(rawYears[i]?.otherTaxableIncome ?? 0)),
   }));
 
   return (

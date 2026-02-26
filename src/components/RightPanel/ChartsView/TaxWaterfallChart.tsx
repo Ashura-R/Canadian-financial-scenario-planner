@@ -3,7 +3,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import type { ComputedYear } from '../../../types/computed';
-import { formatShort } from '../../../utils/formatters';
+import { formatShort, safe } from '../../../utils/formatters';
 import { useChartColors } from '../../../hooks/useChartColors';
 
 interface Props { years: ComputedYear[]; realMode?: boolean; diffMode?: boolean }
@@ -14,8 +14,8 @@ export function TaxWaterfallChart({ years, realMode, diffMode }: Props) {
   if (diffMode) {
     const data = years.map(y => ({
       year: y.year,
-      'Total Tax (Nom)': Math.round(y.tax.totalIncomeTax + y.cpp.totalCPPPaid + y.ei.totalEI),
-      'Total Tax (Real)': Math.round((y.tax.totalIncomeTax + y.cpp.totalCPPPaid + y.ei.totalEI) / y.inflationFactor),
+      'Total Tax (Nom)': Math.round(safe(y.tax.totalIncomeTax + y.cpp.totalCPPPaid + y.ei.totalEI)),
+      'Total Tax (Real)': Math.round(safe((y.tax.totalIncomeTax + y.cpp.totalCPPPaid + y.ei.totalEI) / y.inflationFactor)),
     }));
 
     return (
@@ -41,11 +41,11 @@ export function TaxWaterfallChart({ years, realMode, diffMode }: Props) {
     const f = realMode ? y.inflationFactor : 1;
     return {
       year: y.year,
-      'Federal Tax': Math.round(y.tax.federalTaxPayable / f),
-      'Provincial Tax': Math.round(y.tax.provincialTaxPayable / f),
-      'CPP': Math.round(y.cpp.totalCPPPaid / f),
-      'EI': Math.round(y.ei.totalEI / f),
-      'After-Tax': Math.round(Math.max(0, y.waterfall.afterTaxIncome / f)),
+      'Federal Tax': Math.round(safe(y.tax.federalTaxPayable / f)),
+      'Provincial Tax': Math.round(safe(y.tax.provincialTaxPayable / f)),
+      'CPP': Math.round(safe(y.cpp.totalCPPPaid / f)),
+      'EI': Math.round(safe(y.ei.totalEI / f)),
+      'After-Tax': Math.round(Math.max(0, safe(y.waterfall.afterTaxIncome / f))),
     };
   });
 

@@ -455,12 +455,6 @@ export function SchedulingPage() {
                 </button>
               </>
             )}
-            <button
-              onClick={addItem}
-              className="px-3 py-1.5 text-xs font-medium bg-app-accent text-white rounded hover:bg-app-accent/90 transition-colors"
-            >
-              + Add Rule
-            </button>
           </div>
         </div>
 
@@ -602,8 +596,15 @@ export function SchedulingPage() {
         )}
 
         {items.length === 0 ? (
-          <div className="bg-app-surface border border-app-border rounded-lg p-8 text-center text-app-text4 text-sm">
-            No scheduling rules yet. Click "+ Add Rule" to create one.
+          <div className="bg-app-surface border-2 border-dashed border-app-border rounded-lg p-10 text-center">
+            <div className="text-app-text3 text-sm mb-1">No scheduling rules yet</div>
+            <div className="text-app-text4 text-xs mb-4">Rules auto-fill year data (income, contributions, deposits) so you don't have to enter values manually for each year.</div>
+            <button
+              onClick={addItem}
+              className="px-5 py-2 text-sm font-medium bg-app-accent text-white rounded-lg hover:bg-app-accent/90 transition-colors"
+            >
+              + Create Your First Rule
+            </button>
           </div>
         ) : (
           <div className="bg-app-surface border border-app-border rounded-lg overflow-hidden">
@@ -611,14 +612,14 @@ export function SchedulingPage() {
               <thead>
                 <tr className="bg-app-surface2 border-b border-app-border">
                   <th className="text-center py-2.5 px-1.5 text-[10px] text-app-text3 font-semibold uppercase w-8">#</th>
-                  <th className="text-left py-2.5 px-3 text-[10px] text-app-text3 font-semibold uppercase w-32">Label</th>
+                  <th className="text-left py-2.5 px-3 text-[10px] text-app-text3 font-semibold uppercase w-44">Label</th>
                   <th className="text-left py-2.5 px-3 text-[10px] text-app-text3 font-semibold uppercase">Field</th>
                   <th className="text-center py-2.5 px-1 text-[10px] text-app-text3 font-semibold uppercase w-10">Type</th>
-                  <th className="text-right py-2.5 px-3 text-[10px] text-app-text3 font-semibold uppercase w-20">Amount</th>
+                  <th className="text-right py-2.5 px-3 text-[10px] text-app-text3 font-semibold uppercase w-28">Amount</th>
                   <th className="text-left py-2.5 px-2 text-[10px] text-app-text3 font-semibold uppercase w-36">Reference</th>
                   <th className="text-center py-2.5 px-2 text-[10px] text-app-text3 font-semibold uppercase w-20">Start</th>
                   <th className="text-center py-2.5 px-2 text-[10px] text-app-text3 font-semibold uppercase w-20">End</th>
-                  <th className="text-right py-2.5 px-2 text-[10px] text-app-text3 font-semibold uppercase w-16">Growth</th>
+                  <th className="text-right py-2.5 px-2 text-[10px] text-app-text3 font-semibold uppercase w-24">Growth</th>
                   <th className="text-center py-2.5 px-2 text-[10px] text-app-text3 font-semibold uppercase w-20">Grow By</th>
                   <th className="text-center py-2.5 px-2 text-[10px] text-app-text3 font-semibold uppercase w-20">Settings</th>
                   <th className="w-14"></th>
@@ -969,6 +970,16 @@ export function SchedulingPage() {
               </tbody>
             </table>
           </div>
+        )}
+
+        {/* Bottom Add Rule button */}
+        {items.length > 0 && (
+          <button
+            onClick={addItem}
+            className="w-full py-3 mt-3 border-2 border-dashed border-app-border rounded-lg text-sm font-medium text-app-text3 hover:border-app-accent hover:text-app-accent hover:bg-app-accent-light/20 transition-colors"
+          >
+            + Add Rule
+          </button>
         )}
       </div>
     </div>

@@ -7,9 +7,11 @@ import { NetWorthChart } from '../components/RightPanel/ChartsView/NetWorthChart
 import { TaxWaterfallChart } from '../components/RightPanel/ChartsView/TaxWaterfallChart';
 import { IncomeBreakdownChart } from '../components/RightPanel/ChartsView/IncomeBreakdownChart';
 import { CumulativeCashFlowChart } from '../components/RightPanel/ChartsView/CumulativeCashFlowChart';
+import { CashflowExpensesChart } from '../components/RightPanel/ChartsView/CashflowExpensesChart';
 import { ChartRangeSelector, sliceByRange } from '../components/ChartRangeSelector';
 import type { ChartRange } from '../components/ChartRangeSelector';
 import type { ComputedYear } from '../types/computed';
+import { usePersistedState } from '../utils/usePersistedState';
 
 type ViewMode = 'nominal' | 'real' | 'diff';
 
@@ -267,7 +269,7 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => vo
   }
   const realMode = viewMode === 'real';
   const diffMode = viewMode === 'diff';
-  const [chartRange, setChartRange] = useState<ChartRange>('all');
+  const [chartRange, setChartRange] = usePersistedState<ChartRange>('cdn-tax-chart-range-overview', 'all');
 
   if (!activeComputed || !activeScenario) {
     return <div className="p-8 text-app-text4 text-sm">No scenario data.</div>;
@@ -289,7 +291,7 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => vo
   const warnings = years.flatMap(y => y.warnings.filter(w => w.severity === 'error'));
 
   const chartYears = sliceByRange(years, chartRange);
-  const chartRawYears = sliceByRange(activeScenario.years, chartRange);
+  const chartRawYears = sliceByRange(activeComputed.effectiveYears, chartRange);
   const chartComputed = {
     ...activeComputed,
     years: chartYears,
@@ -455,6 +457,13 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => vo
             onRangeChange={setChartRange}
           >
             <CumulativeCashFlowChart computed={chartComputed} realMode={realMode} diffMode={diffMode} />
+          </ChartCard>
+          <ChartCard
+            title="Cashflow vs Expenses"
+            range={chartRange}
+            onRangeChange={setChartRange}
+          >
+            <CashflowExpensesChart years={chartYears} rawYears={chartRawYears} />
           </ChartCard>
         </div>
 

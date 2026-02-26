@@ -342,7 +342,7 @@ export function AssumptionsPage() {
 
         {/* Tab content */}
         {tab === 'general' && (
-          <div className="max-w-xl">
+          <div className="max-w-xl mx-auto">
             <Section title="Scenario Setup">
               <FormRow label="Province">
                 <select className={selectCls} value={ass.province} onChange={e => changeProvince(e.target.value as Province)}>
@@ -422,7 +422,7 @@ export function AssumptionsPage() {
         )}
 
         {tab === 'tax' && (
-          <div>
+          <div className="max-w-4xl mx-auto">
             {/* Two-column layout for brackets */}
             <div className="grid grid-cols-2 gap-8">
               <div>
@@ -491,7 +491,7 @@ export function AssumptionsPage() {
 
             <Divider />
 
-            <div className="max-w-xl">
+            <div className="max-w-xl mx-auto">
               <Section title="Dividend Tax Rates" {...lockProps('dividends', resetDividends)}>
                 <SubHeader title="Eligible Dividends" />
                 <FormRow label="Gross-up %">
@@ -539,7 +539,7 @@ export function AssumptionsPage() {
         )}
 
         {tab === 'accounts' && (
-          <div className="max-w-xl">
+          <div className="max-w-xl mx-auto">
             <Section title="Opening Balances">
               <BalanceRow label="RRSP" color="bg-app-accent" value={ob.rrsp} onChange={v => setBalance('rrsp', v)} />
               <BalanceRow label="TFSA" color="bg-emerald-500" value={ob.tfsa} onChange={v => setBalance('tfsa', v)} />
@@ -753,7 +753,7 @@ export function AssumptionsPage() {
         )}
 
         {tab === 'retirement' && (
-          <div className="max-w-xl">
+          <div className="max-w-xl mx-auto">
             <Section title="Personal">
               <FormRow label="Birth Year">
                 <NumInput value={ass.birthYear ?? 1990} onChange={v => setAss('birthYear', Math.round(v))} />

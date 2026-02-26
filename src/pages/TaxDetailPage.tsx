@@ -3,7 +3,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
 import { useScenario } from '../store/ScenarioContext';
-import { formatCAD, formatPct, formatShort } from '../utils/formatters';
+import { formatCAD, formatPct, formatShort, safe } from '../utils/formatters';
 import { usePersistedYear } from '../utils/usePersistedYear';
 import type { ComputedYear, BracketDetail } from '../types/computed';
 import { useChartColors } from '../hooks/useChartColors';
@@ -291,10 +291,10 @@ function MarginalRateChart({ years, selectedYearIdx, onSelectYear }: {
   const data = useMemo(() =>
     years.map(y => ({
       year: y.year,
-      Federal: y.tax.marginalFederalRate,
-      Provincial: y.tax.marginalProvincialRate,
-      Combined: y.tax.marginalCombinedRate,
-      'Avg All-In': y.tax.avgAllInRate,
+      Federal: safe(y.tax.marginalFederalRate),
+      Provincial: safe(y.tax.marginalProvincialRate),
+      Combined: safe(y.tax.marginalCombinedRate),
+      'Avg All-In': safe(y.tax.avgAllInRate),
     })),
     [years]
   );
@@ -341,7 +341,7 @@ export function TaxDetailPage() {
 
   const years = activeComputed.years;
   const [selectedYearIdx, setSelectedYearIdx] = usePersistedYear(years.length - 1);
-  const rawYears = activeScenario.years;
+  const rawYears = activeComputed.effectiveYears;
   const yr = years[selectedYearIdx] ?? years[0];
   const rawYd = rawYears[selectedYearIdx] ?? rawYears[0];
 

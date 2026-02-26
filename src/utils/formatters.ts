@@ -20,6 +20,10 @@ export function formatNum(value: number, decimals = 0): string {
   }).format(value);
 }
 
+export function safe(v: number): number {
+  return isFinite(v) ? v : 0;
+}
+
 export function formatShort(value: number): string {
   const abs = Math.abs(value);
   const sign = value < 0 ? '-' : '';

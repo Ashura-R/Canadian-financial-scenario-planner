@@ -100,7 +100,7 @@ function buildScheduleOverlay(
 
 // Default group order
 const DEFAULT_GROUP_ORDER = [
-  'Income', 'Deductions & Credits', 'RRSP', 'TFSA', 'FHSA', 'Non-Reg & Savings', 'LIRA/LIF', 'RESP',
+  'Income', 'Expenses & Deductions', 'RRSP', 'TFSA', 'FHSA', 'Non-Reg & Savings', 'LIRA/LIF', 'RESP',
   'Asset Allocation', 'Capital Loss', 'ACB Tracking',
   'EOY Overrides', 'Retirement (Computed)', 'Liabilities (Computed)', 'Rate Overrides',
   'Contribution Room', 'Tax Results (Computed)',
@@ -108,7 +108,7 @@ const DEFAULT_GROUP_ORDER = [
 
 const GROUP_DEFAULTS: Record<string, boolean> = {
   'Income': true,
-  'Deductions & Credits': false,
+  'Expenses & Deductions': false,
   'RRSP': true,
   'TFSA': true,
   'FHSA': true,
@@ -156,22 +156,22 @@ const ROW_REGISTRY: RowEntry[] = [
   { rowId: 'capitalLossesRealized', editable: true, group: 'Income' },
   { rowId: 'otherTaxableIncome', editable: true, group: 'Income' },
   { rowId: 'rentalGrossIncome', editable: true, group: 'Income' },
-  { rowId: 'rentalExpenses', editable: true, group: 'Income' },
   { rowId: 'pensionIncome', editable: true, group: 'Income' },
   { rowId: 'foreignIncome', editable: true, group: 'Income' },
-  { rowId: 'foreignTaxPaid', editable: true, group: 'Income' },
-  { rowId: 'charitableDonations', editable: true, group: 'Income' },
   { rowId: '_summary_grossIncome', editable: false, group: 'Income' },
-  // Deductions & Credits
-  { rowId: 'selfEmploymentExpenses', editable: true, group: 'Deductions & Credits' },
-  { rowId: 'childCareExpenses', editable: true, group: 'Deductions & Credits' },
-  { rowId: 'unionDues', editable: true, group: 'Deductions & Credits' },
-  { rowId: 'movingExpenses', editable: true, group: 'Deductions & Credits' },
-  { rowId: 'otherDeductions', editable: true, group: 'Deductions & Credits' },
-  { rowId: 'medicalExpenses', editable: true, group: 'Deductions & Credits' },
-  { rowId: 'studentLoanInterest', editable: true, group: 'Deductions & Credits' },
-  { rowId: 'otherNonRefundableCredits', editable: true, group: 'Deductions & Credits' },
-  { rowId: 'lcgeClaimAmount', editable: true, group: 'Deductions & Credits' },
+  // Expenses & Deductions
+  { rowId: 'rentalExpenses', editable: true, group: 'Expenses & Deductions' },
+  { rowId: 'foreignTaxPaid', editable: true, group: 'Expenses & Deductions' },
+  { rowId: 'charitableDonations', editable: true, group: 'Expenses & Deductions' },
+  { rowId: 'selfEmploymentExpenses', editable: true, group: 'Expenses & Deductions' },
+  { rowId: 'childCareExpenses', editable: true, group: 'Expenses & Deductions' },
+  { rowId: 'unionDues', editable: true, group: 'Expenses & Deductions' },
+  { rowId: 'movingExpenses', editable: true, group: 'Expenses & Deductions' },
+  { rowId: 'otherDeductions', editable: true, group: 'Expenses & Deductions' },
+  { rowId: 'medicalExpenses', editable: true, group: 'Expenses & Deductions' },
+  { rowId: 'studentLoanInterest', editable: true, group: 'Expenses & Deductions' },
+  { rowId: 'otherNonRefundableCredits', editable: true, group: 'Expenses & Deductions' },
+  { rowId: 'lcgeClaimAmount', editable: true, group: 'Expenses & Deductions' },
   // RRSP
   { rowId: 'rrspContribution', editable: true, group: 'RRSP' },
   { rowId: 'rrspDeductionClaimed', editable: true, group: 'RRSP' },
@@ -283,6 +283,11 @@ export function TimelinePage() {
   const [fillVal, setFillVal] = useState('');
   const [zoom, setZoomRaw] = useState(loadZoom);
   const [banding, setBandingRaw] = useState(loadBanding);
+  const LONGNUM_KEY = 'cdn-tax-timeline-longnum';
+  const [longNumbers, setLongNumbersRaw] = useState(() => {
+    try { return localStorage.getItem(LONGNUM_KEY) === '1'; } catch { return false; }
+  });
+  function setLongNumbers(v: boolean) { setLongNumbersRaw(v); try { localStorage.setItem(LONGNUM_KEY, v ? '1' : '0'); } catch {} }
 
   // Group open/close state
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
@@ -376,7 +381,7 @@ export function TimelinePage() {
 
   if (!activeScenario) return null;
 
-  const years = activeScenario.years;
+  const years = activeComputed?.effectiveYears ?? activeScenario.years;
   const computed = activeComputed?.years ?? [];
 
   function updateYear(yearIdx: number, key: YDKey, val: number) {
@@ -662,9 +667,7 @@ export function TimelinePage() {
                 <div className={`w-full text-right text-[10px] px-1 py-px text-app-text4 rounded ${focused ? 'ring-2 ring-app-accent ring-inset' : ''} ${selected && !focused ? 'bg-app-accent-light' : ''}`}>
                   {opts.pct
                     ? (displayVal * 100).toFixed(1) + '%'
-                    : displayVal >= 1000
-                    ? '$' + (displayVal / 1000).toFixed(0) + 'K'
-                    : displayVal === 0 ? '—' : '$' + Math.round(displayVal).toLocaleString()}
+                    : fmtVal(displayVal)}
                 </div>
               ) : (
                 <TimelineCell
@@ -683,6 +686,7 @@ export function TimelinePage() {
                   onCellDblClick={() => onCellDblClick(key, i)}
                   onEditCommit={grid.commitEdit}
                   onEditCancel={grid.cancelEdit}
+                  longNumbers={longNumbers}
                 />
               )}
             </td>
@@ -747,6 +751,7 @@ export function TimelinePage() {
                 onCellDblClick={() => onCellDblClick(key, i)}
                 onEditCommit={grid.commitEdit}
                 onEditCancel={grid.cancelEdit}
+                longNumbers={longNumbers}
               />
             </td>
           );
@@ -768,6 +773,16 @@ export function TimelinePage() {
     };
   }
 
+  // Helper for formatting computed cell values respecting longNumbers toggle
+  function fmtVal(v: number): string {
+    if (v === 0) return '—';
+    const sign = v < 0 ? '-' : '';
+    const abs = Math.abs(v);
+    if (longNumbers) return sign + '$' + Math.round(abs).toLocaleString('en-CA');
+    if (abs >= 1000) return sign + '$' + Math.round(abs / 1000) + 'K';
+    return sign + '$' + Math.round(abs).toLocaleString('en-CA');
+  }
+
   // ── Group content renderers ──
   function renderGroupContent(title: string): React.ReactNode {
     switch (title) {
@@ -783,11 +798,8 @@ export function TimelinePage() {
             {renderRow('Capital Losses', 'capitalLossesRealized')}
             {renderRow('Other Taxable', 'otherTaxableIncome')}
             {renderRow('Rental Gross', 'rentalGrossIncome')}
-            {renderRow('Rental Expenses', 'rentalExpenses')}
             {renderRow('Pension Income', 'pensionIncome')}
             {renderRow('Foreign Income', 'foreignIncome')}
-            {renderRow('Foreign Tax Paid', 'foreignTaxPaid')}
-            {renderRow('Charitable Donations', 'charitableDonations')}
             <tr className="bg-app-surface2 border-b border-app-border">
               <td className="sticky left-0 bg-app-surface2 z-10 py-0.5 pl-3 pr-2 text-[10px] text-app-text2 font-semibold whitespace-nowrap border-r border-app-border" style={{ minWidth: LABEL_WIDTH }}>
                 Total Gross Income
@@ -803,7 +815,7 @@ export function TimelinePage() {
                     data-col={i}
                     onClick={(e) => onCellClick('_summary_grossIncome', i, e.shiftKey)}
                   >
-                    {computed[i] ? '$' + Math.round(computed[i].waterfall.grossIncome / 1000) + 'K' : '—'}
+                    {computed[i] ? (longNumbers ? '$' + Math.round(computed[i].waterfall.grossIncome).toLocaleString('en-CA') : '$' + Math.round(computed[i].waterfall.grossIncome / 1000) + 'K') : '—'}
                   </td>
                 );
               })}
@@ -811,9 +823,12 @@ export function TimelinePage() {
           </>
         );
 
-      case 'Deductions & Credits':
+      case 'Expenses & Deductions':
         return (
           <>
+            {renderRow('Rental Expenses', 'rentalExpenses')}
+            {renderRow('Foreign Tax Paid', 'foreignTaxPaid')}
+            {renderRow('Charitable Donations', 'charitableDonations')}
             {renderRow('SE Expenses', 'selfEmploymentExpenses' as YDKey)}
             {renderRow('Child Care', 'childCareExpenses' as YDKey)}
             {renderRow('Union/Prof. Dues', 'unionDues' as YDKey)}
@@ -866,9 +881,9 @@ export function TimelinePage() {
         return (
           <>
             {renderRow('LIF Withdrawal', 'lifWithdrawal')}
-            {renderComputedRow('_computed_liraEOY', 'LIRA/LIF EOY', i => { const v = computed[i]?.accounts?.liraEOY ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
-            {renderComputedRow('_computed_lifMin', 'LIF Min Withdrawal', i => { const v = computed[i]?.retirement?.lifMinWithdrawal ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
-            {renderComputedRow('_computed_lifMax', 'LIF Max Withdrawal', i => { const v = computed[i]?.retirement?.lifMaxWithdrawal ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
+            {renderComputedRow('_computed_liraEOY', 'LIRA/LIF EOY', i => { const v = computed[i]?.accounts?.liraEOY ?? 0; return fmtVal(v); })}
+            {renderComputedRow('_computed_lifMin', 'LIF Min Withdrawal', i => { const v = computed[i]?.retirement?.lifMinWithdrawal ?? 0; return fmtVal(v); })}
+            {renderComputedRow('_computed_lifMax', 'LIF Max Withdrawal', i => { const v = computed[i]?.retirement?.lifMaxWithdrawal ?? 0; return fmtVal(v); })}
           </>
         );
 
@@ -877,7 +892,7 @@ export function TimelinePage() {
           <>
             {renderRow('RESP Contribution', 'respContribution')}
             {renderRow('RESP Withdrawal', 'respWithdrawal')}
-            {renderComputedRow('_computed_respEOY', 'RESP EOY', i => { const v = computed[i]?.accounts?.respEOY ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
+            {renderComputedRow('_computed_respEOY', 'RESP EOY', i => { const v = computed[i]?.accounts?.respEOY ?? 0; return fmtVal(v); })}
             {renderComputedRow('_computed_respCESG', 'CESG Grant', i => { const v = computed[i]?.respCESG ?? 0; return v > 0 ? '$' + Math.round(v).toLocaleString() : '—'; })}
           </>
         );
@@ -945,7 +960,7 @@ export function TimelinePage() {
 
       case 'ACB Tracking': {
         const acbOn = !!activeScenario?.acbConfig;
-        const fmtACB = (v: number) => v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString();
+        const fmtACB = (v: number) => fmtVal(v);
         if (!acbOn) {
           return (
             <tr>
@@ -964,9 +979,7 @@ export function TimelinePage() {
             {renderComputedRow('_computed_acbPerUnit', 'Per-Unit ACB', i => { const v = computed[i]?.acb?.perUnitACB ?? 0; return v > 0 ? '$' + v.toFixed(4) : '—'; })}
             {renderComputedRow('_computed_acbCG', 'Computed CG', i => {
               const v = computed[i]?.acb?.computedCapitalGain ?? 0;
-              if (v === 0) return '—';
-              const s = v >= 1000 || v <= -1000 ? '$' + Math.round(Math.abs(v) / 1000) + 'K' : '$' + Math.round(Math.abs(v)).toLocaleString();
-              return v < 0 ? '-' + s : s;
+              return fmtVal(v);
             })}
           </>
         );
@@ -989,13 +1002,13 @@ export function TimelinePage() {
         return (
           <>
             {renderComputedRow('_computed_age', 'Age', i => { const v = computed[i]?.retirement?.age ?? null; return v !== null ? String(v) : '—'; })}
-            {renderComputedRow('_computed_cppIncome', 'CPP Benefit Income', i => { const v = computed[i]?.retirement?.cppIncome ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
-            {renderComputedRow('_computed_oasIncome', 'OAS Income', i => { const v = computed[i]?.retirement?.oasIncome ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
-            {renderComputedRow('_computed_gisIncome', 'GIS Income', i => { const v = computed[i]?.retirement?.gisIncome ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
+            {renderComputedRow('_computed_cppIncome', 'CPP Benefit Income', i => { const v = computed[i]?.retirement?.cppIncome ?? 0; return fmtVal(v); })}
+            {renderComputedRow('_computed_oasIncome', 'OAS Income', i => { const v = computed[i]?.retirement?.oasIncome ?? 0; return fmtVal(v); })}
+            {renderComputedRow('_computed_gisIncome', 'GIS Income', i => { const v = computed[i]?.retirement?.gisIncome ?? 0; return fmtVal(v); })}
             {renderComputedRow('_computed_rrifStatus', 'RRIF Status', i => computed[i]?.retirement?.isRRIF ? 'RRIF' : 'RRSP')}
-            {renderComputedRow('_computed_rrifMin', 'RRIF Min Withdrawal', i => { const v = computed[i]?.retirement?.rrifMinWithdrawal ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
-            {renderComputedRow('_computed_hbpBalance', 'HBP Balance', i => { const v = computed[i]?.hbpBalance ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
-            {renderComputedRow('_computed_hbpRepayReq', 'HBP Repay Required', i => { const v = computed[i]?.hbpRepaymentRequired ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
+            {renderComputedRow('_computed_rrifMin', 'RRIF Min Withdrawal', i => { const v = computed[i]?.retirement?.rrifMinWithdrawal ?? 0; return fmtVal(v); })}
+            {renderComputedRow('_computed_hbpBalance', 'HBP Balance', i => { const v = computed[i]?.hbpBalance ?? 0; return fmtVal(v); })}
+            {renderComputedRow('_computed_hbpRepayReq', 'HBP Repay Required', i => { const v = computed[i]?.hbpRepaymentRequired ?? 0; return fmtVal(v); })}
             {renderComputedRow('_computed_hbpShortfall', 'HBP Shortfall (Taxable)', i => { const v = computed[i]?.hbpTaxableShortfall ?? 0; return v > 0 ? '$' + Math.round(v).toLocaleString() : '—'; })}
           </>
         );
@@ -1014,19 +1027,19 @@ export function TimelinePage() {
       case 'Liabilities (Computed)':
         return (
           <>
-            {renderComputedRow('_computed_totalDebt', 'Total Debt', i => { const v = computed[i]?.totalDebt ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
-            {renderComputedRow('_computed_debtPayment', 'Debt Payment', i => { const v = computed[i]?.totalDebtPayment ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
-            {renderComputedRow('_computed_interestPaid', 'Interest Paid', i => { const v = computed[i]?.totalInterestPaid ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
+            {renderComputedRow('_computed_totalDebt', 'Total Debt', i => { const v = computed[i]?.totalDebt ?? 0; return fmtVal(v); })}
+            {renderComputedRow('_computed_debtPayment', 'Debt Payment', i => { const v = computed[i]?.totalDebtPayment ?? 0; return fmtVal(v); })}
+            {renderComputedRow('_computed_interestPaid', 'Interest Paid', i => { const v = computed[i]?.totalInterestPaid ?? 0; return fmtVal(v); })}
           </>
         );
 
       case 'Contribution Room':
         return (
           <>
-            {renderComputedRow('_computed_rrspRoom', 'RRSP Unused Room', i => { const v = computed[i]?.rrspUnusedRoom ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
-            {renderComputedRow('_computed_tfsaRoom', 'TFSA Unused Room', i => { const v = computed[i]?.tfsaUnusedRoom ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
-            {renderComputedRow('_computed_fhsaRoom', 'FHSA Unused Room', i => { const v = computed[i]?.fhsaUnusedRoom ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
-            {renderComputedRow('_computed_clCF', 'Capital Loss C/F', i => { const v = computed[i]?.capitalLossCF ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
+            {renderComputedRow('_computed_rrspRoom', 'RRSP Unused Room', i => { const v = computed[i]?.rrspUnusedRoom ?? 0; return fmtVal(v); })}
+            {renderComputedRow('_computed_tfsaRoom', 'TFSA Unused Room', i => { const v = computed[i]?.tfsaUnusedRoom ?? 0; return fmtVal(v); })}
+            {renderComputedRow('_computed_fhsaRoom', 'FHSA Unused Room', i => { const v = computed[i]?.fhsaUnusedRoom ?? 0; return fmtVal(v); })}
+            {renderComputedRow('_computed_clCF', 'Capital Loss C/F', i => { const v = computed[i]?.capitalLossCF ?? 0; return fmtVal(v); })}
           </>
         );
 
@@ -1059,7 +1072,7 @@ export function TimelinePage() {
                       data-col={i}
                       onClick={(e) => onCellClick(rowId, i, e.shiftKey)}
                     >
-                      {v >= 1000 || v <= -1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString()}
+                      {fmtVal(v)}
                     </td>
                   );
                 })}
@@ -1089,9 +1102,8 @@ export function TimelinePage() {
       {/* Toolbar */}
       <div
         className="sticky top-0 z-40 bg-app-accent-light border-b border-app-border px-3 py-1 text-[10px] text-app-accent flex items-center justify-between gap-3"
-        style={{ minWidth: (LABEL_WIDTH + years.length * YEAR_WIDTH) * zoom }}
       >
-        <span>
+        <span className="overflow-hidden whitespace-nowrap text-ellipsis">
           Click/drag to select · <kbd className="bg-app-surface border border-app-border rounded px-0.5">↑↓←→</kbd> navigate · <kbd className="bg-app-surface border border-app-border rounded px-0.5">Enter</kbd> edit · <kbd className="bg-app-surface border border-app-border rounded px-0.5">Shift</kbd>+click/arrow range · <kbd className="bg-app-surface border border-app-border rounded px-0.5">Ctrl+C</kbd>/<kbd className="bg-app-surface border border-app-border rounded px-0.5">X</kbd>/<kbd className="bg-app-surface border border-app-border rounded px-0.5">V</kbd> copy/cut/paste · <kbd className="bg-app-surface border border-app-border rounded px-0.5">Ctrl+Z</kbd>/<kbd className="bg-app-surface border border-app-border rounded px-0.5">Y</kbd> undo/redo · <kbd className="bg-app-surface border border-app-border rounded px-0.5">Ctrl+A</kbd> select all
         </span>
         <div className="flex items-center gap-3 shrink-0">
@@ -1117,6 +1129,15 @@ export function TimelinePage() {
               className="accent-[var(--app-accent)] w-3 h-3"
             />
             <span className="text-[10px] text-app-accent">Banding</span>
+          </label>
+          <label className="flex items-center gap-1 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={longNumbers}
+              onChange={e => setLongNumbers(e.target.checked)}
+              className="accent-[var(--app-accent)] w-3 h-3"
+            />
+            <span className="text-[10px] text-app-accent">Full $</span>
           </label>
           <div className="flex items-center gap-1">
             <button

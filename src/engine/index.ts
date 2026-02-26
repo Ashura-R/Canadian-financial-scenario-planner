@@ -485,6 +485,7 @@ export function compute(scenario: Scenario): ComputedScenario {
   const CESG_LIFETIME_MAX = 7200;
 
   const computedYears: ComputedYear[] = [];
+  const effectiveYears: YearData[] = [];
 
   for (const rawYd of years) {
     // Per-year return overrides
@@ -646,6 +647,7 @@ export function compute(scenario: Scenario): ComputedScenario {
 
     // Pass 2: Check if conditional schedules apply, if so recompute
     let finalResult = pass1;
+    let effectiveYd: YearData = ydPass1; // track final effective year data for carry-forward
     if (hasConditionalSchedules(schedules, rawYd.year)) {
       const ydPass2 = applySchedules(ydWithFHSA, schedules, assumptions.inflationRate, pass1.computed, true,
         prevBalances, assumptions, fhsaContribLifetime, fhsaUnusedRoom);
@@ -661,6 +663,7 @@ export function compute(scenario: Scenario): ComputedScenario {
       }
 
       if (changed) {
+        effectiveYd = ydMerged;
         finalResult = computeOneYear(
           ydMerged, assumptions, prevBalances,
           capitalLossCF, rrspUnusedRoom, fhsaContribLifetime, fhsaUnusedRoom,
@@ -714,9 +717,10 @@ export function compute(scenario: Scenario): ComputedScenario {
     respGrantsLifetime += cESGThisYear;
 
     computedYears.push(computedYear);
+    effectiveYears.push(effectiveYd);
 
-    // Track TFSA withdrawals for next year's room restoration
-    prevYearTfsaWithdrawals = rawYd.tfsaWithdrawal;
+    // Track TFSA withdrawals for next year's room restoration (use effective data after scheduling)
+    prevYearTfsaWithdrawals = effectiveYd.tfsaWithdrawal;
 
     // Update carry-forward state
     capitalLossCF = finalResult.newCapitalLossCF;
@@ -725,7 +729,8 @@ export function compute(scenario: Scenario): ComputedScenario {
     fhsaUnusedRoom = finalResult.newFhsaUnusedRoom;
     tfsaUnusedRoom = finalResult.newTfsaUnusedRoom;
     prevACB = finalResult.newACB;
-    priorYearEarnedIncome = rawYd.employmentIncome + Math.max(0, rawYd.selfEmploymentIncome - (rawYd.selfEmploymentExpenses ?? 0));
+    // Use effective year data (after scheduling) so RRSP room generation works with scheduled income
+    priorYearEarnedIncome = effectiveYd.employmentIncome + Math.max(0, effectiveYd.selfEmploymentIncome - (effectiveYd.selfEmploymentExpenses ?? 0));
     prevBalances = { ...finalResult.newBalances };
 
     // FHSA transfer-rrsp: add FHSA balance to RRSP for next year
@@ -745,6 +750,7 @@ export function compute(scenario: Scenario): ComputedScenario {
   return {
     scenarioId: scenario.id,
     years: computedYears,
+    effectiveYears,
     analytics,
   };
 }

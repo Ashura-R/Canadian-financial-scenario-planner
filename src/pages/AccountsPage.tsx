@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useScenario } from '../store/ScenarioContext';
-import { formatCAD, formatPct, formatShort } from '../utils/formatters';
+import { formatCAD, formatPct, formatShort, safe } from '../utils/formatters';
 import { usePersistedYear } from '../utils/usePersistedYear';
+import { usePersistedState } from '../utils/usePersistedState';
 import { ChartRangeSelector, sliceByRange } from '../components/ChartRangeSelector';
 import type { ChartRange } from '../components/ChartRangeSelector';
 import {
@@ -278,31 +279,31 @@ function AllYearsView({ years, rawYears, openingBalances }: {
   openingBalances: OpeningBalances;
 }) {
   const chartColors = useChartColors();
-  const [chartRange, setChartRange] = useState<ChartRange>('all');
+  const [chartRange, setChartRange] = usePersistedState<ChartRange>('cdn-tax-chart-range-accounts', 'all');
   const chartYears = sliceByRange(years, chartRange);
 
   // Stacked bar chart data
   const barData = chartYears.map(yr => ({
     year: yr.year,
-    RRSP: yr.accounts.rrspEOY,
-    TFSA: yr.accounts.tfsaEOY,
-    FHSA: yr.accounts.fhsaEOY,
-    'Non-Reg': yr.accounts.nonRegEOY,
-    Savings: yr.accounts.savingsEOY,
-    'LIRA/LIF': yr.accounts.liraEOY,
-    RESP: yr.accounts.respEOY,
+    RRSP: safe(yr.accounts.rrspEOY),
+    TFSA: safe(yr.accounts.tfsaEOY),
+    FHSA: safe(yr.accounts.fhsaEOY),
+    'Non-Reg': safe(yr.accounts.nonRegEOY),
+    Savings: safe(yr.accounts.savingsEOY),
+    'LIRA/LIF': safe(yr.accounts.liraEOY),
+    RESP: safe(yr.accounts.respEOY),
   }));
 
   // Returns chart data
   const returnData = chartYears.map(yr => ({
     year: yr.year,
-    RRSP: yr.accounts.rrspReturn * 100,
-    TFSA: yr.accounts.tfsaReturn * 100,
-    FHSA: yr.accounts.fhsaReturn * 100,
-    'Non-Reg': yr.accounts.nonRegReturn * 100,
-    Savings: yr.accounts.savingsReturn * 100,
-    'LIRA/LIF': yr.accounts.liraReturn * 100,
-    RESP: yr.accounts.respReturn * 100,
+    RRSP: safe(yr.accounts.rrspReturn * 100),
+    TFSA: safe(yr.accounts.tfsaReturn * 100),
+    FHSA: safe(yr.accounts.fhsaReturn * 100),
+    'Non-Reg': safe(yr.accounts.nonRegReturn * 100),
+    Savings: safe(yr.accounts.savingsReturn * 100),
+    'LIRA/LIF': safe(yr.accounts.liraReturn * 100),
+    RESP: safe(yr.accounts.respReturn * 100),
   }));
 
   return (
@@ -445,7 +446,7 @@ export function AccountsPage() {
 
   const years = activeComputed.years;
   const [selectedYearIdx, setSelectedYearIdx] = usePersistedYear(years.length - 1);
-  const rawYears = activeScenario.years;
+  const rawYears = activeComputed.effectiveYears;
   const yr = years[selectedYearIdx] ?? years[0];
   const rawYd = rawYears[selectedYearIdx] ?? rawYears[0];
 

@@ -8,7 +8,8 @@ import { computeCPPDeferral, computeOASDeferral } from '../engine/retirementAnal
 import { computeSensitivity } from '../engine/sensitivityEngine';
 import { computeWithdrawalStrategies } from '../engine/optimizerEngine';
 import { ChartRangeSelector, sliceByRange } from '../components/ChartRangeSelector';
-import { formatShort, formatPct } from '../utils/formatters';
+import { formatShort, formatPct, safe } from '../utils/formatters';
+import { usePersistedState } from '../utils/usePersistedState';
 import { useChartColors } from '../hooks/useChartColors';
 import type { ChartRange } from '../components/ChartRangeSelector';
 import type { DeferralScenario } from '../engine/retirementAnalysis';
@@ -92,8 +93,8 @@ function TaxEfficiencySection({ computed }: { computed: ComputedScenario }) {
   const chartData = useMemo(() =>
     years.map((y, i) => ({
       year: y.year,
-      'Cumulative Tax': Math.round(analytics.cumulativeTotalTax[i] ?? 0),
-      'Cumulative After-Tax': Math.round(analytics.cumulativeAfterTaxIncome[i] ?? 0),
+      'Cumulative Tax': Math.round(safe(analytics.cumulativeTotalTax[i] ?? 0)),
+      'Cumulative After-Tax': Math.round(safe(analytics.cumulativeAfterTaxIncome[i] ?? 0)),
     })),
     [years, analytics]
   );
@@ -101,8 +102,8 @@ function TaxEfficiencySection({ computed }: { computed: ComputedScenario }) {
   const rateData = useMemo(() =>
     years.map(y => ({
       year: y.year,
-      'Avg Income Tax Rate': y.tax.avgIncomeTaxRate,
-      'Avg All-In Rate': y.tax.avgAllInRate,
+      'Avg Income Tax Rate': safe(y.tax.avgIncomeTaxRate),
+      'Avg All-In Rate': safe(y.tax.avgAllInRate),
     })),
     [years]
   );
@@ -159,9 +160,9 @@ function RateTimelineSection({ computed }: { computed: ComputedScenario }) {
   const marginalData = useMemo(() =>
     years.map(y => ({
       year: y.year,
-      'Federal': y.tax.marginalFederalRate,
-      'Provincial': y.tax.marginalProvincialRate,
-      'Combined': y.tax.marginalCombinedRate,
+      'Federal': safe(y.tax.marginalFederalRate),
+      'Provincial': safe(y.tax.marginalProvincialRate),
+      'Combined': safe(y.tax.marginalCombinedRate),
     })),
     [years]
   );
@@ -381,7 +382,7 @@ function DeferralTable({ scenarios, cumulativeAgeLabel, cumulativeIdx }: {
 // Section 4: Sensitivity Analysis
 // ══════════════════════════════════════════════════════════════════════
 function SensitivitySection({ analysis, years }: { analysis: SensitivityAnalysis; years: ComputedYear[] }) {
-  const [range, setRange] = useState<ChartRange>('all');
+  const [range, setRange] = usePersistedState<ChartRange>('cdn-tax-chart-range-sensitivity', 'all');
   const chartColors = useChartColors();
 
   const lineStyles: Record<string, { color: string; dash?: string; width: number }> = {
@@ -488,7 +489,7 @@ function WithdrawalSection({ strategies, years, withdrawalTarget, onTargetChange
   withdrawalTarget: number;
   onTargetChange: (v: number) => void;
 }) {
-  const [range, setRange] = useState<ChartRange>('all');
+  const [range, setRange] = usePersistedState<ChartRange>('cdn-tax-chart-range-withdrawal', 'all');
   const chartColors = useChartColors();
 
   if (strategies.length === 0) return null;

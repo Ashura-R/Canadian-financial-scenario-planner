@@ -216,5 +216,6 @@ export interface ComputedAnalytics {
 export interface ComputedScenario {
   scenarioId: string;
   years: ComputedYear[];
+  effectiveYears: import('./scenario').YearData[];
   analytics: ComputedAnalytics;
 }

@@ -3,7 +3,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import type { ComputedYear } from '../../../types/computed';
-import { formatShort, formatPct } from '../../../utils/formatters';
+import { formatShort, formatPct, safe } from '../../../utils/formatters';
 import { useChartColors } from '../../../hooks/useChartColors';
 
 interface Props { years: ComputedYear[]; realMode?: boolean; diffMode?: boolean }
@@ -77,8 +77,8 @@ export function NetWorthChart({ years, realMode, diffMode }: Props) {
   if (diffMode) {
     const data = years.map(y => ({
       year: y.year,
-      'Nominal NW': Math.round(y.accounts.netWorth),
-      'Real NW': Math.round(y.realNetWorth),
+      'Nominal NW': Math.round(safe(y.accounts.netWorth)),
+      'Real NW': Math.round(safe(y.realNetWorth)),
     }));
 
     return (
@@ -112,11 +112,11 @@ export function NetWorthChart({ years, realMode, diffMode }: Props) {
     const f = realMode ? y.inflationFactor : 1;
     return {
       year: y.year,
-      RRSP: Math.round(y.accounts.rrspEOY / f),
-      TFSA: Math.round(y.accounts.tfsaEOY / f),
-      FHSA: Math.round(y.accounts.fhsaEOY / f),
-      'Non-Reg': Math.round(y.accounts.nonRegEOY / f),
-      Savings: Math.round(y.accounts.savingsEOY / f),
+      RRSP: Math.round(safe(y.accounts.rrspEOY / f)),
+      TFSA: Math.round(safe(y.accounts.tfsaEOY / f)),
+      FHSA: Math.round(safe(y.accounts.fhsaEOY / f)),
+      'Non-Reg': Math.round(safe(y.accounts.nonRegEOY / f)),
+      Savings: Math.round(safe(y.accounts.savingsEOY / f)),
     };
   });
 

@@ -28,6 +28,7 @@ function recompute(state: ScenarioState, ids?: string[]): ScenarioState {
         newComputed[id] = compute(sc);
       } catch (e) {
         console.error('Compute error for scenario', id, e);
+        delete newComputed[id]; // clear stale data so CompareModal can filter it out
       }
     }
   }

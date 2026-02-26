@@ -3,7 +3,7 @@ import {
   ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import type { ComputedScenario } from '../../../types/computed';
-import { formatShort } from '../../../utils/formatters';
+import { formatShort, safe } from '../../../utils/formatters';
 import { useChartColors } from '../../../hooks/useChartColors';
 
 interface Props { computed: ComputedScenario; realMode?: boolean; diffMode?: boolean }
@@ -14,10 +14,10 @@ export function CumulativeCashFlowChart({ computed, realMode, diffMode }: Props)
   if (diffMode) {
     const data = computed.years.map((y, i) => ({
       year: y.year,
-      'Annual CF (Nom)': Math.round(computed.analytics.annualCashFlow[i] ?? 0),
-      'Annual CF (Real)': Math.round((computed.analytics.annualCashFlow[i] ?? 0) / y.inflationFactor),
-      'Cumulative (Nom)': Math.round(computed.analytics.cumulativeCashFlow[i] ?? 0),
-      'Cumulative (Real)': Math.round(computed.analytics.cumulativeRealCashFlow[i] ?? 0),
+      'Annual CF (Nom)': Math.round(safe(computed.analytics.annualCashFlow[i] ?? 0)),
+      'Annual CF (Real)': Math.round(safe((computed.analytics.annualCashFlow[i] ?? 0) / y.inflationFactor)),
+      'Cumulative (Nom)': Math.round(safe(computed.analytics.cumulativeCashFlow[i] ?? 0)),
+      'Cumulative (Real)': Math.round(safe(computed.analytics.cumulativeRealCashFlow[i] ?? 0)),
     }));
 
     return (
@@ -45,10 +45,10 @@ export function CumulativeCashFlowChart({ computed, realMode, diffMode }: Props)
     const f = realMode ? y.inflationFactor : 1;
     return {
       year: y.year,
-      'Annual CF': Math.round((computed.analytics.annualCashFlow[i] ?? 0) / f),
-      'Cumulative CF': Math.round(realMode
+      'Annual CF': Math.round(safe((computed.analytics.annualCashFlow[i] ?? 0) / f)),
+      'Cumulative CF': Math.round(safe(realMode
         ? (computed.analytics.cumulativeRealCashFlow[i] ?? 0)
-        : (computed.analytics.cumulativeCashFlow[i] ?? 0)),
+        : (computed.analytics.cumulativeCashFlow[i] ?? 0))),
     };
   });
 

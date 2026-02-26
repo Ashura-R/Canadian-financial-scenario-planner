@@ -18,6 +18,7 @@ interface Props {
   onCellDblClick?: () => void;
   onEditCommit?: (direction: 'down' | 'right', value?: number) => void;
   onEditCancel?: () => void;
+  longNumbers?: boolean;
 }
 
 export const TimelineCell = React.memo(function TimelineCell({
@@ -25,6 +26,7 @@ export const TimelineCell = React.memo(function TimelineCell({
   onNext, scheduledValue,
   isFocused, isSelected, isEditing, initialEditKey,
   onCellClick, onCellDblClick, onEditCommit, onEditCancel,
+  longNumbers,
 }: Props) {
   const [localEditing, setLocalEditing] = useState(false);
   const [raw, setRaw] = useState('');
@@ -58,6 +60,10 @@ export const TimelineCell = React.memo(function TimelineCell({
 
   function fmt(v: number) {
     if (pct) return (v * 100).toFixed(0) + '%';
+    if (longNumbers) {
+      if (v === 0) return '—';
+      return '$' + v.toLocaleString('en-CA', { maximumFractionDigits: 0 });
+    }
     if (Math.abs(v) >= 1000) return '$' + (v / 1000).toFixed(0) + 'K';
     if (v === 0) return '—';
     return '$' + v.toLocaleString('en-CA', { maximumFractionDigits: 0 });
