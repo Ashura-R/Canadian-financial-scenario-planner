@@ -55,6 +55,8 @@ const CONDITION_FIELDS: { value: ConditionField; label: string; group: string }[
   { value: 'savingsEOY', label: 'Savings Balance', group: 'Accounts' },
   { value: 'rrspUnusedRoom', label: 'RRSP Unused Room', group: 'Room' },
   { value: 'tfsaUnusedRoom', label: 'TFSA Unused Room', group: 'Room' },
+  { value: 'capitalGainsRealized', label: 'Capital Gains Realized', group: 'Capital' },
+  { value: 'capitalLossCF', label: 'Capital Loss C/F', group: 'Capital' },
   { value: 'age', label: 'Age', group: 'Other' },
 ];
 
@@ -73,6 +75,8 @@ const REFERENCE_FIELDS: { value: AmountReference; label: string; group: string }
   { value: 'savingsEOY', label: 'Savings Balance', group: 'Accounts' },
   { value: 'rrspUnusedRoom', label: 'RRSP Unused Room', group: 'Room' },
   { value: 'tfsaUnusedRoom', label: 'TFSA Unused Room', group: 'Room' },
+  { value: 'capitalGainsRealized', label: 'Capital Gains Realized', group: 'Capital' },
+  { value: 'capitalLossCF', label: 'Capital Loss C/F', group: 'Capital' },
 ];
 
 const MAX_REF_OPTIONS: { value: AmountMaxReference; label: string; group: string }[] = [
@@ -85,6 +89,7 @@ const MAX_REF_OPTIONS: { value: AmountMaxReference; label: string; group: string
   { value: 'fhsaBalance', label: 'FHSA Balance', group: 'Account Balance' },
   { value: 'nonRegBalance', label: 'Non-Reg Balance', group: 'Account Balance' },
   { value: 'savingsBalance', label: 'Savings Balance', group: 'Account Balance' },
+  { value: 'capitalLossCF', label: 'Capital Loss C/F', group: 'Carry-Forward' },
 ];
 
 const OPERATORS: { value: ConditionOperator; label: string }[] = [
@@ -354,6 +359,75 @@ export function SchedulingPage() {
             >
               + Add Rule
             </button>
+          </div>
+        </div>
+
+        {/* Quick Templates */}
+        <div className="mb-4">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Quick Templates</div>
+          <div className="flex flex-wrap gap-2">
+            {([
+              {
+                label: 'Auto-apply losses against gains',
+                desc: 'Apply capital loss C/F to offset realized gains each year',
+                item: {
+                  label: 'Auto-apply losses',
+                  field: 'capitalLossApplied' as ScheduledField,
+                  amountType: 'percentage' as const,
+                  amount: 1.0,
+                  amountReference: 'capitalGainsRealized' as AmountReference,
+                  amountMaxRef: 'capitalLossCF' as AmountMaxReference,
+                  conditions: [{ field: 'capitalGainsRealized' as ConditionField, operator: '>' as ConditionOperator, value: 0 }],
+                },
+              },
+              {
+                label: 'Realize losses to offset gains',
+                desc: 'Trigger capital loss realization when gains exist',
+                item: {
+                  label: 'Realize losses for gains',
+                  field: 'capitalLossesRealized' as ScheduledField,
+                  amountType: 'percentage' as const,
+                  amount: 1.0,
+                  amountReference: 'capitalGainsRealized' as AmountReference,
+                  conditions: [{ field: 'capitalGainsRealized' as ConditionField, operator: '>' as ConditionOperator, value: 0 }],
+                },
+              },
+              {
+                label: 'Tax-loss harvest (low income)',
+                desc: 'Realize losses when net taxable income is below a threshold',
+                item: {
+                  label: 'Tax-loss harvest',
+                  field: 'capitalLossesRealized' as ScheduledField,
+                  amountType: 'fixed' as const,
+                  amount: 5000,
+                  conditions: [{ field: 'netTaxableIncome' as ConditionField, operator: '<' as ConditionOperator, value: 50000 }],
+                },
+              },
+            ] as const).map((tpl, i) => (
+              <button
+                key={i}
+                onClick={() => {
+                  const newItem: ScheduledItem = {
+                    id: crypto.randomUUID(),
+                    label: tpl.item.label,
+                    field: tpl.item.field,
+                    startYear,
+                    endYear: undefined,
+                    amount: tpl.item.amount,
+                    amountType: tpl.item.amountType,
+                    amountReference: (tpl.item as any).amountReference,
+                    amountMaxRef: (tpl.item as any).amountMaxRef,
+                    conditions: tpl.item.conditions ? tpl.item.conditions.map(c => ({ ...c })) : undefined,
+                  };
+                  setItems([...items, newItem]);
+                  setExpandedId(newItem.id);
+                }}
+                className="px-3 py-1.5 text-[11px] bg-white border border-slate-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors text-slate-600 hover:text-blue-700"
+                title={tpl.desc}
+              >
+                {tpl.label}
+              </button>
+            ))}
           </div>
         </div>
 

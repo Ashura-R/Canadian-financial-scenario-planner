@@ -294,32 +294,32 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => vo
         {/* 2x2 Charts with time range controls */}
         <div className="grid grid-cols-2 gap-4">
           <ChartCard
-            title={realMode ? 'Real Net Worth Over Time' : 'Net Worth Over Time'}
+            title={diffMode ? 'Net Worth: Nominal vs Real' : realMode ? 'Real Net Worth Over Time' : 'Net Worth Over Time'}
             range={chartRange}
             onRangeChange={setChartRange}
           >
-            <NetWorthChart years={chartYears} realMode={realMode} />
+            <NetWorthChart years={chartYears} realMode={realMode} diffMode={diffMode} />
           </ChartCard>
           <ChartCard
-            title="Tax Waterfall"
+            title={diffMode ? 'Tax Burden: Nominal vs Real' : 'Tax Waterfall'}
             range={chartRange}
             onRangeChange={setChartRange}
           >
-            <TaxWaterfallChart years={chartYears} realMode={realMode} />
+            <TaxWaterfallChart years={chartYears} realMode={realMode} diffMode={diffMode} />
           </ChartCard>
           <ChartCard
-            title="Income Breakdown"
+            title={diffMode ? 'Gross Income: Nominal vs Real' : 'Income Breakdown'}
             range={chartRange}
             onRangeChange={setChartRange}
           >
-            <IncomeBreakdownChart years={chartYears} rawYears={chartRawYears} />
+            <IncomeBreakdownChart years={chartYears} rawYears={chartRawYears} diffMode={diffMode} />
           </ChartCard>
           <ChartCard
-            title={realMode ? 'Real Cash Flow' : 'Cash Flow (Annual + Cumulative)'}
+            title={diffMode ? 'Cash Flow: Nominal vs Real' : realMode ? 'Real Cash Flow' : 'Cash Flow (Annual + Cumulative)'}
             range={chartRange}
             onRangeChange={setChartRange}
           >
-            <CumulativeCashFlowChart computed={chartComputed} realMode={realMode} />
+            <CumulativeCashFlowChart computed={chartComputed} realMode={realMode} diffMode={diffMode} />
           </ChartCard>
         </div>
 

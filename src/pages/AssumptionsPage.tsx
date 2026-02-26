@@ -2,7 +2,7 @@ import React, { useState, createContext, useContext } from 'react';
 import { useScenario, useUpdateScenario } from '../store/ScenarioContext';
 import { PROVINCIAL_BRACKETS, PROVINCIAL_BPA, PROVINCIAL_DIV_CREDITS, DEFAULT_ASSUMPTIONS } from '../store/defaults';
 import { formatCAD } from '../utils/formatters';
-import type { Province, TaxBracket, Assumptions, FHSADisposition, OpeningCarryForwards } from '../types/scenario';
+import type { Province, TaxBracket, Assumptions, FHSADisposition, OpeningCarryForwards, ACBConfig } from '../types/scenario';
 
 const PROVINCES: { code: Province; label: string }[] = [
   { code: 'AB', label: 'Alberta' }, { code: 'BC', label: 'British Columbia' },
@@ -322,9 +322,9 @@ export function AssumptionsPage() {
 
   return (
     <div className="h-full overflow-y-auto bg-slate-50">
-      <div className="max-w-4xl mx-auto px-6 py-5">
+      <div className="max-w-5xl mx-auto px-6 py-5">
         {/* Tab bar */}
-        <div className="flex items-center gap-1 mb-6 border-b border-slate-200">
+        <div className="flex items-center justify-center gap-1 mb-6 border-b border-slate-200">
           {TABS.map(t => (
             <button
               key={t.id}
@@ -568,6 +568,59 @@ export function AssumptionsPage() {
                     }))}
                   />
                 </FormRow>
+              )}
+            </Section>
+
+            <Divider />
+
+            <Section title="Adjusted Cost Base (Non-Reg)">
+              <div className="text-[11px] text-slate-400 mb-2">
+                Track ACB for non-registered account to compute capital gains/losses on withdrawals.
+              </div>
+              <FormRow label="Enable ACB Tracking">
+                <div className="flex justify-end items-center h-full">
+                  <input
+                    type="checkbox"
+                    checked={!!activeScenario.acbConfig}
+                    onChange={e => {
+                      if (e.target.checked) {
+                        update(s => ({ ...s, acbConfig: { openingACB: s.openingBalances.nonReg, autoComputeGains: false } }));
+                      } else {
+                        update(s => {
+                          const { acbConfig: _, ...rest } = s;
+                          return rest as typeof s;
+                        });
+                      }
+                    }}
+                    className="accent-blue-600 w-4 h-4"
+                  />
+                </div>
+              </FormRow>
+              {activeScenario.acbConfig && (
+                <>
+                  <FormRow label="Opening ACB" hint="Cost basis at start of simulation">
+                    <NumInput
+                      value={activeScenario.acbConfig.openingACB ?? ob.nonReg}
+                      onChange={v => update(s => ({
+                        ...s,
+                        acbConfig: { ...(s.acbConfig ?? { openingACB: s.openingBalances.nonReg }), openingACB: v },
+                      }))}
+                    />
+                  </FormRow>
+                  <FormRow label="Auto-Compute Gains" hint="Replace manual CG/CL with ACB-derived values">
+                    <div className="flex justify-end items-center h-full">
+                      <input
+                        type="checkbox"
+                        checked={activeScenario.acbConfig.autoComputeGains ?? false}
+                        onChange={e => update(s => ({
+                          ...s,
+                          acbConfig: { ...(s.acbConfig ?? { openingACB: s.openingBalances.nonReg }), autoComputeGains: e.target.checked },
+                        }))}
+                        className="accent-blue-600 w-4 h-4"
+                      />
+                    </div>
+                  </FormRow>
+                </>
               )}
             </Section>
           </div>

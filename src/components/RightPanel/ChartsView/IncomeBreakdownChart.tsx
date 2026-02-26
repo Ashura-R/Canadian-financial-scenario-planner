@@ -5,9 +5,39 @@ import {
 import type { ComputedYear } from '../../../types/computed';
 import { formatShort } from '../../../utils/formatters';
 
-interface Props { years: ComputedYear[]; rawYears: import('../../../types/scenario').YearData[] }
+interface Props {
+  years: ComputedYear[];
+  rawYears: import('../../../types/scenario').YearData[];
+  diffMode?: boolean;
+}
 
-export function IncomeBreakdownChart({ years, rawYears }: Props) {
+export function IncomeBreakdownChart({ years, rawYears, diffMode }: Props) {
+  if (diffMode) {
+    const data = years.map((y, i) => ({
+      year: y.year,
+      'Gross Income (Nom)': Math.round(y.waterfall.grossIncome),
+      'Gross Income (Real)': Math.round(y.realGrossIncome),
+    }));
+
+    return (
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+          <XAxis dataKey="year" tick={{ fill: '#94a3b8', fontSize: 10 }} />
+          <YAxis tickFormatter={v => formatShort(v)} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+          <Tooltip
+            contentStyle={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: 6, fontSize: 11 }}
+            labelStyle={{ color: '#0f172a' }}
+            formatter={(v: number, name: string) => [formatShort(v), name]}
+          />
+          <Legend wrapperStyle={{ fontSize: 11, color: '#64748b' }} />
+          <Bar dataKey="Gross Income (Nom)" fill="#64748b" fillOpacity={0.85} />
+          <Bar dataKey="Gross Income (Real)" fill="#3b82f6" fillOpacity={0.85} />
+        </BarChart>
+      </ResponsiveContainer>
+    );
+  }
+
   const data = years.map((y, i) => ({
     year: y.year,
     Employment: Math.round(rawYears[i]?.employmentIncome ?? 0),

@@ -8,6 +8,7 @@ export type ConditionField =
   | 'netWorth' | 'totalIncomeTax' | 'employmentIncome' | 'selfEmploymentIncome'
   | 'rrspEOY' | 'tfsaEOY' | 'fhsaEOY' | 'nonRegEOY' | 'savingsEOY'
   | 'rrspUnusedRoom' | 'tfsaUnusedRoom'
+  | 'capitalGainsRealized' | 'capitalLossCF'
   | 'age';
 
 // Reference fields for percentage-based scheduled amounts
@@ -23,7 +24,8 @@ export type AmountMaxReference =
   | 'tfsaBalance'     // current TFSA balance (for withdrawals)
   | 'fhsaBalance'     // current FHSA balance (for withdrawals)
   | 'nonRegBalance'   // current Non-Reg balance (for withdrawals)
-  | 'savingsBalance'; // current Savings balance (for withdrawals)
+  | 'savingsBalance'  // current Savings balance (for withdrawals)
+  | 'capitalLossCF';  // available capital loss carry-forward
 
 export interface ScheduleCondition {
   field: ConditionField;
@@ -225,6 +227,11 @@ export interface OpeningCarryForwards {
   fhsaContribLifetime: number; // lifetime FHSA contributions made before start year
 }
 
+export interface ACBConfig {
+  openingACB?: number;           // defaults to opening nonReg balance
+  autoComputeGains?: boolean;    // replace manual CG with ACB-computed
+}
+
 export interface Scenario {
   id: string;
   name: string;
@@ -233,4 +240,5 @@ export interface Scenario {
   openingCarryForwards?: OpeningCarryForwards;
   years: YearData[];
   scheduledItems?: ScheduledItem[];
+  acbConfig?: ACBConfig;
 }

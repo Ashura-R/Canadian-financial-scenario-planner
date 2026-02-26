@@ -1,11 +1,12 @@
 import type { Scenario, OpeningBalances, ScheduledItem, YearData, ScheduleCondition } from '../types/scenario';
-import type { ComputedScenario, ComputedYear, ComputedRetirement, ComputedTaxDetail } from '../types/computed';
+import type { ComputedScenario, ComputedYear, ComputedRetirement, ComputedTaxDetail, ComputedACB } from '../types/computed';
 import { computeCPP, computeEI, computeTax } from './taxEngine';
 import type { RetirementIncome } from './taxEngine';
 import { computeAccounts, computeWaterfall } from './accountEngine';
 import type { ReturnOverrides } from './accountEngine';
 import { computeAnalytics } from './analyticsEngine';
 import { validateYear } from './validationEngine';
+import { computeACB } from './acbEngine';
 
 // CRA RRIF minimum withdrawal factors by age
 const RRIF_FACTORS: Record<number, number> = {
@@ -54,6 +55,8 @@ function buildConditionContext(computed: ComputedYear, rawYd: YearData): Record<
     savingsEOY: computed.accounts.savingsEOY,
     rrspUnusedRoom: computed.rrspUnusedRoom,
     tfsaUnusedRoom: computed.tfsaUnusedRoom,
+    capitalGainsRealized: rawYd.capitalGainsRealized,
+    capitalLossCF: computed.capitalLossCF,
     age: computed.retirement.age ?? 0,
   };
 }
@@ -77,6 +80,7 @@ function resolveMaxRef(
     case 'fhsaBalance': return prevBalances.fhsa;
     case 'nonRegBalance': return prevBalances.nonReg;
     case 'savingsBalance': return prevBalances.savings;
+    case 'capitalLossCF': return computed.capitalLossCF;
     default: return Infinity;
   }
 }
@@ -180,6 +184,9 @@ function computeOneYear(
   inflationFactor: number,
   returnOverrides: ReturnOverrides | undefined,
   fhsaDisposed: boolean = false,
+  acbEnabled: boolean = false,
+  prevACB: number = 0,
+  autoComputeGains: boolean = false,
 ): {
   computed: ComputedYear;
   newCapitalLossCF: number;
@@ -188,6 +195,7 @@ function computeOneYear(
   newFhsaUnusedRoom: number;
   newTfsaUnusedRoom: number;
   newBalances: OpeningBalances;
+  newACB: number;
 } {
   const birthYear = assumptions.birthYear ?? null;
   const retSettings = assumptions.retirement ?? {
@@ -234,16 +242,44 @@ function computeOneYear(
     tfsaUnusedRoom + tfsaRoomGenerated, prevBalances, isRRIF, fhsaDisposed, fhsaUnusedRoom,
   );
 
-  const lossCFBeforeApply = capitalLossCF + ydEffective.capitalLossesRealized;
-  const lossApplied = Math.min(ydEffective.capitalLossApplied, lossCFBeforeApply);
+  let lossCFBeforeApply = capitalLossCF + ydEffective.capitalLossesRealized;
+  let lossApplied = Math.min(ydEffective.capitalLossApplied, lossCFBeforeApply);
 
   const cpp = computeCPP(ydEffective.employmentIncome, ydEffective.selfEmploymentIncome, assumptions.cpp);
   const ei = computeEI(ydEffective.employmentIncome, ydEffective.selfEmploymentIncome, assumptions.ei);
 
-  const ydForTax = { ...ydEffective, capitalLossApplied: lossApplied };
+  // Compute accounts FIRST (needed for ACB)
+  const accounts = computeAccounts(ydEffective, assumptions, prevBalances, returnOverrides);
+
+  // ACB tracking
+  let acbResult: ComputedACB | undefined;
+  let ydForTax = { ...ydEffective, capitalLossApplied: lossApplied };
+  if (acbEnabled) {
+    acbResult = computeACB(
+      ydEffective.nonRegContribution,
+      ydEffective.nonRegWithdrawal,
+      prevACB,
+      prevBalances.nonReg,
+      accounts.nonRegEOY,
+    );
+    // When auto-compute gains: replace manual CG/CL with ACB-computed values
+    if (autoComputeGains) {
+      if (acbResult.computedCapitalGain > 0) {
+        ydForTax = { ...ydForTax, capitalGainsRealized: acbResult.computedCapitalGain, capitalLossesRealized: 0 };
+      } else if (acbResult.computedCapitalGain < 0) {
+        ydForTax = { ...ydForTax, capitalGainsRealized: 0, capitalLossesRealized: Math.abs(acbResult.computedCapitalGain) };
+      } else {
+        ydForTax = { ...ydForTax, capitalGainsRealized: 0, capitalLossesRealized: 0 };
+      }
+      // Recompute loss tracking with ACB-derived values
+      lossCFBeforeApply = capitalLossCF + ydForTax.capitalLossesRealized;
+      lossApplied = Math.min(ydForTax.capitalLossApplied, lossCFBeforeApply);
+      ydForTax = { ...ydForTax, capitalLossApplied: lossApplied };
+    }
+  }
+
   const taxResult = computeTax(ydForTax, assumptions, cpp, ei, retirementIncome, assumptions.province);
   const { detail: taxDetail, ...tax } = taxResult;
-  const accounts = computeAccounts(ydEffective, assumptions, prevBalances, returnOverrides);
   const waterfall = computeWaterfall(ydEffective, cpp, ei, tax, accounts, retirementIncome);
 
   const retirement: ComputedRetirement = {
@@ -281,6 +317,7 @@ function computeOneYear(
     rrspUnusedRoom,
     fhsaContribLifetime,
     fhsaUnusedRoom,
+    acb: acbResult,
     warnings,
   };
 
@@ -314,6 +351,7 @@ function computeOneYear(
     newFhsaUnusedRoom,
     newTfsaUnusedRoom,
     newBalances,
+    newACB: acbResult?.closingACB ?? prevACB,
   };
 }
 
@@ -321,6 +359,9 @@ export function compute(scenario: Scenario): ComputedScenario {
   const { assumptions, openingBalances, years } = scenario;
   const schedules = scenario.scheduledItems ?? [];
   const fhsaSettings = assumptions.fhsa;
+  const acbConfig = scenario.acbConfig;
+  const acbEnabled = !!acbConfig;
+  const autoComputeGains = acbConfig?.autoComputeGains ?? false;
 
   const ocf = scenario.openingCarryForwards;
   let prevBalances: OpeningBalances = { ...openingBalances };
@@ -332,6 +373,7 @@ export function compute(scenario: Scenario): ComputedScenario {
   let prevYearTfsaWithdrawals = 0;
   let inflationFactor = 1;
   let fhsaDisposed = false;
+  let prevACB = acbConfig?.openingACB ?? openingBalances.nonReg;
 
   const computedYears: ComputedYear[] = [];
 
@@ -402,6 +444,7 @@ export function compute(scenario: Scenario): ComputedScenario {
       capitalLossCF, rrspUnusedRoom, fhsaContribLifetime, fhsaUnusedRoom,
       tfsaUnusedRoom, tfsaRoomGenerated,
       inflationFactor, returnOverrides, fhsaDisposed,
+      acbEnabled, prevACB, autoComputeGains,
     );
 
     // Pass 2: Check if conditional schedules apply, if so recompute
@@ -426,6 +469,7 @@ export function compute(scenario: Scenario): ComputedScenario {
           capitalLossCF, rrspUnusedRoom, fhsaContribLifetime, fhsaUnusedRoom,
           tfsaUnusedRoom, tfsaRoomGenerated,
           inflationFactor, returnOverrides, fhsaDisposed,
+          acbEnabled, prevACB, autoComputeGains,
         );
       }
     }
@@ -441,6 +485,7 @@ export function compute(scenario: Scenario): ComputedScenario {
     fhsaContribLifetime = finalResult.newFhsaContribLifetime;
     fhsaUnusedRoom = finalResult.newFhsaUnusedRoom;
     tfsaUnusedRoom = finalResult.newTfsaUnusedRoom;
+    prevACB = finalResult.newACB;
     prevBalances = { ...finalResult.newBalances };
 
     // FHSA transfer-rrsp: add FHSA balance to RRSP for next year

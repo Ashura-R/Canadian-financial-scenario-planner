@@ -96,6 +96,16 @@ export interface ComputedRetirement {
   rrifMinWithdrawal: number; // CRA minimum withdrawal amount (0 if not RRIF yet)
 }
 
+export interface ComputedACB {
+  openingACB: number;
+  acbAdded: number;              // contributions (purchases at cost)
+  acbRemoved: number;            // proportional ACB on withdrawals
+  closingACB: number;
+  perUnitACB: number;            // closingACB / nonRegEOY (0 if no balance)
+  computedCapitalGain: number;   // proceeds - proportional ACB
+  dispositionProceeds: number;
+}
+
 export interface ComputedYear {
   year: number;
   cpp: ComputedCPP;
@@ -119,6 +129,8 @@ export interface ComputedYear {
   rrspUnusedRoom: number;
   fhsaContribLifetime: number;
   fhsaUnusedRoom: number;
+  // ACB tracking (optional)
+  acb?: ComputedACB;
   // Warnings
   warnings: ValidationWarning[];
 }

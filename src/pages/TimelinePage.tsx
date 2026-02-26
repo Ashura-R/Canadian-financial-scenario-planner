@@ -48,6 +48,8 @@ function getRefFromComputed(ref: string, cy: ComputedYear): number {
     case 'savingsEOY': return cy.accounts.savingsEOY;
     case 'rrspUnusedRoom': return cy.rrspUnusedRoom;
     case 'tfsaUnusedRoom': return cy.tfsaUnusedRoom;
+    case 'capitalGainsRealized': return cy.tax.taxableCapitalGains; // from computed tax
+    case 'capitalLossCF': return cy.capitalLossCF;
     default: return 0;
   }
 }
@@ -93,9 +95,9 @@ function buildScheduleOverlay(
 // Default group order
 const DEFAULT_GROUP_ORDER = [
   'Income', 'RRSP', 'TFSA', 'FHSA', 'Non-Reg & Savings',
-  'Asset Allocation', 'Capital Loss', 'EOY Overrides',
-  'Retirement (Computed)', 'Rate Overrides', 'Contribution Room',
-  'Tax Results (Computed)',
+  'Asset Allocation', 'Capital Loss', 'ACB Tracking',
+  'EOY Overrides', 'Retirement (Computed)', 'Rate Overrides',
+  'Contribution Room', 'Tax Results (Computed)',
 ];
 
 const GROUP_DEFAULTS: Record<string, boolean> = {
@@ -106,6 +108,7 @@ const GROUP_DEFAULTS: Record<string, boolean> = {
   'Non-Reg & Savings': true,
   'Asset Allocation': false,
   'Capital Loss': false,
+  'ACB Tracking': false,
   'EOY Overrides': false,
   'Retirement (Computed)': false,
   'Rate Overrides': false,
@@ -176,6 +179,13 @@ const ROW_REGISTRY: RowEntry[] = [
   // Capital Loss
   { rowId: 'capitalLossApplied', editable: true, group: 'Capital Loss' },
   { rowId: '_computed_capitalLossCF', editable: false, group: 'Capital Loss' },
+  // ACB Tracking
+  { rowId: '_computed_acbOpening', editable: false, group: 'ACB Tracking' },
+  { rowId: '_computed_acbAdded', editable: false, group: 'ACB Tracking' },
+  { rowId: '_computed_acbRemoved', editable: false, group: 'ACB Tracking' },
+  { rowId: '_computed_acbClosing', editable: false, group: 'ACB Tracking' },
+  { rowId: '_computed_acbPerUnit', editable: false, group: 'ACB Tracking' },
+  { rowId: '_computed_acbCG', editable: false, group: 'ACB Tracking' },
   // EOY Overrides
   { rowId: 'rrspEOYOverride', editable: true, group: 'EOY Overrides', isOverride: true },
   { rowId: 'tfsaEOYOverride', editable: true, group: 'EOY Overrides', isOverride: true },
@@ -823,6 +833,35 @@ export function TimelinePage() {
             )}
           </>
         );
+
+      case 'ACB Tracking': {
+        const acbOn = !!activeScenario?.acbConfig;
+        const fmtACB = (v: number) => v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString();
+        if (!acbOn) {
+          return (
+            <tr>
+              <td className="sticky left-0 z-10 bg-slate-50 px-2 py-1.5 text-[11px] text-slate-400 italic" colSpan={years.length + 1}>
+                Enable in Settings &gt; Accounts
+              </td>
+            </tr>
+          );
+        }
+        return (
+          <>
+            {renderComputedRow('_computed_acbOpening', 'Opening ACB', i => fmtACB(computed[i]?.acb?.openingACB ?? 0))}
+            {renderComputedRow('_computed_acbAdded', 'ACB Added', i => fmtACB(computed[i]?.acb?.acbAdded ?? 0))}
+            {renderComputedRow('_computed_acbRemoved', 'ACB Removed', i => fmtACB(computed[i]?.acb?.acbRemoved ?? 0))}
+            {renderComputedRow('_computed_acbClosing', 'Closing ACB', i => fmtACB(computed[i]?.acb?.closingACB ?? 0))}
+            {renderComputedRow('_computed_acbPerUnit', 'Per-Unit ACB', i => { const v = computed[i]?.acb?.perUnitACB ?? 0; return v > 0 ? '$' + v.toFixed(4) : '—'; })}
+            {renderComputedRow('_computed_acbCG', 'Computed CG', i => {
+              const v = computed[i]?.acb?.computedCapitalGain ?? 0;
+              if (v === 0) return '—';
+              const s = v >= 1000 || v <= -1000 ? '$' + Math.round(Math.abs(v) / 1000) + 'K' : '$' + Math.round(Math.abs(v)).toLocaleString();
+              return v < 0 ? '-' + s : s;
+            })}
+          </>
+        );
+      }
 
       case 'EOY Overrides':
         return (
