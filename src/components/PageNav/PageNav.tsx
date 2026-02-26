@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type Page = 'overview' | 'tax-detail' | 'accounts' | 'timeline' | 'scheduling' | 'analysis' | 'assumptions';
+export type Page = 'overview' | 'tax-detail' | 'accounts' | 'expenses' | 'timeline' | 'scheduling' | 'analysis' | 'assumptions';
 
 interface Props {
   page: Page;
@@ -11,6 +11,7 @@ const TABS: { id: Page; label: string }[] = [
   { id: 'overview', label: 'Overview' },
   { id: 'tax-detail', label: 'Tax Detail' },
   { id: 'accounts', label: 'Accounts' },
+  { id: 'expenses', label: 'Expenses' },
   { id: 'timeline', label: 'Timeline' },
   { id: 'scheduling', label: 'Scheduling' },
   { id: 'analysis', label: 'Analysis' },

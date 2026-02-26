@@ -7,6 +7,7 @@ import { useScenario, useWhatIf } from '../store/ScenarioContext';
 import { applyWhatIfAdjustments } from '../engine/whatIfEngine';
 import { computeCPPDeferral, computeOASDeferral } from '../engine/retirementAnalysis';
 import { computeSensitivity } from '../engine/sensitivityEngine';
+import { runMonteCarlo } from '../engine/monteCarloEngine';
 import { computeWithdrawalStrategies } from '../engine/optimizerEngine';
 import { ChartRangeSelector, sliceByRange } from '../components/ChartRangeSelector';
 import { formatShort, formatPct, safe } from '../utils/formatters';
@@ -15,9 +16,10 @@ import { useChartColors } from '../hooks/useChartColors';
 import type { ChartRange } from '../components/ChartRangeSelector';
 import type { DeferralScenario } from '../engine/retirementAnalysis';
 import type { SensitivityAnalysis } from '../engine/sensitivityEngine';
+import type { MonteCarloResult, MonteCarloPercentileBands } from '../engine/monteCarloEngine';
 import type { WithdrawalStrategy } from '../engine/optimizerEngine';
 import type { ComputedYear, ComputedScenario } from '../types/computed';
-import type { Assumptions } from '../types/scenario';
+import type { Assumptions, MonteCarloConfig } from '../types/scenario';
 
 // ── Shared styles ────────────────────────────────────────────────────
 const COLORS = ['#2563eb', '#059669', '#d97706', '#7c3aed', '#dc2626', '#0891b2'];
@@ -637,12 +639,172 @@ function WithdrawalSection({ strategies, years, withdrawalTarget, onTargetChange
 // ══════════════════════════════════════════════════════════════════════
 // Main Page
 // ══════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════
+// Section 6: Monte Carlo Simulation
+// ══════════════════════════════════════════════════════════════════════
+const MC_BAND_COLORS = {
+  p10p90: '#dbeafe',  // light blue fill
+  p25p75: '#93c5fd',  // medium blue fill
+  p50: '#2563eb',     // blue line
+};
+
+function MonteCarloSection({ result, years }: { result: MonteCarloResult; years: ComputedYear[] }) {
+  const [range, setRange] = usePersistedState<ChartRange>('cdn-tax-chart-range-mc', 'all');
+  const chartColors = useChartColors();
+
+  const chartData = useMemo(() => {
+    return result.years.map((yr, i) => ({
+      year: yr,
+      p10: Math.round(result.netWorth.p10[i]),
+      p25: Math.round(result.netWorth.p25[i]),
+      p50: Math.round(result.netWorth.p50[i]),
+      p75: Math.round(result.netWorth.p75[i]),
+      p90: Math.round(result.netWorth.p90[i]),
+    }));
+  }, [result]);
+
+  const incomeData = useMemo(() => {
+    return result.years.map((yr, i) => ({
+      year: yr,
+      p10: Math.round(result.afterTaxIncome.p10[i]),
+      p25: Math.round(result.afterTaxIncome.p25[i]),
+      p50: Math.round(result.afterTaxIncome.p50[i]),
+      p75: Math.round(result.afterTaxIncome.p75[i]),
+      p90: Math.round(result.afterTaxIncome.p90[i]),
+    }));
+  }, [result]);
+
+  const sliced = sliceByRange(chartData, range);
+  const incomeSliced = sliceByRange(incomeData, range);
+
+  const s = result.finalNetWorthStats;
+
+  // Build histogram buckets (10 buckets)
+  const histData = useMemo(() => {
+    const dist = result.finalNetWorthDistribution;
+    if (dist.length === 0) return [];
+    const min = dist[0];
+    const max = dist[dist.length - 1];
+    const range = max - min;
+    if (range <= 0) return [{ bucket: formatShort(min), count: dist.length }];
+    const numBuckets = 10;
+    const bucketSize = range / numBuckets;
+    const buckets = Array.from({ length: numBuckets }, (_, i) => ({
+      bucket: formatShort(min + i * bucketSize),
+      count: 0,
+    }));
+    for (const v of dist) {
+      const idx = Math.min(numBuckets - 1, Math.floor((v - min) / bucketSize));
+      buckets[idx].count++;
+    }
+    return buckets;
+  }, [result.finalNetWorthDistribution]);
+
+  return (
+    <section>
+      <SectionHeader title={`Monte Carlo Simulation — ${result.numTrials} Trials`} />
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <KPI label="Median Final NW" value={formatShort(s.median)} />
+        <KPI label="Mean Final NW" value={formatShort(s.mean)} />
+        <KPI label="P10 — P90 Range" value={`${formatShort(s.p10)} — ${formatShort(s.p90)}`} />
+        <KPI label="Probability of Ruin" value={`${result.probabilityOfRuin.toFixed(1)}%`}
+          cls={result.probabilityOfRuin > 10 ? 'text-red-600' : result.probabilityOfRuin > 0 ? 'text-amber-600' : 'text-emerald-600'} />
+      </div>
+
+      {/* Net Worth Fan Chart with percentile bands */}
+      <AnalysisChartCard title="Net Worth — Percentile Bands" range={range} onRangeChange={setRange} height={280}>
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={sliced} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
+            <XAxis dataKey="year" tick={chartColors.axisTick} />
+            <YAxis tickFormatter={v => formatShort(v)} tick={chartColors.axisTick} />
+            <Tooltip contentStyle={chartColors.tooltipStyle} formatter={tooltipFmt} />
+            <Legend wrapperStyle={chartColors.legendStyle10} />
+            <Area type="monotone" dataKey="p90" stroke="none" fill={MC_BAND_COLORS.p10p90} fillOpacity={0.5} name="P90" />
+            <Area type="monotone" dataKey="p75" stroke="none" fill={MC_BAND_COLORS.p25p75} fillOpacity={0.5} name="P75" />
+            <Area type="monotone" dataKey="p50" stroke={MC_BAND_COLORS.p50} fill="none" strokeWidth={2.5} name="Median" />
+            <Area type="monotone" dataKey="p25" stroke="none" fill="#ffffff" fillOpacity={0.6} name="P25" />
+            <Area type="monotone" dataKey="p10" stroke="#94a3b8" fill="#ffffff" fillOpacity={0.8} strokeDasharray="4 3" strokeWidth={1} name="P10" />
+          </AreaChart>
+        </ResponsiveContainer>
+      </AnalysisChartCard>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 mt-4">
+        {/* After-Tax Income Bands */}
+        <AnalysisChartCard title="After-Tax Income — Percentile Bands" range={range} onRangeChange={setRange} height={220}>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={incomeSliced} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
+              <XAxis dataKey="year" tick={chartColors.axisTick} />
+              <YAxis tickFormatter={v => formatShort(v)} tick={chartColors.axisTick} />
+              <Tooltip contentStyle={chartColors.tooltipStyle} formatter={tooltipFmt} />
+              <Area type="monotone" dataKey="p90" stroke="none" fill="#d1fae5" fillOpacity={0.5} name="P90" />
+              <Area type="monotone" dataKey="p75" stroke="none" fill="#6ee7b7" fillOpacity={0.5} name="P75" />
+              <Area type="monotone" dataKey="p50" stroke="#059669" fill="none" strokeWidth={2} name="Median" />
+              <Area type="monotone" dataKey="p25" stroke="none" fill="#ffffff" fillOpacity={0.6} name="P25" />
+              <Area type="monotone" dataKey="p10" stroke="#94a3b8" fill="#ffffff" fillOpacity={0.8} strokeDasharray="4 3" strokeWidth={1} name="P10" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </AnalysisChartCard>
+
+        {/* Histogram */}
+        {histData.length > 1 && (
+          <AnalysisChartCard title="Final Net Worth Distribution" height={220}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={histData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
+                <XAxis dataKey="bucket" tick={chartColors.axisTick} />
+                <YAxis tick={chartColors.axisTick} />
+                <Tooltip contentStyle={chartColors.tooltipStyle} />
+                <Area type="monotone" dataKey="count" stroke="#2563eb" fill="#3b82f6" fillOpacity={0.4} name="Trials" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </AnalysisChartCard>
+        )}
+      </div>
+
+      {/* Stats table */}
+      <div className="mt-3 bg-app-surface rounded-lg border border-app-border p-3 overflow-x-auto">
+        <table className="text-xs w-full">
+          <thead>
+            <tr className="border-b border-app-border">
+              <th className="text-left py-1.5 pr-3 text-app-text3 font-medium">Statistic</th>
+              <th className="text-right py-1.5 px-2 text-app-text3 font-medium">Value</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              ['Min', s.min], ['P10', s.p10], ['P25', s.p25],
+              ['Median (P50)', s.median], ['Mean', s.mean],
+              ['P75', s.p75], ['P90', s.p90], ['Max', s.max],
+            ].map(([label, val]) => (
+              <tr key={label as string} className="border-b border-app-border">
+                <td className="py-1 pr-3 text-app-text2">{label as string}</td>
+                <td className="py-1 px-2 text-right tabular-nums font-medium">{formatShort(val as number)}</td>
+              </tr>
+            ))}
+            <tr className="border-b border-app-border">
+              <td className="py-1 pr-3 text-app-text2">Probability of Ruin</td>
+              <td className={`py-1 px-2 text-right tabular-nums font-medium ${result.probabilityOfRuin > 10 ? 'text-red-600' : 'text-emerald-600'}`}>
+                {result.probabilityOfRuin.toFixed(1)}%
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 export function AnalysisPage() {
   const { activeScenario, activeComputed } = useScenario();
   const { isActive: isWhatIfMode, computed: whatIfComputed, adjustments } = useWhatIf();
   const [cppMonthly, setCppMonthly] = useState(900);
   const [oasMonthly, setOasMonthly] = useState(700);
   const [withdrawalTarget, setWithdrawalTarget] = useState(50000);
+  const [mcTrials, setMcTrials] = useState(500);
+  const [mcEnabled, setMcEnabled] = useState(false);
 
   // When what-if is active, use modified scenario for sensitivity/withdrawal engines
   const effectiveScenario = useMemo(() => {
@@ -674,6 +836,21 @@ export function AnalysisPage() {
     [effectiveScenario, withdrawalTarget]
   );
 
+  const mcResult = useMemo(() => {
+    if (!mcEnabled || !effectiveScenario) return null;
+    const ar = effectiveScenario.assumptions.assetReturns;
+    // Use scenario's MC config if it exists, otherwise build from assumption returns
+    const config: MonteCarloConfig = effectiveScenario.monteCarloConfig ?? {
+      enabled: true,
+      numTrials: mcTrials,
+      equity: { mean: ar.equity, stdDev: 0.15 },
+      fixedIncome: { mean: ar.fixedIncome, stdDev: 0.05 },
+      cash: { mean: ar.cash, stdDev: 0.01 },
+      savings: { mean: ar.savings, stdDev: 0.005 },
+    };
+    return runMonteCarlo(effectiveScenario, { ...config, numTrials: mcTrials });
+  }, [mcEnabled, mcTrials, effectiveScenario]);
+
   if (!activeScenario || !activeComputed) return null;
 
   return (
@@ -701,6 +878,27 @@ export function AnalysisPage() {
 
       {/* Section 4: Sensitivity */}
       {sensitivity && <SensitivitySection analysis={sensitivity} years={displayComputed!.years} />}
+
+      {/* Section 6: Monte Carlo */}
+      <section>
+        <SectionHeader title="Monte Carlo Simulation">
+          <label className="flex items-center gap-1.5 text-[11px] text-app-text3">
+            <input type="checkbox" checked={mcEnabled} onChange={e => setMcEnabled(e.target.checked)}
+              className="rounded border-app-border" />
+            Enable
+          </label>
+          {mcEnabled && (
+            <InlineInput label="Trials" value={mcTrials} onChange={v => setMcTrials(Math.max(10, Math.min(2000, v)))} width="w-16" />
+          )}
+        </SectionHeader>
+        {!mcEnabled && (
+          <div className="bg-app-surface border border-app-border rounded-lg p-4 text-xs text-app-text4">
+            Enable Monte Carlo to simulate {effectiveScenario?.assumptions.numYears ?? 40} years of randomized returns
+            across {mcTrials} trials and see percentile outcome bands.
+          </div>
+        )}
+        {mcEnabled && mcResult && <MonteCarloSection result={mcResult} years={displayComputed!.years} />}
+      </section>
 
       {/* Section 5: Withdrawal Strategies */}
       <WithdrawalSection

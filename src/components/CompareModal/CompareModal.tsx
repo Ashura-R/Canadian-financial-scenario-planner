@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
+} from 'recharts';
 import { useScenario } from '../../store/ScenarioContext';
 import { DiffTable } from './DiffTable';
-import { OverlayCharts } from './OverlayCharts';
+import { OverlayCharts, SCENARIO_COLORS } from './OverlayCharts';
 import { formatCAD, formatPct, formatShort } from '../../utils/formatters';
 import type { ComputedScenario, ComputedYear } from '../../types/computed';
 import type { Scenario } from '../../types/scenario';
-
-const SCENARIO_COLORS = ['#2563eb', '#059669', '#d97706', '#7c3aed', '#dc2626', '#0891b2'];
 
 type Tab = 'lifetime' | 'diff' | 'charts' | 'tax' | 'accounts';
 
@@ -51,6 +52,37 @@ function getBestWorstIdx(values: number[], higherIsBetter: boolean): { best: num
   return { best: bestIdx, worst: worstIdx };
 }
 
+function CompareBarChart({ data, scenarios }: {
+  data: { label: string; values: number[] }[];
+  scenarios: Scenario[];
+}) {
+  const chartData = data.map(d => {
+    const row: Record<string, number | string> = { metric: d.label };
+    scenarios.forEach((sc, i) => { row[sc.name] = Math.round(d.values[i] ?? 0); });
+    return row;
+  });
+
+  return (
+    <div className="bg-app-surface border border-app-border rounded-lg p-3 mb-4">
+      <div className="text-[10px] font-semibold text-app-text2 uppercase tracking-wide mb-2">Key Metrics Comparison</div>
+      <div style={{ height: 160 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--app-chart-grid)" />
+            <XAxis dataKey="metric" tick={{ fill: 'var(--app-chart-tick)', fontSize: 9 }} />
+            <YAxis tickFormatter={v => formatShort(v as number)} tick={{ fill: 'var(--app-chart-tick)', fontSize: 9 }} />
+            <Tooltip contentStyle={{ background: 'var(--app-surface)', border: '1px solid var(--app-border)', borderRadius: 6, fontSize: 11 }}
+              formatter={(v: number, name: string) => [formatShort(v), name]} />
+            {scenarios.map((sc, i) => (
+              <Bar key={sc.id} dataKey={sc.name} fill={SCENARIO_COLORS[i % SCENARIO_COLORS.length]} fillOpacity={0.75} />
+            ))}
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
+
 function TaxCompareTab({ scenarios, computed }: { scenarios: Scenario[]; computed: ComputedScenario[] }) {
   const [yearIdx, setYearIdx] = useState(0);
   const allYears = computed[0]?.years.map(y => y.year) ?? [];
@@ -74,9 +106,19 @@ function TaxCompareTab({ scenarios, computed }: { scenarios: Scenario[]; compute
     { label: 'Avg All-In Rate', fn: yr => yr.tax.avgAllInRate, format: 'pct', higherIsBetter: false },
   ];
 
+  const barData = useMemo(() => {
+    const yr = (c: ComputedScenario) => c.years[yearIdx];
+    return [
+      { label: 'Total Tax', values: computed.map(c => yr(c)?.tax.totalIncomeTax ?? 0) },
+      { label: 'After-Tax', values: computed.map(c => yr(c)?.waterfall.afterTaxIncome ?? 0) },
+      { label: 'Net Cash Flow', values: computed.map(c => yr(c)?.waterfall.netCashFlow ?? 0) },
+    ];
+  }, [computed, yearIdx]);
+
   return (
     <div className="p-4">
       <YearScrubber yearIdx={yearIdx} allYears={allYears} onChange={setYearIdx} />
+      <CompareBarChart data={barData} scenarios={scenarios} />
 
       <div className="overflow-x-auto">
         <table className="w-full text-xs border-collapse">
@@ -161,9 +203,19 @@ function AccountsCompareTab({ scenarios, computed }: { scenarios: Scenario[]; co
     { label: 'Capital Loss C/F', fn: yr => yr.capitalLossCF, format: 'cad', higherIsBetter: false },
   ];
 
+  const barData = useMemo(() => {
+    const yr = (c: ComputedScenario) => c.years[yearIdx];
+    return [
+      { label: 'Net Worth', values: computed.map(c => yr(c)?.accounts.netWorth ?? 0) },
+      { label: 'RRSP', values: computed.map(c => yr(c)?.accounts.rrspEOY ?? 0) },
+      { label: 'TFSA', values: computed.map(c => yr(c)?.accounts.tfsaEOY ?? 0) },
+    ];
+  }, [computed, yearIdx]);
+
   return (
     <div className="p-4">
       <YearScrubber yearIdx={yearIdx} allYears={allYears} onChange={setYearIdx} />
+      <CompareBarChart data={barData} scenarios={scenarios} />
 
       <div className="overflow-x-auto">
         <table className="w-full text-xs border-collapse">
@@ -291,6 +343,29 @@ function LifetimeSummaryTab({ scenarios, computed }: { scenarios: Scenario[]; co
   );
 }
 
+function exportCompareCSV(scenarios: Scenario[], computed: ComputedScenario[]) {
+  if (computed.length === 0) return;
+  const allYears = computed[0].years.map(y => y.year);
+  const header = ['Year', ...scenarios.flatMap(sc => [
+    `${sc.name} Net Worth`, `${sc.name} After-Tax`, `${sc.name} Total Tax`, `${sc.name} Net Cash Flow`,
+  ])];
+  const rows = allYears.map((year, yIdx) => {
+    const vals = computed.flatMap(c => {
+      const yr = c.years[yIdx];
+      return yr ? [yr.accounts.netWorth, yr.waterfall.afterTaxIncome, yr.tax.totalIncomeTax, yr.waterfall.netCashFlow] : [0, 0, 0, 0];
+    });
+    return [year, ...vals.map(v => Math.round(v))];
+  });
+  const csv = [header.join(','), ...rows.map(r => r.join(','))].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `compare_${scenarios.map(s => s.name).join('_vs_')}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export function CompareModal({ onClose }: Props) {
   const { state } = useScenario();
   const [selected, setSelected] = useState<Set<string>>(
@@ -410,6 +485,14 @@ export function CompareModal({ onClose }: Props) {
                 </button>
               ))}
             </div>
+            {selectedComputed.length >= 2 && (
+              <button
+                onClick={() => exportCompareCSV(selectedScenarios, selectedComputed)}
+                className="px-2.5 py-1 text-[10px] rounded border border-app-border bg-app-surface text-app-text3 hover:text-app-text hover:border-app-border2 transition-colors"
+              >
+                Export CSV
+              </button>
+            )}
             <button
               onClick={onClose}
               className="text-app-text4 hover:text-app-text2 text-xl leading-none transition-colors ml-2"

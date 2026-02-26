@@ -101,7 +101,7 @@ function buildScheduleOverlay(
 // Default group order
 const DEFAULT_GROUP_ORDER = [
   'Income', 'Expenses & Deductions', 'RRSP', 'TFSA', 'FHSA', 'Non-Reg & Savings', 'LIRA/LIF', 'RESP',
-  'Asset Allocation', 'Capital Loss', 'ACB Tracking',
+  'Asset Allocation', 'Capital Loss', 'ACB Tracking', 'P&L Tracking',
   'EOY Overrides', 'Retirement (Computed)', 'Liabilities (Computed)', 'Rate Overrides',
   'Contribution Room', 'Tax Results (Computed)',
 ];
@@ -118,6 +118,7 @@ const GROUP_DEFAULTS: Record<string, boolean> = {
   'Asset Allocation': false,
   'Capital Loss': false,
   'ACB Tracking': false,
+  'P&L Tracking': false,
   'EOY Overrides': false,
   'Retirement (Computed)': false,
   'Liabilities (Computed)': false,
@@ -172,6 +173,15 @@ const ROW_REGISTRY: RowEntry[] = [
   { rowId: 'studentLoanInterest', editable: true, group: 'Expenses & Deductions' },
   { rowId: 'otherNonRefundableCredits', editable: true, group: 'Expenses & Deductions' },
   { rowId: 'lcgeClaimAmount', editable: true, group: 'Expenses & Deductions' },
+  // Living Expenses
+  { rowId: 'housingExpense', editable: true, group: 'Living Expenses' },
+  { rowId: 'groceriesExpense', editable: true, group: 'Living Expenses' },
+  { rowId: 'transportationExpense', editable: true, group: 'Living Expenses' },
+  { rowId: 'utilitiesExpense', editable: true, group: 'Living Expenses' },
+  { rowId: 'insuranceExpense', editable: true, group: 'Living Expenses' },
+  { rowId: 'entertainmentExpense', editable: true, group: 'Living Expenses' },
+  { rowId: 'personalExpense', editable: true, group: 'Living Expenses' },
+  { rowId: 'otherLivingExpense', editable: true, group: 'Living Expenses' },
   // RRSP
   { rowId: 'rrspContribution', editable: true, group: 'RRSP' },
   { rowId: 'rrspDeductionClaimed', editable: true, group: 'RRSP' },
@@ -228,6 +238,11 @@ const ROW_REGISTRY: RowEntry[] = [
   { rowId: '_computed_acbClosing', editable: false, group: 'ACB Tracking' },
   { rowId: '_computed_acbPerUnit', editable: false, group: 'ACB Tracking' },
   { rowId: '_computed_acbCG', editable: false, group: 'ACB Tracking' },
+  // P&L Tracking
+  { rowId: '_computed_pnlBookValue', editable: false, group: 'P&L Tracking' },
+  { rowId: '_computed_pnlMarketValue', editable: false, group: 'P&L Tracking' },
+  { rowId: '_computed_pnlGain', editable: false, group: 'P&L Tracking' },
+  { rowId: '_computed_pnlReturnPct', editable: false, group: 'P&L Tracking' },
   // EOY Overrides
   { rowId: 'rrspEOYOverride', editable: true, group: 'EOY Overrides', isOverride: true },
   { rowId: 'tfsaEOYOverride', editable: true, group: 'EOY Overrides', isOverride: true },
@@ -843,6 +858,20 @@ export function TimelinePage() {
           </>
         );
 
+      case 'Living Expenses':
+        return (
+          <>
+            {renderRow('Housing', 'housingExpense' as YDKey)}
+            {renderRow('Groceries', 'groceriesExpense' as YDKey)}
+            {renderRow('Transportation', 'transportationExpense' as YDKey)}
+            {renderRow('Utilities', 'utilitiesExpense' as YDKey)}
+            {renderRow('Insurance', 'insuranceExpense' as YDKey)}
+            {renderRow('Entertainment', 'entertainmentExpense' as YDKey)}
+            {renderRow('Personal', 'personalExpense' as YDKey)}
+            {renderRow('Other Living', 'otherLivingExpense' as YDKey)}
+          </>
+        );
+
       case 'RRSP':
         return (
           <>
@@ -986,6 +1015,22 @@ export function TimelinePage() {
           </>
         );
       }
+
+      case 'P&L Tracking':
+        return (
+          <>
+            {renderComputedRow('_computed_pnlBookValue', 'Total Book Value', i => fmtVal(computed[i]?.pnl?.totalBookValue ?? 0))}
+            {renderComputedRow('_computed_pnlMarketValue', 'Total Market Value', i => fmtVal(computed[i]?.pnl?.totalMarketValue ?? 0))}
+            {renderComputedRow('_computed_pnlGain', 'Unrealized Gain', i => {
+              const v = computed[i]?.pnl?.totalGain ?? 0;
+              return fmtVal(v);
+            })}
+            {renderComputedRow('_computed_pnlReturnPct', 'Return %', i => {
+              const v = computed[i]?.pnl?.totalReturnPct ?? 0;
+              return v !== 0 ? (v * 100).toFixed(1) + '%' : '—';
+            })}
+          </>
+        );
 
       case 'EOY Overrides':
         return (

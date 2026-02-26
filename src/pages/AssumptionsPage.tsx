@@ -2,7 +2,8 @@ import React, { useState, createContext, useContext } from 'react';
 import { useScenario, useUpdateScenario } from '../store/ScenarioContext';
 import { PROVINCIAL_BRACKETS, PROVINCIAL_BPA, PROVINCIAL_DIV_CREDITS, DEFAULT_ASSUMPTIONS } from '../store/defaults';
 import { formatCAD } from '../utils/formatters';
-import type { Province, TaxBracket, Assumptions, FHSADisposition, OpeningCarryForwards, ACBConfig, Liability, LiabilityType } from '../types/scenario';
+import type { Province, TaxBracket, Assumptions, FHSADisposition, OpeningCarryForwards, ACBConfig, Liability, LiabilityType, AssumptionOverrides } from '../types/scenario';
+import { resolveAssumptions } from '../engine/assumptionResolver';
 
 const PROVINCES: { code: Province; label: string }[] = [
   { code: 'AB', label: 'Alberta' }, { code: 'BC', label: 'British Columbia' },
@@ -208,10 +209,259 @@ function BalanceRow({ label, color, value, onChange }: { label: string; color: s
   );
 }
 
+/* ─── Override Parameter Options ─── */
+
+type OverrideParamGroup = { label: string; params: { key: keyof AssumptionOverrides; label: string; isPct?: boolean }[] };
+
+const OVERRIDE_PARAM_GROUPS: OverrideParamGroup[] = [
+  {
+    label: 'Tax',
+    params: [
+      { key: 'federalBPA', label: 'Federal BPA' },
+      { key: 'provincialBPA', label: 'Provincial BPA' },
+      { key: 'capitalGainsInclusionRate', label: 'CG Inclusion Rate', isPct: true },
+    ],
+  },
+  {
+    label: 'CPP',
+    params: [
+      { key: 'cppBasicExemption', label: 'Basic Exemption' },
+      { key: 'cppYmpe', label: 'YMPE' },
+      { key: 'cppYampe', label: 'YAMPE' },
+      { key: 'cppEmployeeRate', label: 'Employee Rate', isPct: true },
+      { key: 'cppCpp2Rate', label: 'CPP2 Rate', isPct: true },
+    ],
+  },
+  {
+    label: 'EI',
+    params: [
+      { key: 'eiMaxInsurableEarnings', label: 'Max Insurable Earnings' },
+      { key: 'eiEmployeeRate', label: 'Employee Rate', isPct: true },
+    ],
+  },
+  {
+    label: 'Limits',
+    params: [
+      { key: 'rrspLimit', label: 'RRSP Limit' },
+      { key: 'tfsaAnnualLimit', label: 'TFSA Annual Limit' },
+      { key: 'fhsaAnnualLimit', label: 'FHSA Annual Limit' },
+      { key: 'fhsaLifetimeLimit', label: 'FHSA Lifetime Limit' },
+    ],
+  },
+  {
+    label: 'Rates',
+    params: [
+      { key: 'dividendEligibleGrossUp', label: 'Eligible Div Gross-Up', isPct: true },
+      { key: 'dividendEligibleFederalCredit', label: 'Eligible Div Fed Credit', isPct: true },
+      { key: 'dividendEligibleProvincialCredit', label: 'Eligible Div Prov Credit', isPct: true },
+      { key: 'dividendNonEligibleGrossUp', label: 'Non-Elig Div Gross-Up', isPct: true },
+      { key: 'dividendNonEligibleFederalCredit', label: 'Non-Elig Div Fed Credit', isPct: true },
+      { key: 'dividendNonEligibleProvincialCredit', label: 'Non-Elig Div Prov Credit', isPct: true },
+      { key: 'oasClawbackThreshold', label: 'OAS Clawback Threshold' },
+      { key: 'inflationRate', label: 'Inflation Rate', isPct: true },
+    ],
+  },
+];
+
+const ALL_OVERRIDE_PARAMS = OVERRIDE_PARAM_GROUPS.flatMap(g => g.params);
+
+function OverrideManager({ scenario, dispatch }: {
+  scenario: import('../types/scenario').Scenario;
+  dispatch: React.Dispatch<any>;
+}) {
+  const [addYear, setAddYear] = useState<number>(scenario.assumptions.startYear);
+  const [addParam, setAddParam] = useState<keyof AssumptionOverrides>('federalBPA');
+  const [addValue, setAddValue] = useState('');
+
+  const overrides = scenario.assumptionOverrides ?? {};
+  const ass = scenario.assumptions;
+  const startYear = ass.startYear;
+  const endYear = startYear + ass.numYears - 1;
+
+  // Collect all override entries as flat list
+  const entries: { year: number; field: keyof AssumptionOverrides; value: any }[] = [];
+  for (const [yr, ov] of Object.entries(overrides)) {
+    for (const [k, v] of Object.entries(ov)) {
+      if (v !== undefined) entries.push({ year: Number(yr), field: k as keyof AssumptionOverrides, value: v });
+    }
+  }
+  entries.sort((a, b) => a.year - b.year || a.field.localeCompare(b.field));
+
+  function handleAdd() {
+    const paramInfo = ALL_OVERRIDE_PARAMS.find(p => p.key === addParam);
+    const num = parseFloat(addValue);
+    if (isNaN(num)) return;
+    const val = paramInfo?.isPct ? num / 100 : num;
+    dispatch({ type: 'SET_ASSUMPTION_OVERRIDE', year: addYear, overrides: { [addParam]: val } });
+    setAddValue('');
+  }
+
+  function handleDelete(year: number, field: keyof AssumptionOverrides) {
+    dispatch({ type: 'DELETE_ASSUMPTION_OVERRIDE', year, field });
+  }
+
+  function getIndexedValue(year: number, field: keyof AssumptionOverrides): string | null {
+    if (ass.autoIndexAssumptions === false) return null;
+    const yearsElapsed = year - startYear;
+    if (yearsElapsed <= 0) return null;
+    const factor = Math.pow(1 + ass.inflationRate, yearsElapsed);
+    const resolved = resolveAssumptions(ass, year, factor);
+    // Map field to resolved value
+    const map: Partial<Record<keyof AssumptionOverrides, number>> = {
+      federalBPA: resolved.federalBPA,
+      provincialBPA: resolved.provincialBPA,
+      cppBasicExemption: resolved.cpp.basicExemption,
+      cppYmpe: resolved.cpp.ympe,
+      cppYampe: resolved.cpp.yampe,
+      cppEmployeeRate: resolved.cpp.employeeRate,
+      cppCpp2Rate: resolved.cpp.cpp2Rate,
+      eiMaxInsurableEarnings: resolved.ei.maxInsurableEarnings,
+      eiEmployeeRate: resolved.ei.employeeRate,
+      rrspLimit: resolved.rrspLimit,
+      tfsaAnnualLimit: resolved.tfsaAnnualLimit,
+      fhsaAnnualLimit: resolved.fhsaAnnualLimit,
+      fhsaLifetimeLimit: resolved.fhsaLifetimeLimit,
+      capitalGainsInclusionRate: resolved.capitalGainsInclusionRate,
+      dividendEligibleGrossUp: resolved.dividendRates.eligible.grossUp,
+      dividendEligibleFederalCredit: resolved.dividendRates.eligible.federalCredit,
+      dividendEligibleProvincialCredit: resolved.dividendRates.eligible.provincialCredit,
+      dividendNonEligibleGrossUp: resolved.dividendRates.nonEligible.grossUp,
+      dividendNonEligibleFederalCredit: resolved.dividendRates.nonEligible.federalCredit,
+      dividendNonEligibleProvincialCredit: resolved.dividendRates.nonEligible.provincialCredit,
+      oasClawbackThreshold: resolved.oasClawbackThreshold,
+      inflationRate: resolved.inflationRate,
+    };
+    const v = map[field];
+    if (v === undefined) return null;
+    const paramInfo = ALL_OVERRIDE_PARAMS.find(p => p.key === field);
+    return paramInfo?.isPct ? `${(v * 100).toFixed(2)}%` : formatCAD(v);
+  }
+
+  function formatOverrideValue(value: any, field: keyof AssumptionOverrides): string {
+    const paramInfo = ALL_OVERRIDE_PARAMS.find(p => p.key === field);
+    if (paramInfo?.isPct) return `${(value * 100).toFixed(2)}%`;
+    return formatCAD(value);
+  }
+
+  // Count overrides per year for summary
+  const yearCounts = Object.entries(overrides)
+    .filter(([, ov]) => Object.values(ov).some(v => v !== undefined))
+    .map(([yr, ov]) => ({ year: Number(yr), count: Object.values(ov).filter(v => v !== undefined).length }))
+    .sort((a, b) => a.year - b.year);
+
+  return (
+    <Section title="Year-Specific Parameter Overrides">
+      <div className="text-[11px] text-app-text4 mb-3">
+        Override any assumption parameter for a specific year. Overrides replace auto-indexed values.
+      </div>
+
+      {yearCounts.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          {yearCounts.map(({ year, count }) => (
+            <span key={year} className="text-[10px] px-2 py-0.5 rounded-full bg-app-accent/10 text-app-accent border border-app-accent/20">
+              {year}: {count} override{count > 1 ? 's' : ''}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Existing overrides table */}
+      {entries.length > 0 && (
+        <div className="mb-4 border border-app-border rounded-lg overflow-hidden">
+          <table className="w-full text-[11px]">
+            <thead>
+              <tr className="bg-app-surface2 text-app-text3">
+                <th className="text-left px-2 py-1.5 font-medium">Year</th>
+                <th className="text-left px-2 py-1.5 font-medium">Parameter</th>
+                <th className="text-right px-2 py-1.5 font-medium">Override</th>
+                <th className="text-right px-2 py-1.5 font-medium">Indexed</th>
+                <th className="w-8 px-2 py-1.5"></th>
+              </tr>
+            </thead>
+            <tbody>
+              {entries.map((e, i) => {
+                const paramLabel = ALL_OVERRIDE_PARAMS.find(p => p.key === e.field)?.label ?? e.field;
+                const indexed = getIndexedValue(e.year, e.field);
+                return (
+                  <tr key={`${e.year}-${e.field}-${i}`} className="border-t border-app-border hover:bg-app-surface2/50">
+                    <td className="px-2 py-1.5 text-app-text2">{e.year}</td>
+                    <td className="px-2 py-1.5 text-app-text2">{paramLabel}</td>
+                    <td className="px-2 py-1.5 text-right font-medium text-app-text">{formatOverrideValue(e.value, e.field)}</td>
+                    <td className="px-2 py-1.5 text-right text-app-text4">{indexed ?? '—'}</td>
+                    <td className="px-2 py-1.5 text-center">
+                      <button
+                        onClick={() => handleDelete(e.year, e.field)}
+                        className="text-app-text4 hover:text-red-500 transition-colors"
+                        title="Remove override"
+                      >×</button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Add override form */}
+      <div className="flex items-end gap-2 flex-wrap">
+        <div>
+          <label className="block text-[10px] text-app-text4 mb-0.5">Year</label>
+          <select
+            className={selectCls + ' !w-20 !text-[11px]'}
+            value={addYear}
+            onChange={e => setAddYear(Number(e.target.value))}
+          >
+            {Array.from({ length: ass.numYears }, (_, i) => startYear + i).map(y => (
+              <option key={y} value={y}>{y}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex-1 min-w-[140px]">
+          <label className="block text-[10px] text-app-text4 mb-0.5">Parameter</label>
+          <select
+            className={selectCls + ' !text-[11px]'}
+            value={addParam}
+            onChange={e => setAddParam(e.target.value as keyof AssumptionOverrides)}
+          >
+            {OVERRIDE_PARAM_GROUPS.map(g => (
+              <optgroup key={g.label} label={g.label}>
+                {g.params.map(p => (
+                  <option key={p.key} value={p.key}>{p.label}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-[10px] text-app-text4 mb-0.5">
+            Value {ALL_OVERRIDE_PARAMS.find(p => p.key === addParam)?.isPct ? '(%)' : '($)'}
+          </label>
+          <input
+            type="number"
+            className={inputCls + ' !w-28 !text-[11px]'}
+            value={addValue}
+            onChange={e => setAddValue(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && handleAdd()}
+            placeholder="0"
+          />
+        </div>
+        <button
+          onClick={handleAdd}
+          disabled={!addValue || isNaN(parseFloat(addValue))}
+          className="px-3 py-1 text-[11px] rounded bg-app-accent text-white hover:bg-app-accent/90 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          Add
+        </button>
+      </div>
+    </Section>
+  );
+}
+
 /* ─── Main Page ─── */
 
 export function AssumptionsPage() {
-  const { activeScenario } = useScenario();
+  const { activeScenario, dispatch } = useScenario();
   const update = useUpdateScenario();
 
   const [tab, setTabRaw] = useState<SettingsTab>(loadTab);
@@ -418,6 +668,160 @@ export function AssumptionsPage() {
                 <NumInput value={ass.assetReturns.savings} onChange={v => update(s => ({ ...s, assumptions: { ...s.assumptions, assetReturns: { ...s.assumptions.assetReturns, savings: v } } }))} pct />
               </FormRow>
             </Section>
+
+            <Divider />
+
+            <Section title="Return Sequences">
+              <div className="text-[11px] text-app-text4 mb-2">
+                Define per-year return values that override the global returns above. Useful for modeling specific market scenarios.
+              </div>
+              <FormRow label="Enable return sequences">
+                <div className="flex justify-end items-center h-full">
+                  <input
+                    type="checkbox"
+                    checked={activeScenario.returnSequence?.enabled ?? false}
+                    onChange={e => {
+                      const numYears = ass.numYears;
+                      const cur = activeScenario.returnSequence;
+                      update(s => ({
+                        ...s,
+                        returnSequence: {
+                          enabled: e.target.checked,
+                          equity: cur?.equity?.length === numYears ? cur.equity : Array(numYears).fill(ass.assetReturns.equity),
+                          fixedIncome: cur?.fixedIncome?.length === numYears ? cur.fixedIncome : Array(numYears).fill(ass.assetReturns.fixedIncome),
+                          cash: cur?.cash?.length === numYears ? cur.cash : Array(numYears).fill(ass.assetReturns.cash),
+                          savings: cur?.savings?.length === numYears ? cur.savings : Array(numYears).fill(ass.assetReturns.savings),
+                        },
+                      }));
+                    }}
+                    className="accent-[var(--app-accent)] w-4 h-4"
+                  />
+                </div>
+              </FormRow>
+              {activeScenario.returnSequence?.enabled && (
+                <div className="mt-2 overflow-x-auto max-h-60 overflow-y-auto">
+                  <table className="w-full text-[11px] border-collapse">
+                    <thead className="sticky top-0 bg-app-surface z-10">
+                      <tr className="border-b border-app-border">
+                        <th className="text-left py-1 px-1 text-app-text4 font-medium">Year</th>
+                        <th className="text-right py-1 px-1 text-app-text4 font-medium">Equity %</th>
+                        <th className="text-right py-1 px-1 text-app-text4 font-medium">Fixed %</th>
+                        <th className="text-right py-1 px-1 text-app-text4 font-medium">Cash %</th>
+                        <th className="text-right py-1 px-1 text-app-text4 font-medium">Savings %</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activeScenario.years.map((yd, i) => {
+                        const seq = activeScenario.returnSequence!;
+                        return (
+                          <tr key={yd.year} className="border-b border-app-border">
+                            <td className="py-0.5 px-1 text-app-text3 font-medium">{yd.year}</td>
+                            {(['equity', 'fixedIncome', 'cash', 'savings'] as const).map(key => (
+                              <td key={key} className="py-0.5 px-1 text-right">
+                                <input
+                                  type="number"
+                                  step="0.1"
+                                  className="w-16 text-right text-[11px] bg-transparent border-b border-app-border focus:border-app-accent outline-none tabular-nums text-app-text"
+                                  value={((seq[key]?.[i] ?? 0) * 100).toFixed(1)}
+                                  onChange={e => {
+                                    const val = parseFloat(e.target.value) / 100;
+                                    if (isNaN(val)) return;
+                                    update(s => {
+                                      const rs = { ...s.returnSequence! };
+                                      const arr = [...(rs[key] ?? [])];
+                                      arr[i] = val;
+                                      return { ...s, returnSequence: { ...rs, [key]: arr } };
+                                    });
+                                  }}
+                                />
+                              </td>
+                            ))}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </Section>
+
+            <Divider />
+
+            <Section title="Monte Carlo Settings">
+              <div className="text-[11px] text-app-text4 mb-2">
+                Configure default Monte Carlo parameters. Run simulations from the Analysis page.
+              </div>
+              <FormRow label="Default trials">
+                <NumInput value={activeScenario.monteCarloConfig?.numTrials ?? 500} onChange={v => {
+                  update(s => ({
+                    ...s,
+                    monteCarloConfig: {
+                      ...(s.monteCarloConfig ?? { enabled: true, numTrials: 500,
+                        equity: { mean: ass.assetReturns.equity, stdDev: 0.15 },
+                        fixedIncome: { mean: ass.assetReturns.fixedIncome, stdDev: 0.05 },
+                        cash: { mean: ass.assetReturns.cash, stdDev: 0.01 },
+                        savings: { mean: ass.assetReturns.savings, stdDev: 0.005 },
+                      }),
+                      numTrials: Math.max(10, Math.min(2000, v)),
+                    },
+                  }));
+                }} />
+              </FormRow>
+              <FormRow label="Equity Std Dev">
+                <NumInput value={activeScenario.monteCarloConfig?.equity.stdDev ?? 0.15} onChange={v => {
+                  update(s => ({
+                    ...s,
+                    monteCarloConfig: {
+                      ...(s.monteCarloConfig ?? { enabled: true, numTrials: 500,
+                        equity: { mean: ass.assetReturns.equity, stdDev: 0.15 },
+                        fixedIncome: { mean: ass.assetReturns.fixedIncome, stdDev: 0.05 },
+                        cash: { mean: ass.assetReturns.cash, stdDev: 0.01 },
+                        savings: { mean: ass.assetReturns.savings, stdDev: 0.005 },
+                      }),
+                      equity: { mean: ass.assetReturns.equity, stdDev: Math.max(0, v) },
+                    },
+                  }));
+                }} pct />
+              </FormRow>
+              <FormRow label="Fixed Income Std Dev">
+                <NumInput value={activeScenario.monteCarloConfig?.fixedIncome.stdDev ?? 0.05} onChange={v => {
+                  update(s => ({
+                    ...s,
+                    monteCarloConfig: {
+                      ...(s.monteCarloConfig ?? { enabled: true, numTrials: 500,
+                        equity: { mean: ass.assetReturns.equity, stdDev: 0.15 },
+                        fixedIncome: { mean: ass.assetReturns.fixedIncome, stdDev: 0.05 },
+                        cash: { mean: ass.assetReturns.cash, stdDev: 0.01 },
+                        savings: { mean: ass.assetReturns.savings, stdDev: 0.005 },
+                      }),
+                      fixedIncome: { mean: ass.assetReturns.fixedIncome, stdDev: Math.max(0, v) },
+                    },
+                  }));
+                }} pct />
+              </FormRow>
+            </Section>
+
+            <Divider />
+
+            <Section title="Auto-Indexing">
+              <div className="text-[11px] text-app-text4 mb-2">
+                When enabled, CRA dollar thresholds (brackets, BPA, CPP/EI limits, account limits) grow by inflation each year.
+              </div>
+              <FormRow label="Auto-index by inflation">
+                <div className="flex justify-end items-center h-full">
+                  <input
+                    type="checkbox"
+                    checked={ass.autoIndexAssumptions !== false}
+                    onChange={e => dispatch({ type: 'TOGGLE_AUTO_INDEX', enabled: e.target.checked })}
+                    className="accent-[var(--app-accent)] w-4 h-4"
+                  />
+                </div>
+              </FormRow>
+            </Section>
+
+            <Divider />
+
+            <OverrideManager scenario={activeScenario} dispatch={dispatch} />
           </div>
         )}
 

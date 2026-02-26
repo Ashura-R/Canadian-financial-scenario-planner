@@ -21,6 +21,7 @@ const COLORS = {
   nonReg: '#f59e0b',
   savings: '#0284c7',
   debt: '#f43f5e',
+  living: '#a855f7',
   netCF: '#f59e0b',
 };
 
@@ -81,6 +82,7 @@ export function CashflowExpensesChart({ years, rawYears, modern }: Props) {
       'Non-Reg': Math.round(safe(raw.nonRegContribution)),
       'Savings': Math.round(safe(raw.savingsDeposit)),
       'Debt': Math.round(safe(y.totalDebtPayment ?? 0)),
+      'Living': Math.round(safe(y.waterfall.totalLivingExpenses)),
       'Net CF': Math.round(safe(y.waterfall.netCashFlow)),
     };
   });
@@ -100,6 +102,7 @@ export function CashflowExpensesChart({ years, rawYears, modern }: Props) {
         <Bar dataKey="Non-Reg" stackId="outflows" fill={COLORS.nonReg} fillOpacity={0.7} />
         <Bar dataKey="Savings" stackId="outflows" fill={COLORS.savings} fillOpacity={0.7} />
         <Bar dataKey="Debt" stackId="outflows" fill={COLORS.debt} fillOpacity={0.7} />
+        <Bar dataKey="Living" stackId="outflows" fill={COLORS.living} fillOpacity={0.7} />
         <Line type="monotone" dataKey="Net CF" stroke={COLORS.netCF} strokeWidth={modern ? 2.5 : 2} dot={false} />
       </ComposedChart>
     </ResponsiveContainer>

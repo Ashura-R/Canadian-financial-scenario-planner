@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, useCallback, useState, useMemo } from 'react';
-import type { Scenario } from '../types/scenario';
+import type { Scenario, AssumptionOverrides } from '../types/scenario';
 import type { ComputedScenario } from '../types/computed';
 import { compute } from '../engine';
 import { makeDefaultScenario } from './defaults';
@@ -18,7 +18,10 @@ type Action =
   | { type: 'DELETE_SCENARIO'; id: string }
   | { type: 'DUPLICATE_SCENARIO'; id: string }
   | { type: 'SET_ACTIVE'; id: string }
-  | { type: 'RENAME_SCENARIO'; id: string; name: string };
+  | { type: 'RENAME_SCENARIO'; id: string; name: string }
+  | { type: 'SET_ASSUMPTION_OVERRIDE'; year: number; overrides: Partial<AssumptionOverrides> }
+  | { type: 'DELETE_ASSUMPTION_OVERRIDE'; year: number; field?: keyof AssumptionOverrides }
+  | { type: 'TOGGLE_AUTO_INDEX'; enabled: boolean };
 
 function recompute(state: ScenarioState, ids?: string[]): ScenarioState {
   const toRecompute = ids ?? state.scenarios.map(s => s.id);
@@ -77,6 +80,54 @@ function reducer(state: ScenarioState, action: Action): ScenarioState {
         ...state,
         scenarios: state.scenarios.map(s => s.id === action.id ? { ...s, name: action.name } : s),
       };
+    case 'SET_ASSUMPTION_OVERRIDE': {
+      const sc = state.scenarios.find(s => s.id === state.activeId);
+      if (!sc) return state;
+      const existing = sc.assumptionOverrides ?? {};
+      const yearOv = existing[action.year] ?? {};
+      const updated: Scenario = {
+        ...sc,
+        assumptionOverrides: {
+          ...existing,
+          [action.year]: { ...yearOv, ...action.overrides },
+        },
+      };
+      const next = { ...state, scenarios: state.scenarios.map(s => s.id === sc.id ? updated : s) };
+      return recompute(next, [sc.id]);
+    }
+    case 'DELETE_ASSUMPTION_OVERRIDE': {
+      const sc = state.scenarios.find(s => s.id === state.activeId);
+      if (!sc || !sc.assumptionOverrides) return state;
+      const existing = { ...sc.assumptionOverrides };
+      if (action.field) {
+        // Delete single field from year
+        if (existing[action.year]) {
+          const yearOv = { ...existing[action.year] };
+          delete yearOv[action.field];
+          if (Object.keys(yearOv).length === 0) {
+            delete existing[action.year];
+          } else {
+            existing[action.year] = yearOv;
+          }
+        }
+      } else {
+        // Delete entire year
+        delete existing[action.year];
+      }
+      const updated: Scenario = { ...sc, assumptionOverrides: existing };
+      const next = { ...state, scenarios: state.scenarios.map(s => s.id === sc.id ? updated : s) };
+      return recompute(next, [sc.id]);
+    }
+    case 'TOGGLE_AUTO_INDEX': {
+      const sc = state.scenarios.find(s => s.id === state.activeId);
+      if (!sc) return state;
+      const updated: Scenario = {
+        ...sc,
+        assumptions: { ...sc.assumptions, autoIndexAssumptions: action.enabled },
+      };
+      const next = { ...state, scenarios: state.scenarios.map(s => s.id === sc.id ? updated : s) };
+      return recompute(next, [sc.id]);
+    }
     default:
       return state;
   }

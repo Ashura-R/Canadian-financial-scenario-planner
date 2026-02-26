@@ -9,7 +9,7 @@ import { formatShort, safe } from '../../utils/formatters';
 import { ChartRangeSelector, sliceByRange } from '../ChartRangeSelector';
 import type { ChartRange } from '../ChartRangeSelector';
 
-const SCENARIO_COLORS = ['#2563eb', '#059669', '#d97706', '#7c3aed', '#dc2626', '#0891b2'];
+export const SCENARIO_COLORS = ['#2563eb', '#059669', '#d97706', '#7c3aed', '#dc2626', '#0891b2'];
 
 /* CSS-variable-backed chart tokens */
 const GRID = 'var(--app-chart-grid)';
@@ -123,6 +123,24 @@ export function OverlayCharts({ scenarios, computed }: Props) {
   const realCFData = sliceByRange(buildData(computed, scenarios, (c, i) => c.analytics.cumulativeRealCashFlow[i] ?? 0), chartRange);
   const rrspData = sliceByRange(buildData(computed, scenarios, (c, i) => c.years[i]?.accounts.rrspEOY ?? 0), chartRange);
   const tfsaData = sliceByRange(buildData(computed, scenarios, (c, i) => c.years[i]?.accounts.tfsaEOY ?? 0), chartRange);
+  const fhsaData = sliceByRange(buildData(computed, scenarios, (c, i) => c.years[i]?.accounts.fhsaEOY ?? 0), chartRange);
+  const nonRegData = sliceByRange(buildData(computed, scenarios, (c, i) => c.years[i]?.accounts.nonRegEOY ?? 0), chartRange);
+  const savingsData = sliceByRange(buildData(computed, scenarios, (c, i) => c.years[i]?.accounts.savingsEOY ?? 0), chartRange);
+  const liraData = sliceByRange(buildData(computed, scenarios, (c, i) => c.years[i]?.accounts.liraEOY ?? 0), chartRange);
+  const respData = sliceByRange(buildData(computed, scenarios, (c, i) => c.years[i]?.accounts.respEOY ?? 0), chartRange);
+  const marginalData = sliceByRange(buildData(computed, scenarios, (c, i) => (c.years[i]?.tax.marginalCombinedRate ?? 0) * 100), chartRange);
+  const expensesData = sliceByRange(buildData(computed, scenarios, (c, i) => c.years[i]?.waterfall.totalLivingExpenses ?? 0), chartRange);
+  const pnlData = sliceByRange(buildData(computed, scenarios, (c, i) => c.years[i]?.pnl?.totalGain ?? 0), chartRange);
+
+  // Check if any accounts have balances across all scenarios
+  const hasAccount = (fn: (c: ComputedScenario) => boolean) => computed.some(fn);
+  const hasFHSA = hasAccount(c => c.years.some(y => y.accounts.fhsaEOY > 0));
+  const hasNonReg = hasAccount(c => c.years.some(y => y.accounts.nonRegEOY > 0));
+  const hasSavings = hasAccount(c => c.years.some(y => y.accounts.savingsEOY > 0));
+  const hasLIRA = hasAccount(c => c.years.some(y => y.accounts.liraEOY > 0));
+  const hasRESP = hasAccount(c => c.years.some(y => y.accounts.respEOY > 0));
+  const hasExpenses = hasAccount(c => c.years.some(y => (y.waterfall.totalLivingExpenses ?? 0) > 0));
+  const hasPnL = hasAccount(c => c.years.some(y => (y.pnl?.totalGain ?? 0) !== 0));
 
   return (
     <div className="p-4">
@@ -135,14 +153,22 @@ export function OverlayCharts({ scenarios, computed }: Props) {
         <OverlayArea data={netWorthData} scenarios={scenarios} title="Net Worth Over Time" />
         <OverlayLine data={taxData} scenarios={scenarios} title="Total Tax + CPP + EI" />
         <OverlayLine data={afterTaxData} scenarios={scenarios} title="After-Tax Income" />
+        <OverlayLine data={marginalData} scenarios={scenarios} title="Marginal Combined Rate (%)" />
         <OverlayLine data={cfData} scenarios={scenarios} title="Cumulative Cash Flow" />
+        {hasExpenses && <OverlayLine data={expensesData} scenarios={scenarios} title="Living Expenses" />}
         <OverlayLine data={cumGrossData} scenarios={scenarios} title="Cumulative Gross Income" />
         <OverlayLine data={cumAfterTaxData} scenarios={scenarios} title="Cumulative After-Tax Income" />
         <OverlayLine data={cumTotalTaxData} scenarios={scenarios} title="Cumulative Total Tax" />
         <OverlayArea data={realNWData} scenarios={scenarios} title="Real Net Worth Over Time" />
         <OverlayLine data={realCFData} scenarios={scenarios} title="Real Cumulative Cash Flow" />
+        {hasPnL && <OverlayLine data={pnlData} scenarios={scenarios} title="Unrealized Gain/Loss (P&L)" />}
         <OverlayLine data={rrspData} scenarios={scenarios} title="RRSP Balance" />
         <OverlayLine data={tfsaData} scenarios={scenarios} title="TFSA Balance" />
+        {hasFHSA && <OverlayLine data={fhsaData} scenarios={scenarios} title="FHSA Balance" />}
+        {hasNonReg && <OverlayLine data={nonRegData} scenarios={scenarios} title="Non-Reg Balance" />}
+        {hasSavings && <OverlayLine data={savingsData} scenarios={scenarios} title="Savings Balance" />}
+        {hasLIRA && <OverlayLine data={liraData} scenarios={scenarios} title="LIRA/LIF Balance" />}
+        {hasRESP && <OverlayLine data={respData} scenarios={scenarios} title="RESP Balance" />}
       </div>
     </div>
   );

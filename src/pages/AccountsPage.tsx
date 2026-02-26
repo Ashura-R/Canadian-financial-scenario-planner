@@ -7,9 +7,9 @@ import { ChartRangeSelector, sliceByRange } from '../components/ChartRangeSelect
 import type { ChartRange } from '../components/ChartRangeSelector';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  ComposedChart, Line, PieChart, Pie, Cell,
+  ComposedChart, Line, AreaChart, Area, PieChart, Pie, Cell,
 } from 'recharts';
-import type { ComputedYear } from '../types/computed';
+import type { ComputedYear, AccountPnL } from '../types/computed';
 import type { YearData, OpeningBalances } from '../types/scenario';
 import { useChartColors } from '../hooks/useChartColors';
 
@@ -300,6 +300,69 @@ function AccountFlowChart({ flows }: { flows: AccountFlowData[] }) {
   );
 }
 
+const PNL_LABELS: { key: keyof Omit<AccountPnL, 'totalBookValue' | 'totalMarketValue' | 'totalGain' | 'totalReturnPct'>; label: string; color: string }[] = [
+  { key: 'rrsp', label: 'RRSP', color: '#3b82f6' },
+  { key: 'tfsa', label: 'TFSA', color: '#10b981' },
+  { key: 'fhsa', label: 'FHSA', color: '#06b6d4' },
+  { key: 'nonReg', label: 'Non-Reg', color: '#f59e0b' },
+  { key: 'savings', label: 'Savings', color: '#0ea5e9' },
+  { key: 'lira', label: 'LIRA/LIF', color: '#a855f7' },
+  { key: 'resp', label: 'RESP', color: '#f43f5e' },
+];
+
+function PnLTable({ pnl }: { pnl: AccountPnL }) {
+  return (
+    <Section title="Profit & Loss by Account">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b border-app-border">
+            <th className="text-left py-1.5 text-[10px] text-app-text4 font-medium">Account</th>
+            <th className="text-right py-1.5 text-[10px] text-app-text4 font-medium">Book Value</th>
+            <th className="text-right py-1.5 text-[10px] text-app-text4 font-medium">Market Value</th>
+            <th className="text-right py-1.5 text-[10px] text-app-text4 font-medium">Gain/Loss</th>
+            <th className="text-right py-1.5 text-[10px] text-app-text4 font-medium">Return %</th>
+          </tr>
+        </thead>
+        <tbody>
+          {PNL_LABELS.map(({ key, label, color }) => {
+            const e = pnl[key];
+            if (e.marketValue === 0 && e.bookValue === 0) return null;
+            return (
+              <tr key={key} className="border-b border-app-border hover:bg-app-accent-light/30">
+                <td className="py-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+                    <span className="text-app-text2 font-medium">{label}</span>
+                  </div>
+                </td>
+                <td className="py-1.5 text-right text-app-text3 tabular-nums">{formatCAD(e.bookValue)}</td>
+                <td className="py-1.5 text-right text-app-text tabular-nums font-medium">{formatCAD(e.marketValue)}</td>
+                <td className={`py-1.5 text-right tabular-nums font-medium ${e.gain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {e.gain >= 0 ? '+' : ''}{formatCAD(e.gain)}
+                </td>
+                <td className={`py-1.5 text-right tabular-nums ${e.returnPct >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {e.returnPct >= 0 ? '+' : ''}{(e.returnPct * 100).toFixed(1)}%
+                </td>
+              </tr>
+            );
+          })}
+          <tr className="border-t border-app-border bg-app-surface2">
+            <td className="py-1.5 font-semibold text-app-text2">Total</td>
+            <td className="py-1.5 text-right font-semibold tabular-nums">{formatCAD(pnl.totalBookValue)}</td>
+            <td className="py-1.5 text-right font-bold tabular-nums">{formatCAD(pnl.totalMarketValue)}</td>
+            <td className={`py-1.5 text-right font-bold tabular-nums ${pnl.totalGain >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              {pnl.totalGain >= 0 ? '+' : ''}{formatCAD(pnl.totalGain)}
+            </td>
+            <td className={`py-1.5 text-right font-semibold tabular-nums ${pnl.totalReturnPct >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+              {pnl.totalReturnPct >= 0 ? '+' : ''}{(pnl.totalReturnPct * 100).toFixed(1)}%
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </Section>
+  );
+}
+
 function SingleYearView({ yr, rawYd, prevBalances }: {
   yr: ComputedYear;
   rawYd: YearData;
@@ -376,6 +439,8 @@ function SingleYearView({ yr, rawYd, prevBalances }: {
           </table>
         </Section>
       )}
+
+      {yr.pnl && <PnLTable pnl={yr.pnl} />}
 
       <NetWorthBreakdown yr={yr} />
     </div>
@@ -472,6 +537,65 @@ function AllYearsView({ years, rawYears, openingBalances }: {
         </div>
         </div>
       </div>
+
+      {/* Book Value vs Market Value chart */}
+      {chartYears.some(yr => yr.pnl) && (
+        <div className="bg-app-surface border border-app-border rounded-lg overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-app-border">
+            <div className="text-xs font-semibold text-app-text2 uppercase tracking-wide">Book Value vs Market Value</div>
+            <ChartRangeSelector value={chartRange} onChange={setChartRange} />
+          </div>
+          <div className="px-4 py-3">
+            <div style={{ height: 260 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartYears.map(yr => ({
+                  year: yr.year,
+                  'Book Value': Math.round(yr.pnl?.totalBookValue ?? 0),
+                  'Market Value': Math.round(yr.pnl?.totalMarketValue ?? 0),
+                }))} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
+                  <XAxis dataKey="year" tick={chartColors.axisTick} />
+                  <YAxis tickFormatter={v => formatShort(v as number)} tick={chartColors.axisTick} />
+                  <Tooltip contentStyle={chartColors.tooltipStyle} labelStyle={chartColors.labelStyle} formatter={(v: number, name: string) => [formatShort(v), name]} />
+                  <Legend wrapperStyle={chartColors.legendStyle} />
+                  <Area type="monotone" dataKey="Book Value" stroke="#94a3b8" fill="#94a3b8" fillOpacity={0.3} strokeWidth={2} />
+                  <Area type="monotone" dataKey="Market Value" stroke="#2563eb" fill="#2563eb" fillOpacity={0.2} strokeWidth={2} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Unrealized Gain/Loss chart */}
+      {chartYears.some(yr => yr.pnl && yr.pnl.totalGain !== 0) && (
+        <div className="bg-app-surface border border-app-border rounded-lg overflow-hidden">
+          <div className="flex items-center justify-between px-4 py-2.5 border-b border-app-border">
+            <div className="text-xs font-semibold text-app-text2 uppercase tracking-wide">Unrealized Gain/Loss Over Time</div>
+            <ChartRangeSelector value={chartRange} onChange={setChartRange} />
+          </div>
+          <div className="px-4 py-3">
+            <div style={{ height: 220 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={chartYears.map(yr => ({
+                  year: yr.year,
+                  Gain: Math.round(yr.pnl?.totalGain ?? 0),
+                  'Return %': Number(((yr.pnl?.totalReturnPct ?? 0) * 100).toFixed(2)),
+                }))} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
+                  <XAxis dataKey="year" tick={chartColors.axisTick} />
+                  <YAxis yAxisId="left" tickFormatter={v => formatShort(v as number)} tick={chartColors.axisTick} />
+                  <YAxis yAxisId="right" orientation="right" tickFormatter={v => `${v}%`} tick={chartColors.axisTick} />
+                  <Tooltip contentStyle={chartColors.tooltipStyle} labelStyle={chartColors.labelStyle} formatter={(v: number, name: string) => name === 'Return %' ? [`${v.toFixed(1)}%`, name] : [formatShort(v), name]} />
+                  <Legend wrapperStyle={chartColors.legendStyle} />
+                  <Bar yAxisId="left" dataKey="Gain" fill="#10b981" fillOpacity={0.6} radius={[3, 3, 0, 0]} />
+                  <Line yAxisId="right" type="monotone" dataKey="Return %" stroke="#f59e0b" strokeWidth={2} dot={false} />
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* YoY Balance Table */}
       <Section title="Year-over-Year Account Balances">

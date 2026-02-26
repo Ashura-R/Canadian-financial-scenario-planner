@@ -11,11 +11,12 @@ import { TimelinePage } from './pages/TimelinePage';
 import { SchedulingPage } from './pages/SchedulingPage';
 import { AssumptionsPage } from './pages/AssumptionsPage';
 import { AnalysisPage } from './pages/AnalysisPage';
+import { ExpensesPage } from './pages/ExpensesPage';
 import { usePersistedState } from './utils/usePersistedState';
 import type { Page } from './components/PageNav/PageNav';
 
 const PAGE_STORAGE_KEY = 'cdn-tax-active-page';
-const VALID_PAGES: Page[] = ['overview', 'timeline', 'tax-detail', 'accounts', 'scheduling', 'analysis', 'assumptions'];
+const VALID_PAGES: Page[] = ['overview', 'timeline', 'tax-detail', 'accounts', 'expenses', 'scheduling', 'analysis', 'assumptions'];
 
 function loadPage(): Page {
   try {
@@ -51,6 +52,7 @@ export default function App() {
             {page === 'overview' && <OverviewPage onNavigate={(p) => { if (VALID_PAGES.includes(p as Page)) setPage(p as Page); }} />}
             {page === 'tax-detail' && <TaxDetailPage />}
             {page === 'accounts' && <AccountsPage />}
+            {page === 'expenses' && <ExpensesPage />}
             {page === 'timeline' && <TimelinePage />}
             {page === 'scheduling' && <SchedulingPage />}
             {page === 'analysis' && <AnalysisPage />}

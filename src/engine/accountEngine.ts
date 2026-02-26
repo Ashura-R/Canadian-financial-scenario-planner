@@ -1,5 +1,5 @@
 import type { YearData, Assumptions, OpeningBalances } from '../types/scenario';
-import type { ComputedCPP, ComputedEI, ComputedTax, ComputedAccounts, ComputedWaterfall } from '../types/computed';
+import type { ComputedCPP, ComputedEI, ComputedTax, ComputedAccounts, ComputedWaterfall, AccountPnL, AccountPnLEntry } from '../types/computed';
 import type { RetirementIncome } from './taxEngine';
 
 function calcReturn(
@@ -120,6 +120,13 @@ export function computeWaterfall(
   const afterCPPEI = afterProvincialTax - cpp.totalCPPPaid - ei.totalEI;
   const afterTaxIncome = afterCPPEI + gisIncome; // GIS is tax-free, added after tax
 
+  // Living expenses (non-deductible, reduce cash flow)
+  const totalLivingExpenses =
+    (yd.housingExpense ?? 0) + (yd.groceriesExpense ?? 0) + (yd.transportationExpense ?? 0) +
+    (yd.utilitiesExpense ?? 0) + (yd.insuranceExpense ?? 0) + (yd.entertainmentExpense ?? 0) +
+    (yd.personalExpense ?? 0) + (yd.otherLivingExpense ?? 0);
+  const afterExpenses = afterTaxIncome - totalLivingExpenses;
+
   const totalContributions =
     yd.rrspContribution + yd.tfsaContribution + yd.fhsaContribution +
     yd.nonRegContribution + yd.savingsDeposit + yd.respContribution;
@@ -127,7 +134,7 @@ export function computeWaterfall(
     yd.rrspWithdrawal + yd.tfsaWithdrawal + yd.fhsaWithdrawal +
     yd.nonRegWithdrawal + yd.savingsWithdrawal + yd.lifWithdrawal + yd.respWithdrawal;
 
-  const netCashFlow = afterTaxIncome - totalContributions + totalWithdrawals;
+  const netCashFlow = afterExpenses - totalContributions + totalWithdrawals;
 
   return {
     grossIncome,
@@ -140,6 +147,97 @@ export function computeWaterfall(
     afterProvincialTax,
     afterCPPEI,
     afterTaxIncome,
+    totalLivingExpenses,
+    afterExpenses,
     netCashFlow,
+  };
+}
+
+/** Book values per account — tracked across years */
+export interface BookValues {
+  rrsp: number;
+  tfsa: number;
+  fhsa: number;
+  nonReg: number;
+  savings: number;
+  lira: number;
+  resp: number;
+}
+
+function makePnLEntry(bookValue: number, marketValue: number): AccountPnLEntry {
+  const gain = marketValue - bookValue;
+  return {
+    bookValue,
+    marketValue,
+    gain,
+    returnPct: bookValue > 0 ? gain / bookValue : 0,
+  };
+}
+
+/**
+ * Compute per-account book values using proportional method.
+ * Book value = cost basis. On withdrawal, proportional book value is removed.
+ */
+export function computeAccountPnL(
+  yd: YearData,
+  accounts: ComputedAccounts,
+  prevBookValues: BookValues,
+  prevBalances: OpeningBalances,
+  respCESG: number = 0,
+): { pnl: AccountPnL; newBookValues: BookValues } {
+  function updateBookValue(
+    prevBook: number,
+    prevBalance: number,
+    contribution: number,
+    withdrawal: number,
+    eoy: number,
+  ): { bookValue: number; entry: AccountPnLEntry } {
+    const bookBeforeWithdrawal = prevBook + contribution;
+    let bookRemoved = 0;
+    if (withdrawal > 0 && prevBalance + contribution > 0) {
+      // Balance before withdrawal includes growth
+      const balBeforeW = prevBalance + contribution + (eoy - prevBalance - contribution + withdrawal);
+      const fraction = balBeforeW > 0 ? Math.min(1, withdrawal / balBeforeW) : 0;
+      bookRemoved = bookBeforeWithdrawal * fraction;
+    }
+    const newBook = Math.max(0, bookBeforeWithdrawal - bookRemoved);
+    return { bookValue: newBook, entry: makePnLEntry(newBook, eoy) };
+  }
+
+  const rrsp = updateBookValue(prevBookValues.rrsp, prevBalances.rrsp, yd.rrspContribution, yd.rrspWithdrawal, accounts.rrspEOY);
+  const tfsa = updateBookValue(prevBookValues.tfsa, prevBalances.tfsa, yd.tfsaContribution, yd.tfsaWithdrawal, accounts.tfsaEOY);
+  const fhsa = updateBookValue(prevBookValues.fhsa, prevBalances.fhsa, yd.fhsaContribution, yd.fhsaWithdrawal, accounts.fhsaEOY);
+  const nonReg = updateBookValue(prevBookValues.nonReg, prevBalances.nonReg, yd.nonRegContribution, yd.nonRegWithdrawal, accounts.nonRegEOY);
+  const savings = updateBookValue(prevBookValues.savings, prevBalances.savings, yd.savingsDeposit, yd.savingsWithdrawal, accounts.savingsEOY);
+  const lira = updateBookValue(prevBookValues.lira, prevBalances.lira, 0, yd.lifWithdrawal, accounts.liraEOY);
+  const resp = updateBookValue(prevBookValues.resp, prevBalances.resp, yd.respContribution + respCESG, yd.respWithdrawal, accounts.respEOY);
+
+  const totalBookValue = rrsp.bookValue + tfsa.bookValue + fhsa.bookValue + nonReg.bookValue + savings.bookValue + lira.bookValue + resp.bookValue;
+  const totalMarketValue = accounts.rrspEOY + accounts.tfsaEOY + accounts.fhsaEOY + accounts.nonRegEOY + accounts.savingsEOY + accounts.liraEOY + accounts.respEOY;
+  const totalGain = totalMarketValue - totalBookValue;
+
+  return {
+    pnl: {
+      rrsp: rrsp.entry,
+      tfsa: tfsa.entry,
+      fhsa: fhsa.entry,
+      nonReg: nonReg.entry,
+      savings: savings.entry,
+      lira: lira.entry,
+      resp: resp.entry,
+      totalBookValue,
+      totalMarketValue,
+      totalGain,
+      totalReturnPct: totalBookValue > 0 ? totalGain / totalBookValue : 0,
+    },
+    newBookValues: {
+      rrsp: rrsp.bookValue,
+      tfsa: tfsa.bookValue,
+      fhsa: fhsa.bookValue,
+      nonReg: nonReg.bookValue,
+      savings: savings.bookValue,
+      lira: lira.bookValue,
+      resp: resp.bookValue,
+    },
   };
 }

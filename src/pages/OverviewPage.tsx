@@ -11,7 +11,7 @@ import type { ChartRange } from '../components/ChartRangeSelector';
 import type { ComputedYear } from '../types/computed';
 import { usePersistedState } from '../utils/usePersistedState';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+  AreaChart, Area, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import { useChartColors } from '../hooks/useChartColors';
 import { safe } from '../utils/formatters';
@@ -210,6 +210,37 @@ function HeroNetWorthChart({ years, realMode, diffMode }: { years: ComputedYear[
           />
         ))}
       </AreaChart>
+    </ResponsiveContainer>
+  );
+}
+
+// ── What-If Overlay Chart ─────────────────────────────────────────────
+function WhatIfOverlayChart({ baseYears, whatIfYears }: {
+  baseYears: ComputedYear[];
+  whatIfYears: ComputedYear[];
+}) {
+  const cc = useChartColors();
+  const data = baseYears.map((y, i) => ({
+    year: y.year,
+    'Base NW': Math.round(safe(y.accounts.netWorth)),
+    'What-If NW': Math.round(safe(whatIfYears[i]?.accounts.netWorth ?? 0)),
+    'Base Income': Math.round(safe(y.waterfall.afterTaxIncome)),
+    'What-If Income': Math.round(safe(whatIfYears[i]?.waterfall.afterTaxIncome ?? 0)),
+  }));
+
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+        <CartesianGrid vertical={false} stroke={cc.gridStroke} strokeDasharray="3 3" />
+        <XAxis dataKey="year" tick={cc.axisTick} axisLine={false} tickLine={false} />
+        <YAxis tickFormatter={v => formatShort(v)} tick={cc.axisTick} axisLine={false} tickLine={false} />
+        <Tooltip contentStyle={cc.tooltipStyle} formatter={(v: number, name: string) => [formatShort(v), name]} />
+        <Legend wrapperStyle={{ fontSize: 10 }} />
+        <Line type="monotone" dataKey="Base NW" stroke="#94a3b8" strokeWidth={2} strokeDasharray="5 3" dot={false} name="Base Net Worth" />
+        <Line type="monotone" dataKey="What-If NW" stroke="#2563eb" strokeWidth={2.5} dot={false} name="What-If Net Worth" />
+        <Line type="monotone" dataKey="Base Income" stroke="#d1d5db" strokeWidth={1.5} strokeDasharray="5 3" dot={false} name="Base After-Tax" />
+        <Line type="monotone" dataKey="What-If Income" stroke="#10b981" strokeWidth={2} dot={false} name="What-If After-Tax" />
+      </LineChart>
     </ResponsiveContainer>
   );
 }
@@ -487,6 +518,16 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => vo
         <ChartSection title={diffMode ? 'Tax Burden: Nominal vs Real' : 'Tax Waterfall'} height={240}>
           <TaxWaterfallChart years={chartYears} realMode={realMode} diffMode={diffMode} modern />
         </ChartSection>
+
+        {/* ── What-If Overlay (only when active) ────────────────────── */}
+        {isWhatIfMode && whatIfComputed && (
+          <ChartSection title="What-If vs Base — Net Worth & After-Tax Income" height={220}>
+            <WhatIfOverlayChart
+              baseYears={sliceByRange(activeComputed.years, chartRange)}
+              whatIfYears={sliceByRange(whatIfComputed.years, chartRange)}
+            />
+          </ChartSection>
+        )}
 
         {/* ── Supporting Charts (2x2) — Net Worth now here ──────────── */}
         <div className="grid grid-cols-2 gap-3">

@@ -126,4 +126,205 @@ describe('compute', () => {
       analytics.cumulativeGrossIncome[analytics.cumulativeGrossIncome.length - 1], 2
     );
   });
+
+  it('auto-indexed assumptions produce higher RRSP room over time', () => {
+    const scenario = makeTestScenario({
+      assumptions: {
+        ...makeTestScenario().assumptions,
+        autoIndexAssumptions: true,
+        inflationRate: 0.025,
+        numYears: 10,
+      },
+      openingCarryForwards: { rrspUnusedRoom: 0, tfsaUnusedRoom: 0, capitalLossCF: 0, fhsaContribLifetime: 0, priorYearEarnedIncome: 200000 },
+      scheduledItems: [
+        makeTestSchedule({ field: 'employmentIncome', amount: 200000, startYear: 2025 }),
+      ],
+    });
+    // Adjust years array to match numYears
+    scenario.years = scenario.years.slice(0, 10);
+
+    const result = compute(scenario);
+    // RRSP room generated in year 0 should use base rrspLimit
+    // RRSP room in later years should use indexed limit (higher)
+    // Since income is 200K > rrspLimit, room = rrspLimit each year
+    // With indexing, year 5 limit should be higher than year 0 limit
+    const yr0Room = result.years[0].rrspUnusedRoom;
+    // By year 5, accumulated room should reflect indexed limits
+    const yr5Room = result.years[5].rrspUnusedRoom;
+    // Room grows each year because indexed limit increases
+    expect(yr5Room).toBeGreaterThan(yr0Room);
+  });
+
+  it('per-year assumption override changes tax for that year', () => {
+    const scenario = makeTestScenario({
+      scheduledItems: [
+        makeTestSchedule({ field: 'employmentIncome', amount: 100000, startYear: 2025 }),
+      ],
+      assumptionOverrides: {
+        2027: { federalBPA: 25000 }, // Much higher BPA → lower tax
+      },
+    });
+
+    const result = compute(scenario);
+    const yr2025 = result.years.find(y => y.year === 2025)!;
+    const yr2027 = result.years.find(y => y.year === 2027)!;
+
+    // Year 2027 should have lower tax due to higher BPA
+    expect(yr2027.tax.totalIncomeTax).toBeLessThan(yr2025.tax.totalIncomeTax);
+  });
+
+  it('living expenses reduce net cash flow', () => {
+    const scenario = makeTestScenario({
+      scheduledItems: [
+        makeTestSchedule({ field: 'employmentIncome', amount: 100000, startYear: 2025 }),
+        makeTestSchedule({ field: 'housingExpense', amount: 24000, startYear: 2025 }),
+        makeTestSchedule({ field: 'groceriesExpense', amount: 6000, startYear: 2025 }),
+        makeTestSchedule({ field: 'transportationExpense', amount: 3000, startYear: 2025 }),
+      ],
+    });
+
+    const result = compute(scenario);
+    const yr0 = result.years[0];
+
+    // Total living expenses should be 33000
+    expect(yr0.waterfall.totalLivingExpenses).toBe(33000);
+    // afterExpenses = afterTaxIncome - 33000
+    expect(yr0.waterfall.afterExpenses).toBeCloseTo(yr0.waterfall.afterTaxIncome - 33000, 2);
+    // netCashFlow should be less than afterTaxIncome by at least 33000
+    expect(yr0.waterfall.netCashFlow).toBeLessThan(yr0.waterfall.afterTaxIncome - 30000);
+  });
+
+  it('zero expenses produce afterExpenses === afterTaxIncome', () => {
+    const scenario = makeTestScenario({
+      scheduledItems: [
+        makeTestSchedule({ field: 'employmentIncome', amount: 50000, startYear: 2025 }),
+      ],
+    });
+
+    const result = compute(scenario);
+    const yr0 = result.years[0];
+    expect(yr0.waterfall.totalLivingExpenses).toBe(0);
+    expect(yr0.waterfall.afterExpenses).toBe(yr0.waterfall.afterTaxIncome);
+  });
+
+  it('PnL tracks book value and unrealized gains', () => {
+    const scenario = makeTestScenario({
+      openingBalances: { rrsp: 10000, tfsa: 5000, fhsa: 0, nonReg: 0, savings: 0, lira: 0, resp: 0 },
+      assumptions: {
+        ...makeTestScenario().assumptions,
+        assetReturns: { equity: 0.10, fixedIncome: 0, cash: 0, savings: 0 },
+      },
+      scheduledItems: [
+        makeTestSchedule({ field: 'employmentIncome', amount: 80000, startYear: 2025 }),
+        makeTestSchedule({ field: 'rrspContribution', amount: 5000, startYear: 2025 }),
+        makeTestSchedule({ field: 'rrspDeductionClaimed', amount: 5000, startYear: 2025 }),
+      ],
+    });
+
+    const result = compute(scenario);
+    const yr0 = result.years[0];
+
+    expect(yr0.pnl).toBeDefined();
+    const pnl = yr0.pnl!;
+
+    // RRSP: opened with 10000, contributed 5000, no withdrawals, 10% return
+    // Book value = 10000 + 5000 = 15000
+    expect(pnl.rrsp.bookValue).toBe(15000);
+    // Market value = (10000 + 5000) * 1.10 = 16500
+    expect(pnl.rrsp.marketValue).toBe(16500);
+    // Gain = 1500
+    expect(pnl.rrsp.gain).toBe(1500);
+    expect(pnl.rrsp.returnPct).toBeCloseTo(0.10, 2);
+
+    // TFSA: opened with 5000, no contributions, 10% return
+    expect(pnl.tfsa.bookValue).toBe(5000);
+    expect(pnl.tfsa.marketValue).toBe(5500);
+    expect(pnl.tfsa.gain).toBe(500);
+
+    // Totals
+    expect(pnl.totalBookValue).toBe(20000);
+    expect(pnl.totalMarketValue).toBe(22000);
+    expect(pnl.totalGain).toBe(2000);
+  });
+
+  it('PnL proportional withdrawal reduces book value correctly', () => {
+    const scenario = makeTestScenario({
+      openingBalances: { rrsp: 0, tfsa: 20000, fhsa: 0, nonReg: 0, savings: 0, lira: 0, resp: 0 },
+      assumptions: {
+        ...makeTestScenario().assumptions,
+        assetReturns: { equity: 0.10, fixedIncome: 0, cash: 0, savings: 0 },
+      },
+      scheduledItems: [
+        makeTestSchedule({ field: 'employmentIncome', amount: 50000, startYear: 2025 }),
+        makeTestSchedule({ field: 'tfsaWithdrawal', amount: 10000, startYear: 2025, endYear: 2025 }),
+      ],
+    });
+
+    const result = compute(scenario);
+    const yr0 = result.years[0];
+    const pnl = yr0.pnl!;
+
+    // TFSA: opening 20000, withdraw 10000, 10% return on (20000-10000)=10000 → EOY = 11000
+    // Balance before withdrawal = 20000 + (11000 - 20000 + 10000) = 21000
+    // Withdrawal fraction = 10000/21000
+    // Book removed = 20000 * (10000/21000) ≈ 9523.81
+    // Book value = 20000 - 9523.81 ≈ 10476.19
+    expect(pnl.tfsa.bookValue).toBeCloseTo(10476.19, 0);
+    expect(pnl.tfsa.marketValue).toBe(11000);
+    expect(pnl.tfsa.gain).toBeCloseTo(11000 - 10476.19, 0);
+  });
+
+  it('return sequence overrides global asset returns', () => {
+    const scenario = makeTestScenario({
+      openingBalances: { rrsp: 100000, tfsa: 0, fhsa: 0, nonReg: 0, savings: 0, lira: 0, resp: 0 },
+      assumptions: {
+        ...makeTestScenario().assumptions,
+        numYears: 3,
+        assetReturns: { equity: 0.05, fixedIncome: 0, cash: 0, savings: 0 },
+      },
+      returnSequence: {
+        enabled: true,
+        equity: [0.10, -0.05, 0.15],    // override: 10%, -5%, 15%
+        fixedIncome: [0, 0, 0],
+        cash: [0, 0, 0],
+        savings: [0, 0, 0],
+      },
+    });
+    scenario.years = scenario.years.slice(0, 3);
+
+    const result = compute(scenario);
+    // Year 0: RRSP = 100000 * 1.10 = 110000
+    expect(result.years[0].accounts.rrspEOY).toBeCloseTo(110000, 0);
+    // Year 1: RRSP = 110000 * 0.95 = 104500
+    expect(result.years[1].accounts.rrspEOY).toBeCloseTo(104500, 0);
+    // Year 2: RRSP = 104500 * 1.15 = 120175
+    expect(result.years[2].accounts.rrspEOY).toBeCloseTo(120175, 0);
+  });
+
+  it('auto-indexing disabled keeps all years at base values', () => {
+    const scenario = makeTestScenario({
+      assumptions: {
+        ...makeTestScenario().assumptions,
+        autoIndexAssumptions: false,
+        inflationRate: 0.05, // high inflation to make difference obvious
+        numYears: 10,
+      },
+      openingCarryForwards: { rrspUnusedRoom: 0, tfsaUnusedRoom: 0, capitalLossCF: 0, fhsaContribLifetime: 0, priorYearEarnedIncome: 200000 },
+      scheduledItems: [
+        makeTestSchedule({ field: 'employmentIncome', amount: 200000, startYear: 2025 }),
+      ],
+    });
+    scenario.years = scenario.years.slice(0, 10);
+
+    const result = compute(scenario);
+    // With auto-index off and same income, RRSP room generated each year should be the same (base limit)
+    // Room accumulates linearly since limit doesn't change
+    const baseLimit = scenario.assumptions.rrspLimit;
+    // Year 1 room = baseLimit (from priorYearEarnedIncome 200K * 18% = 36K capped at baseLimit)
+    const yr1Room = result.years[1].rrspUnusedRoom;
+    expect(yr1Room).toBeCloseTo(baseLimit, 0);
+    // Year 2 should be 2 * baseLimit
+    const yr2Room = result.years[2].rrspUnusedRoom;
+    expect(yr2Room).toBeCloseTo(2 * baseLimit, 0);
+  });
 });

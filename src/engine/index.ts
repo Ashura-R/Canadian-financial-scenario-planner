@@ -2,11 +2,12 @@ import type { Scenario, OpeningBalances, ScheduledItem, YearData, ScheduleCondit
 import type { ComputedScenario, ComputedYear, ComputedRetirement, ComputedTaxDetail, ComputedACB, ComputedLiability } from '../types/computed';
 import { computeCPP, computeEI, computeTax } from './taxEngine';
 import type { RetirementIncome } from './taxEngine';
-import { computeAccounts, computeWaterfall } from './accountEngine';
-import type { ReturnOverrides } from './accountEngine';
+import { computeAccounts, computeWaterfall, computeAccountPnL } from './accountEngine';
+import type { ReturnOverrides, BookValues } from './accountEngine';
 import { computeAnalytics } from './analyticsEngine';
 import { validateYear } from './validationEngine';
 import { computeACB } from './acbEngine';
+import { resolveAssumptions } from './assumptionResolver';
 
 // CRA RRIF minimum withdrawal factors by age
 const RRIF_FACTORS: Record<number, number> = {
@@ -103,6 +104,7 @@ function buildConditionContext(computed: ComputedYear, rawYd: YearData): Record<
     foreignIncome: rawYd.foreignIncome,
     liraEOY: computed.accounts.liraEOY,
     respEOY: computed.accounts.respEOY,
+    totalLivingExpenses: computed.waterfall.totalLivingExpenses,
   };
 }
 
@@ -465,6 +467,15 @@ export function compute(scenario: Scenario): ComputedScenario {
     ? (assumptions.startYear - 1) // assume opened before start year if has balance/contribs
     : null;
   let prevACB = acbConfig?.openingACB ?? openingBalances.nonReg;
+  let prevBookValues: BookValues = {
+    rrsp: openingBalances.rrsp,
+    tfsa: openingBalances.tfsa,
+    fhsa: openingBalances.fhsa,
+    nonReg: openingBalances.nonReg,
+    savings: openingBalances.savings,
+    lira: openingBalances.lira,
+    resp: openingBalances.resp,
+  };
   let priorYearEarnedIncome = ocf?.priorYearEarnedIncome ?? 0;
 
   // HBP tracking
@@ -488,20 +499,35 @@ export function compute(scenario: Scenario): ComputedScenario {
   const effectiveYears: YearData[] = [];
 
   for (const rawYd of years) {
-    // Per-year return overrides
+    // Per-year return overrides (priority: YearData override > returnSequence > global)
+    const seq = scenario.returnSequence;
+    const seqIdx = rawYd.year - assumptions.startYear;
+    const seqEquity = seq?.enabled && seqIdx >= 0 && seqIdx < (seq.equity?.length ?? 0) ? seq.equity[seqIdx] : undefined;
+    const seqFixed = seq?.enabled && seqIdx >= 0 && seqIdx < (seq.fixedIncome?.length ?? 0) ? seq.fixedIncome[seqIdx] : undefined;
+    const seqCash = seq?.enabled && seqIdx >= 0 && seqIdx < (seq.cash?.length ?? 0) ? seq.cash[seqIdx] : undefined;
+    const seqSavings = seq?.enabled && seqIdx >= 0 && seqIdx < (seq.savings?.length ?? 0) ? seq.savings[seqIdx] : undefined;
+
+    const hasSeq = seqEquity !== undefined || seqFixed !== undefined || seqCash !== undefined || seqSavings !== undefined;
+    const hasYdOverride = rawYd.equityReturnOverride !== undefined || rawYd.fixedIncomeReturnOverride !== undefined ||
+       rawYd.cashReturnOverride !== undefined || rawYd.savingsReturnOverride !== undefined;
+
     const returnOverrides: ReturnOverrides | undefined =
-      (rawYd.equityReturnOverride !== undefined || rawYd.fixedIncomeReturnOverride !== undefined ||
-       rawYd.cashReturnOverride !== undefined || rawYd.savingsReturnOverride !== undefined)
+      (hasYdOverride || hasSeq)
         ? {
-            equity: rawYd.equityReturnOverride,
-            fixedIncome: rawYd.fixedIncomeReturnOverride,
-            cash: rawYd.cashReturnOverride,
-            savings: rawYd.savingsReturnOverride,
+            equity: rawYd.equityReturnOverride ?? seqEquity,
+            fixedIncome: rawYd.fixedIncomeReturnOverride ?? seqFixed,
+            cash: rawYd.cashReturnOverride ?? seqCash,
+            savings: rawYd.savingsReturnOverride ?? seqSavings,
           }
         : undefined;
 
-    // Per-year inflation override
-    const effectiveInflation = rawYd.inflationRateOverride ?? assumptions.inflationRate;
+    // Resolve per-year assumptions (auto-index + manual overrides)
+    const resolvedAssumptions = resolveAssumptions(
+      assumptions, rawYd.year, inflationFactor, scenario.assumptionOverrides,
+    );
+
+    // Per-year inflation override: YearData override > assumption override > base
+    const effectiveInflation = rawYd.inflationRateOverride ?? resolvedAssumptions.inflationRate;
     inflationFactor *= (1 + effectiveInflation);
 
     // FHSA disposition handling
@@ -549,7 +575,7 @@ export function compute(scenario: Scenario): ComputedScenario {
         fhsaOpeningYear = rawYd.year;
       }
       const yearsOpen = fhsaOpeningYear !== null ? rawYd.year - fhsaOpeningYear : 0;
-      const fhsaAge = assumptions.birthYear != null ? rawYd.year - assumptions.birthYear : null;
+      const fhsaAge = resolvedAssumptions.birthYear != null ? rawYd.year - resolvedAssumptions.birthYear : null;
       const mustClose = yearsOpen >= 15 || (fhsaAge !== null && fhsaAge >= 71);
 
       if (mustClose && !fhsaDisposed) {
@@ -607,10 +633,10 @@ export function compute(scenario: Scenario): ComputedScenario {
 
     // TFSA room for this year: annual limit + prior-year withdrawals restore room
     // TFSA room only accrues from age 18 (when birthYear is known)
-    const age = assumptions.birthYear != null ? rawYd.year - assumptions.birthYear : null;
+    const age = resolvedAssumptions.birthYear != null ? rawYd.year - resolvedAssumptions.birthYear : null;
     const tfsaEligible = age === null || age >= 18;
     const tfsaRoomGenerated = tfsaEligible
-      ? assumptions.tfsaAnnualLimit + prevYearTfsaWithdrawals
+      ? resolvedAssumptions.tfsaAnnualLimit + prevYearTfsaWithdrawals
       : 0;
 
     // Deductible interest from investment loans (computed from prior year's liability balances)
@@ -633,11 +659,11 @@ export function compute(scenario: Scenario): ComputedScenario {
     );
 
     // Pass 1: Apply non-conditional scheduled items
-    const ydPass1 = applySchedules(ydWithFHSA, schedules, assumptions.inflationRate, null, false,
-      prevBalances, assumptions, fhsaContribLifetime, fhsaUnusedRoom);
+    const ydPass1 = applySchedules(ydWithFHSA, schedules, resolvedAssumptions.inflationRate, null, false,
+      prevBalances, resolvedAssumptions, fhsaContribLifetime, fhsaUnusedRoom);
 
     const pass1 = computeOneYear(
-      ydPass1, assumptions, prevBalances,
+      ydPass1, resolvedAssumptions, prevBalances,
       capitalLossCF, rrspUnusedRoom, fhsaContribLifetime, fhsaUnusedRoom,
       tfsaUnusedRoom, tfsaRoomGenerated,
       inflationFactor, returnOverrides, fhsaDisposed,
@@ -649,11 +675,11 @@ export function compute(scenario: Scenario): ComputedScenario {
     let finalResult = pass1;
     let effectiveYd: YearData = ydPass1; // track final effective year data for carry-forward
     if (hasConditionalSchedules(schedules, rawYd.year)) {
-      const ydPass2 = applySchedules(ydWithFHSA, schedules, assumptions.inflationRate, pass1.computed, true,
-        prevBalances, assumptions, fhsaContribLifetime, fhsaUnusedRoom);
+      const ydPass2 = applySchedules(ydWithFHSA, schedules, resolvedAssumptions.inflationRate, pass1.computed, true,
+        prevBalances, resolvedAssumptions, fhsaContribLifetime, fhsaUnusedRoom);
       // Merge: apply non-conditional again on the base, then conditional on top
-      const ydMerged = applySchedules(ydPass2, schedules, assumptions.inflationRate, null, false,
-        prevBalances, assumptions, fhsaContribLifetime, fhsaUnusedRoom);
+      const ydMerged = applySchedules(ydPass2, schedules, resolvedAssumptions.inflationRate, null, false,
+        prevBalances, resolvedAssumptions, fhsaContribLifetime, fhsaUnusedRoom);
 
       // Check if anything changed
       const pass1Keys = Object.keys(ydPass1) as (keyof YearData)[];
@@ -665,7 +691,7 @@ export function compute(scenario: Scenario): ComputedScenario {
       if (changed) {
         effectiveYd = ydMerged;
         finalResult = computeOneYear(
-          ydMerged, assumptions, prevBalances,
+          ydMerged, resolvedAssumptions, prevBalances,
           capitalLossCF, rrspUnusedRoom, fhsaContribLifetime, fhsaUnusedRoom,
           tfsaUnusedRoom, tfsaRoomGenerated,
           inflationFactor, returnOverrides, fhsaDisposed,
@@ -716,6 +742,12 @@ export function compute(scenario: Scenario): ComputedScenario {
     }
     respGrantsLifetime += cESGThisYear;
 
+    // Per-account P&L tracking (book value vs market value)
+    const pnlResult = computeAccountPnL(
+      effectiveYd, computedYear.accounts, prevBookValues, prevBalances, cESGThisYear,
+    );
+    computedYear.pnl = pnlResult.pnl;
+
     computedYears.push(computedYear);
     effectiveYears.push(effectiveYd);
 
@@ -729,6 +761,7 @@ export function compute(scenario: Scenario): ComputedScenario {
     fhsaUnusedRoom = finalResult.newFhsaUnusedRoom;
     tfsaUnusedRoom = finalResult.newTfsaUnusedRoom;
     prevACB = finalResult.newACB;
+    prevBookValues = pnlResult.newBookValues;
     // Use effective year data (after scheduling) so RRSP room generation works with scheduled income
     priorYearEarnedIncome = effectiveYd.employmentIncome + Math.max(0, effectiveYd.selfEmploymentIncome - (effectiveYd.selfEmploymentExpenses ?? 0));
     prevBalances = { ...finalResult.newBalances };

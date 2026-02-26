@@ -11,7 +11,8 @@ export type ConditionField =
   | 'capitalGainsRealized' | 'capitalLossCF'
   | 'age'
   | 'rentalGrossIncome' | 'pensionIncome' | 'foreignIncome'
-  | 'liraEOY' | 'respEOY';
+  | 'liraEOY' | 'respEOY'
+  | 'totalLivingExpenses';
 
 // Reference fields for percentage-based scheduled amounts
 export type AmountReference = ConditionField;
@@ -74,6 +75,40 @@ export interface RetirementBenefit {
   startAge: number;       // age to begin receiving benefit
 }
 
+export interface AssumptionOverrides {
+  // Tax thresholds (dollar amounts — auto-indexed)
+  federalBPA?: number;
+  provincialBPA?: number;
+  federalBrackets?: TaxBracket[];
+  provincialBrackets?: TaxBracket[];
+  // CPP
+  cppBasicExemption?: number;
+  cppYmpe?: number;
+  cppYampe?: number;
+  cppEmployeeRate?: number;
+  cppCpp2Rate?: number;
+  // EI
+  eiMaxInsurableEarnings?: number;
+  eiEmployeeRate?: number;
+  // Account limits
+  rrspLimit?: number;
+  tfsaAnnualLimit?: number;
+  fhsaAnnualLimit?: number;
+  fhsaLifetimeLimit?: number;
+  // Rates (policy — NOT auto-indexed)
+  capitalGainsInclusionRate?: number;
+  dividendEligibleGrossUp?: number;
+  dividendEligibleFederalCredit?: number;
+  dividendEligibleProvincialCredit?: number;
+  dividendNonEligibleGrossUp?: number;
+  dividendNonEligibleFederalCredit?: number;
+  dividendNonEligibleProvincialCredit?: number;
+  // OAS
+  oasClawbackThreshold?: number;
+  // Inflation itself (overrides the base assumption for this year)
+  inflationRate?: number;
+}
+
 export interface Assumptions {
   province: Province;
   startYear: number;
@@ -120,6 +155,8 @@ export interface Assumptions {
   };
   // OAS clawback
   oasClawbackThreshold?: number; // default 86912
+  // Auto-indexing
+  autoIndexAssumptions?: boolean; // default true — index dollar thresholds by inflation
   // Home Buyers' Plan (HBP)
   hbp?: {
     withdrawalYear: number;       // year of HBP withdrawal from RRSP
@@ -174,7 +211,15 @@ export type ScheduledField =
   | 'movingExpenses'
   | 'otherDeductions'
   | 'otherNonRefundableCredits'
-  | 'lcgeClaimAmount';
+  | 'lcgeClaimAmount'
+  | 'housingExpense'
+  | 'groceriesExpense'
+  | 'transportationExpense'
+  | 'utilitiesExpense'
+  | 'insuranceExpense'
+  | 'entertainmentExpense'
+  | 'personalExpense'
+  | 'otherLivingExpense';
 
 export interface ScheduledItem {
   id: string;
@@ -222,6 +267,15 @@ export interface YearData {
   otherNonRefundableCredits: number;
   homeBuyersPurchaseYear: boolean;  // true in the year of first-time home purchase
   lcgeClaimAmount: number;          // Lifetime Capital Gains Exemption claimed this year
+  // Living expenses (non-deductible, affect cash flow only)
+  housingExpense: number;           // rent, property tax, condo fees (mortgage payments tracked via Liability)
+  groceriesExpense: number;
+  transportationExpense: number;    // car payment, gas, transit, insurance
+  utilitiesExpense: number;         // hydro, gas, water, internet, phone
+  insuranceExpense: number;         // life, home/tenant, disability
+  entertainmentExpense: number;     // dining, subscriptions, hobbies
+  personalExpense: number;          // clothing, personal care, education
+  otherLivingExpense: number;       // catch-all for uncategorized
   // Account contributions
   rrspContribution: number;
   rrspDeductionClaimed: number;
@@ -313,6 +367,26 @@ export interface Liability {
   amortizationYears?: number;    // optional: for reference/display
 }
 
+// Manual per-year return sequences (override global assetReturns for each year)
+export interface ReturnSequence {
+  enabled: boolean;
+  equity: number[];      // one value per year (index 0 = startYear)
+  fixedIncome: number[];
+  cash: number[];
+  savings: number[];
+}
+
+// Monte Carlo simulation configuration
+export interface MonteCarloConfig {
+  enabled: boolean;
+  numTrials: number;        // e.g. 500
+  seed?: number;            // optional seed for reproducibility
+  equity: { mean: number; stdDev: number };
+  fixedIncome: { mean: number; stdDev: number };
+  cash: { mean: number; stdDev: number };
+  savings: { mean: number; stdDev: number };
+}
+
 export interface Scenario {
   id: string;
   name: string;
@@ -323,4 +397,7 @@ export interface Scenario {
   scheduledItems?: ScheduledItem[];
   acbConfig?: ACBConfig;
   liabilities?: Liability[];
+  assumptionOverrides?: Record<number, AssumptionOverrides>;
+  returnSequence?: ReturnSequence;
+  monteCarloConfig?: MonteCarloConfig;
 }

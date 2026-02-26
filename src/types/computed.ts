@@ -113,6 +113,8 @@ export interface ComputedWaterfall {
   afterProvincialTax: number;
   afterCPPEI: number;
   afterTaxIncome: number;
+  totalLivingExpenses: number;    // sum of all non-deductible living expense categories
+  afterExpenses: number;          // afterTaxIncome - totalLivingExpenses
   netCashFlow: number;
 }
 
@@ -136,6 +138,27 @@ export interface ComputedACB {
   perUnitACB: number;            // closingACB / nonRegEOY (0 if no balance)
   computedCapitalGain: number;   // proceeds - proportional ACB
   dispositionProceeds: number;
+}
+
+export interface AccountPnLEntry {
+  bookValue: number;      // cumulative cost basis (contributions - proportional withdrawals)
+  marketValue: number;    // end-of-year balance
+  gain: number;           // marketValue - bookValue (unrealized gain/loss)
+  returnPct: number;      // gain / bookValue (0 if no book value)
+}
+
+export interface AccountPnL {
+  rrsp: AccountPnLEntry;
+  tfsa: AccountPnLEntry;
+  fhsa: AccountPnLEntry;
+  nonReg: AccountPnLEntry;
+  savings: AccountPnLEntry;
+  lira: AccountPnLEntry;
+  resp: AccountPnLEntry;
+  totalBookValue: number;
+  totalMarketValue: number;
+  totalGain: number;
+  totalReturnPct: number;
 }
 
 export interface ComputedLiability {
@@ -173,6 +196,8 @@ export interface ComputedYear {
   fhsaUnusedRoom: number;
   // ACB tracking (optional)
   acb?: ComputedACB;
+  // Per-account P&L tracking
+  pnl?: AccountPnL;
   // Liability tracking (optional)
   liabilities?: ComputedLiability[];
   totalDebt?: number;             // sum of all closing balances

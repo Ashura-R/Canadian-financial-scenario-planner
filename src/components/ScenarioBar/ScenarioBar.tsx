@@ -3,6 +3,7 @@ import { useScenario } from '../../store/ScenarioContext';
 import { makeDefaultScenario } from '../../store/defaults';
 import { PDFReportModal } from '../PDFReportModal';
 import type { Scenario } from '../../types/scenario';
+import { SCENARIO_COLORS } from '../CompareModal/OverlayCharts';
 
 interface Props {
   onCompare: () => void;
@@ -84,7 +85,7 @@ export function ScenarioBar({ onCompare }: Props) {
     <div className="flex items-center justify-center gap-2 px-4 py-1.5 bg-app-surface2 border-b border-app-border shrink-0">
       {/* Scenario tabs + action buttons — centered as a group */}
       <div className="flex items-center gap-1.5">
-        {state.scenarios.map(sc => {
+        {state.scenarios.map((sc, scIdx) => {
           const active = sc.id === state.activeId;
           return (
             <div
@@ -97,6 +98,7 @@ export function ScenarioBar({ onCompare }: Props) {
               onClick={() => dispatch({ type: 'SET_ACTIVE', id: sc.id })}
               onDoubleClick={() => startRename(sc.id, sc.name)}
             >
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: SCENARIO_COLORS[scIdx % SCENARIO_COLORS.length] }} />
               {editingId === sc.id ? (
                 <input
                   ref={inputRef}
