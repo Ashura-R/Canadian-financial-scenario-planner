@@ -1,8 +1,10 @@
-import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, useState, useMemo } from 'react';
 import type { Scenario } from '../types/scenario';
 import type { ComputedScenario } from '../types/computed';
 import { compute } from '../engine';
 import { makeDefaultScenario } from './defaults';
+import { DEFAULT_WHATIF, isWhatIfActive, applyWhatIfAdjustments } from '../engine/whatIfEngine';
+import type { WhatIfAdjustments } from '../engine/whatIfEngine';
 
 interface ScenarioState {
   scenarios: Scenario[];
@@ -103,6 +105,11 @@ interface ScenarioContextValue {
   dispatch: React.Dispatch<Action>;
   activeScenario: Scenario | undefined;
   activeComputed: ComputedScenario | undefined;
+  whatIfAdjustments: WhatIfAdjustments;
+  whatIfComputed: ComputedScenario | null;
+  isWhatIfMode: boolean;
+  setWhatIfAdjustments: (partial: Partial<WhatIfAdjustments>) => void;
+  resetWhatIf: () => void;
 }
 
 const ScenarioContext = createContext<ScenarioContextValue | null>(null);
@@ -118,6 +125,17 @@ export function ScenarioProvider({ children }: { children: React.ReactNode }) {
 
   const [state, dispatch] = useReducer(reducer, initialState);
 
+  // What-If state (NOT persisted to localStorage)
+  const [whatIfAdjustments, setWhatIfAdj] = useState<WhatIfAdjustments>(DEFAULT_WHATIF);
+
+  const setWhatIfAdjustments = useCallback((partial: Partial<WhatIfAdjustments>) => {
+    setWhatIfAdj(prev => ({ ...prev, ...partial }));
+  }, []);
+
+  const resetWhatIf = useCallback(() => {
+    setWhatIfAdj(DEFAULT_WHATIF);
+  }, []);
+
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -130,8 +148,25 @@ export function ScenarioProvider({ children }: { children: React.ReactNode }) {
   const activeScenario = state.scenarios.find(s => s.id === state.activeId);
   const activeComputed = activeScenario ? state.computed[activeScenario.id] : undefined;
 
+  const isActive = isWhatIfActive(whatIfAdjustments);
+
+  const whatIfComputed = useMemo(() => {
+    if (!isActive || !activeScenario) return null;
+    try {
+      const modified = applyWhatIfAdjustments(activeScenario, whatIfAdjustments);
+      return compute(modified);
+    } catch (e) {
+      console.error('What-If compute error', e);
+      return null;
+    }
+  }, [isActive, activeScenario, whatIfAdjustments]);
+
   return (
-    <ScenarioContext.Provider value={{ state, dispatch, activeScenario, activeComputed }}>
+    <ScenarioContext.Provider value={{
+      state, dispatch, activeScenario, activeComputed,
+      whatIfAdjustments, whatIfComputed, isWhatIfMode: isActive,
+      setWhatIfAdjustments, resetWhatIf,
+    }}>
       {children}
     </ScenarioContext.Provider>
   );
@@ -149,4 +184,15 @@ export function useUpdateScenario() {
     if (!activeScenario) return;
     dispatch({ type: 'UPDATE_SCENARIO', scenario: updater(activeScenario) });
   }, [activeScenario, dispatch]);
+}
+
+export function useWhatIf() {
+  const { whatIfAdjustments, whatIfComputed, isWhatIfMode, setWhatIfAdjustments, resetWhatIf } = useScenario();
+  return {
+    adjustments: whatIfAdjustments,
+    computed: whatIfComputed,
+    isActive: isWhatIfMode,
+    setAdjustments: setWhatIfAdjustments,
+    reset: resetWhatIf,
+  };
 }

@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
-import { useScenario } from '../store/ScenarioContext';
+import { useScenario, useWhatIf } from '../store/ScenarioContext';
 import { formatCAD, formatPct, formatShort, safe } from '../utils/formatters';
 import { usePersistedYear } from '../utils/usePersistedYear';
 import type { ComputedYear, BracketDetail } from '../types/computed';
@@ -330,6 +330,7 @@ function MarginalRateChart({ years, selectedYearIdx, onSelectYear }: {
 
 export function TaxDetailPage() {
   const { activeComputed, activeScenario } = useScenario();
+  const { isActive: isWhatIfMode, computed: whatIfComputed } = useWhatIf();
   const [viewMode, setViewModeRaw] = useState<'single' | 'all'>(() => {
     try { const v = localStorage.getItem('cdn-tax-taxdetail-view'); return v === 'all' ? 'all' : 'single'; } catch { return 'single'; }
   });
@@ -339,9 +340,10 @@ export function TaxDetailPage() {
     return <div className="p-8 text-app-text4 text-sm">No scenario data.</div>;
   }
 
-  const years = activeComputed.years;
+  const displayComputed = (isWhatIfMode && whatIfComputed) ? whatIfComputed : activeComputed;
+  const years = displayComputed.years;
   const [selectedYearIdx, setSelectedYearIdx] = usePersistedYear(years.length - 1);
-  const rawYears = activeComputed.effectiveYears;
+  const rawYears = displayComputed.effectiveYears;
   const yr = years[selectedYearIdx] ?? years[0];
   const rawYd = rawYears[selectedYearIdx] ?? rawYears[0];
 
@@ -352,7 +354,14 @@ export function TaxDetailPage() {
       <div className="max-w-7xl mx-auto px-6 py-5">
         {/* Header */}
         <div className="flex items-center justify-between mb-4">
-          <div className="text-[10px] font-semibold uppercase tracking-widest text-app-text4">Tax Detail</div>
+          <div className="flex items-center gap-2">
+            <div className="text-[10px] font-semibold uppercase tracking-widest text-app-text4">Tax Detail</div>
+            {isWhatIfMode && (
+              <span className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-0.5 rounded-full font-semibold">
+                What-If Active
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-3">
             {viewMode === 'single' && (
               <select

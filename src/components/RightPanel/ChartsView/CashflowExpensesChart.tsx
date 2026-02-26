@@ -10,20 +10,44 @@ import { useChartColors } from '../../../hooks/useChartColors';
 interface Props {
   years: ComputedYear[];
   rawYears: YearData[];
+  modern?: boolean;
 }
 
 const COLORS = {
-  afterTax: '#059669',
-  rrsp: '#2563eb',
-  tfsa: '#0891b2',
+  afterTax: '#10b981',
+  rrsp: '#3b82f6',
+  tfsa: '#06b6d4',
   fhsa: '#8b5cf6',
-  nonReg: '#d97706',
+  nonReg: '#f59e0b',
   savings: '#0284c7',
-  debt: '#dc2626',
+  debt: '#f43f5e',
   netCF: '#f59e0b',
 };
 
-function CashflowTooltip({ active, payload, label }: any) {
+function ModernTooltipContent({ active, payload, label }: any) {
+  if (!active || !payload?.length) return null;
+  const items = payload.filter((p: any) => (p.value ?? 0) !== 0);
+  return (
+    <div style={{
+      background: 'var(--app-tooltip-bg)', borderRadius: 12, padding: '12px 14px',
+      boxShadow: '0 8px 30px rgba(0,0,0,0.12)', backdropFilter: 'blur(8px)',
+      border: '1px solid var(--app-glass-border)', fontSize: 12, minWidth: 180,
+    }}>
+      <div style={{ fontWeight: 600, color: 'var(--app-text2)', marginBottom: 8, paddingBottom: 6, borderBottom: '1px solid var(--app-border)' }}>{label}</div>
+      {items.map((p: any) => (
+        <div key={p.dataKey} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '2px 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: p.stroke || p.fill || p.color }} />
+            <span style={{ color: 'var(--app-text3)' }}>{p.name}</span>
+          </div>
+          <span style={{ fontWeight: 500, color: 'var(--app-text)', fontVariantNumeric: 'tabular-nums' }}>{formatShort(p.value)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function LegacyTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   return (
     <div className="bg-app-surface border border-app-border rounded-lg shadow-sm p-3 text-xs min-w-[180px]">
@@ -41,8 +65,9 @@ function CashflowTooltip({ active, payload, label }: any) {
   );
 }
 
-export function CashflowExpensesChart({ years, rawYears }: Props) {
+export function CashflowExpensesChart({ years, rawYears, modern }: Props) {
   const cc = useChartColors();
+  const barRadius: [number, number, number, number] = modern ? [3, 3, 0, 0] : [0, 0, 0, 0];
 
   const data = years.map((y, i) => {
     const raw = rawYears[i];
@@ -63,19 +88,19 @@ export function CashflowExpensesChart({ years, rawYears }: Props) {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <ComposedChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-        <CartesianGrid strokeDasharray="3 3" stroke={cc.gridStroke} />
-        <XAxis dataKey="year" tick={cc.axisTick} />
-        <YAxis tickFormatter={v => formatShort(v)} tick={cc.axisTick} />
-        <Tooltip content={<CashflowTooltip />} />
-        <Legend wrapperStyle={cc.legendStyle10} />
-        <Bar dataKey="After-Tax" fill={COLORS.afterTax} fillOpacity={0.7} />
+        <CartesianGrid vertical={false} stroke={cc.gridStroke} strokeDasharray={modern ? undefined : "3 3"} />
+        <XAxis dataKey="year" tick={cc.axisTick} axisLine={!modern} tickLine={!modern} />
+        <YAxis tickFormatter={v => formatShort(v)} tick={cc.axisTick} axisLine={!modern} tickLine={!modern} />
+        <Tooltip content={modern ? <ModernTooltipContent /> : <LegacyTooltip />} />
+        {!modern && <Legend wrapperStyle={{ fontSize: 10, color: 'var(--app-text3)' }} />}
+        <Bar dataKey="After-Tax" fill={COLORS.afterTax} fillOpacity={0.7} radius={barRadius} />
         <Bar dataKey="RRSP" stackId="outflows" fill={COLORS.rrsp} fillOpacity={0.7} />
         <Bar dataKey="TFSA" stackId="outflows" fill={COLORS.tfsa} fillOpacity={0.7} />
         <Bar dataKey="FHSA" stackId="outflows" fill={COLORS.fhsa} fillOpacity={0.7} />
         <Bar dataKey="Non-Reg" stackId="outflows" fill={COLORS.nonReg} fillOpacity={0.7} />
         <Bar dataKey="Savings" stackId="outflows" fill={COLORS.savings} fillOpacity={0.7} />
         <Bar dataKey="Debt" stackId="outflows" fill={COLORS.debt} fillOpacity={0.7} />
-        <Line type="monotone" dataKey="Net CF" stroke={COLORS.netCF} strokeWidth={2} dot={false} />
+        <Line type="monotone" dataKey="Net CF" stroke={COLORS.netCF} strokeWidth={modern ? 2.5 : 2} dot={false} />
       </ComposedChart>
     </ResponsiveContainer>
   );

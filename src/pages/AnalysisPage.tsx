@@ -3,7 +3,8 @@ import {
   LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer,
 } from 'recharts';
-import { useScenario } from '../store/ScenarioContext';
+import { useScenario, useWhatIf } from '../store/ScenarioContext';
+import { applyWhatIfAdjustments } from '../engine/whatIfEngine';
 import { computeCPPDeferral, computeOASDeferral } from '../engine/retirementAnalysis';
 import { computeSensitivity } from '../engine/sensitivityEngine';
 import { computeWithdrawalStrategies } from '../engine/optimizerEngine';
@@ -617,43 +618,59 @@ function WithdrawalSection({ strategies, years, withdrawalTarget, onTargetChange
 // ══════════════════════════════════════════════════════════════════════
 export function AnalysisPage() {
   const { activeScenario, activeComputed } = useScenario();
+  const { isActive: isWhatIfMode, computed: whatIfComputed, adjustments } = useWhatIf();
   const [cppMonthly, setCppMonthly] = useState(900);
   const [oasMonthly, setOasMonthly] = useState(700);
   const [withdrawalTarget, setWithdrawalTarget] = useState(50000);
 
+  // When what-if is active, use modified scenario for sensitivity/withdrawal engines
+  const effectiveScenario = useMemo(() => {
+    if (!isWhatIfMode || !activeScenario) return activeScenario;
+    return applyWhatIfAdjustments(activeScenario, adjustments);
+  }, [isWhatIfMode, activeScenario, adjustments]);
+
+  const displayComputed = (isWhatIfMode && whatIfComputed) ? whatIfComputed : activeComputed;
+
   const cppScenarios = useMemo(
-    () => computeCPPDeferral(cppMonthly, activeScenario?.assumptions.inflationRate ?? 0.02),
-    [cppMonthly, activeScenario?.assumptions.inflationRate]
+    () => computeCPPDeferral(cppMonthly, effectiveScenario?.assumptions.inflationRate ?? 0.02),
+    [cppMonthly, effectiveScenario?.assumptions.inflationRate]
   );
 
   const oasScenarios = useMemo(
-    () => computeOASDeferral(oasMonthly, activeScenario?.assumptions.inflationRate ?? 0.02),
-    [oasMonthly, activeScenario?.assumptions.inflationRate]
+    () => computeOASDeferral(oasMonthly, effectiveScenario?.assumptions.inflationRate ?? 0.02),
+    [oasMonthly, effectiveScenario?.assumptions.inflationRate]
   );
 
   const sensitivity = useMemo(
-    () => activeScenario ? computeSensitivity(activeScenario) : null,
-    [activeScenario]
+    () => effectiveScenario ? computeSensitivity(effectiveScenario) : null,
+    [effectiveScenario]
   );
 
   const withdrawalStrategies = useMemo(
-    () => activeScenario && withdrawalTarget > 0
-      ? computeWithdrawalStrategies(activeScenario, withdrawalTarget)
+    () => effectiveScenario && withdrawalTarget > 0
+      ? computeWithdrawalStrategies(effectiveScenario, withdrawalTarget)
       : [],
-    [activeScenario, withdrawalTarget]
+    [effectiveScenario, withdrawalTarget]
   );
 
   if (!activeScenario || !activeComputed) return null;
 
   return (
     <div className="h-full overflow-y-auto p-4 space-y-6">
-      <h2 className="text-lg font-bold text-app-text">Advanced Analysis</h2>
+      <div className="flex items-center gap-3">
+        <h2 className="text-lg font-bold text-app-text">Advanced Analysis</h2>
+        {isWhatIfMode && (
+          <span className="text-[10px] bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 px-2 py-0.5 rounded-full font-semibold">
+            What-If Active
+          </span>
+        )}
+      </div>
 
       {/* Section 1: Lifetime Tax Efficiency */}
-      <TaxEfficiencySection computed={activeComputed} />
+      <TaxEfficiencySection computed={displayComputed!} />
 
       {/* Section 2: Marginal Rates & Retirement Income */}
-      <RateTimelineSection computed={activeComputed} />
+      <RateTimelineSection computed={displayComputed!} />
 
       {/* Section 3: CPP / OAS Deferral */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
@@ -662,12 +679,12 @@ export function AnalysisPage() {
       </div>
 
       {/* Section 4: Sensitivity */}
-      {sensitivity && <SensitivitySection analysis={sensitivity} years={activeComputed.years} />}
+      {sensitivity && <SensitivitySection analysis={sensitivity} years={displayComputed!.years} />}
 
       {/* Section 5: Withdrawal Strategies */}
       <WithdrawalSection
         strategies={withdrawalStrategies}
-        years={activeComputed.years}
+        years={displayComputed!.years}
         withdrawalTarget={withdrawalTarget}
         onTargetChange={setWithdrawalTarget}
       />
