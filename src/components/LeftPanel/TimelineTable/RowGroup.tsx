@@ -29,7 +29,7 @@ interface Props {
   onDragOver?: (e: React.DragEvent) => void;
   onDragLeave?: () => void;
   onDrop?: (e: React.DragEvent) => void;
-  onDragEnd?: () => void;
+  onDragEnd?: (e: React.DragEvent) => void;
 }
 
 export function RowGroup({
