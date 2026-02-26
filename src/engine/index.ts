@@ -281,7 +281,7 @@ function computeOneYear(
     }
   }
 
-  const taxResult = computeTax(ydForTax, assumptions, cpp, ei, retirementIncome, assumptions.province);
+  const taxResult = computeTax(ydForTax, assumptions, cpp, ei, retirementIncome, assumptions.province, age, isRRIF);
   const { detail: taxDetail, ...tax } = taxResult;
   const waterfall = computeWaterfall(ydEffective, cpp, ei, tax, accounts, retirementIncome);
 

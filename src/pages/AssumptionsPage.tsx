@@ -372,9 +372,33 @@ export function AssumptionsPage() {
               <FormRow label="Inflation Rate">
                 <NumInput value={ass.inflationRate} onChange={v => setAss('inflationRate', v)} pct step={0.1} />
               </FormRow>
-              <FormRow label="CG Inclusion Rate">
-                <NumInput value={ass.capitalGainsInclusionRate} onChange={v => setAss('capitalGainsInclusionRate', v)} pct step={0.5} />
+              <FormRow label="Tiered CG Inclusion" hint="Post-June 2024 two-tier rules">
+                <div className="flex justify-end items-center h-full">
+                  <input
+                    type="checkbox"
+                    checked={ass.cgInclusionTiered ?? false}
+                    onChange={e => setAss('cgInclusionTiered', e.target.checked)}
+                    className="accent-blue-600 w-4 h-4"
+                  />
+                </div>
               </FormRow>
+              {ass.cgInclusionTiered ? (
+                <>
+                  <FormRow label="Tier 1 Rate" hint={`First $${((ass.cgInclusionThreshold ?? 250000) / 1000).toFixed(0)}K`}>
+                    <NumInput value={ass.cgInclusionTier1Rate ?? 0.5} onChange={v => setAss('cgInclusionTier1Rate', v)} pct step={0.5} />
+                  </FormRow>
+                  <FormRow label="Tier 2 Rate" hint="Above threshold">
+                    <NumInput value={ass.cgInclusionTier2Rate ?? (2/3)} onChange={v => setAss('cgInclusionTier2Rate', v)} pct step={0.5} />
+                  </FormRow>
+                  <FormRow label="Threshold">
+                    <NumInput value={ass.cgInclusionThreshold ?? 250000} onChange={v => setAss('cgInclusionThreshold', v)} />
+                  </FormRow>
+                </>
+              ) : (
+                <FormRow label="CG Inclusion Rate">
+                  <NumInput value={ass.capitalGainsInclusionRate} onChange={v => setAss('capitalGainsInclusionRate', v)} pct step={0.5} />
+                </FormRow>
+              )}
             </Section>
 
             <Divider />

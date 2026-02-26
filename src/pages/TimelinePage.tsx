@@ -145,6 +145,7 @@ const ROW_REGISTRY: RowEntry[] = [
   { rowId: 'capitalGainsRealized', editable: true, group: 'Income' },
   { rowId: 'capitalLossesRealized', editable: true, group: 'Income' },
   { rowId: 'otherTaxableIncome', editable: true, group: 'Income' },
+  { rowId: 'charitableDonations', editable: true, group: 'Income' },
   { rowId: '_summary_grossIncome', editable: false, group: 'Income' },
   // RRSP
   { rowId: 'rrspContribution', editable: true, group: 'RRSP' },
@@ -730,6 +731,7 @@ export function TimelinePage() {
             {renderRow('Capital Gains', 'capitalGainsRealized')}
             {renderRow('Capital Losses', 'capitalLossesRealized')}
             {renderRow('Other Taxable', 'otherTaxableIncome')}
+            {renderRow('Charitable Donations', 'charitableDonations')}
             <tr className="bg-slate-50 border-b border-slate-100">
               <td className="sticky left-0 bg-slate-50 z-10 py-0.5 pl-3 pr-2 text-[10px] text-slate-700 font-semibold whitespace-nowrap border-r border-slate-100" style={{ minWidth: LABEL_WIDTH }}>
                 Total Gross Income

@@ -1,6 +1,6 @@
 import type { Assumptions, YearData, TaxBracket } from '../types/scenario';
 import type { ComputedCPP, ComputedEI, ComputedTax, ComputedTaxDetail, BracketDetail } from '../types/computed';
-import { PROVINCIAL_EMPLOYMENT_AMOUNT } from '../store/defaults';
+import { PROVINCIAL_EMPLOYMENT_AMOUNT, PROVINCIAL_AGE_AMOUNT, PROVINCIAL_AGE_CLAWBACK } from '../store/defaults';
 
 function applyBrackets(income: number, brackets: TaxBracket[]): number {
   let tax = 0;
@@ -115,7 +115,9 @@ export function computeTax(
   cpp: ComputedCPP,
   ei: ComputedEI,
   retirementIncome: RetirementIncome = { cppBenefitIncome: 0, oasIncome: 0 },
-  province?: string
+  province?: string,
+  age: number | null = null,
+  isRRIF: boolean = false,
 ): ComputedTax & { detail: ComputedTaxDetail } {
   const { capitalGainsInclusionRate, dividendRates, federalBrackets, provincialBrackets, federalBPA, provincialBPA, federalEmploymentAmount } = ass;
 
@@ -123,9 +125,20 @@ export function computeTax(
   const grossedUpEligibleDiv = yd.eligibleDividends * (1 + dividendRates.eligible.grossUp);
   const grossedUpNonEligibleDiv = yd.nonEligibleDividends * (1 + dividendRates.nonEligible.grossUp);
 
-  // Taxable capital gains
+  // Taxable capital gains (two-tier post-June 2024 rules if enabled)
   const netGains = yd.capitalGainsRealized - yd.capitalLossApplied;
-  const taxableCapitalGains = Math.max(0, netGains) * capitalGainsInclusionRate;
+  let taxableCapitalGains: number;
+  if (ass.cgInclusionTiered) {
+    const tier1Rate = ass.cgInclusionTier1Rate ?? 0.5;
+    const tier2Rate = ass.cgInclusionTier2Rate ?? (2 / 3);
+    const threshold = ass.cgInclusionThreshold ?? 250000;
+    const gains = Math.max(0, netGains);
+    const tier1Gains = Math.min(gains, threshold);
+    const tier2Gains = Math.max(0, gains - threshold);
+    taxableCapitalGains = tier1Gains * tier1Rate + tier2Gains * tier2Rate;
+  } else {
+    taxableCapitalGains = Math.max(0, netGains) * capitalGainsInclusionRate;
+  }
 
   // Total income before deductions
   // Note: rrspWithdrawal (and RRIF withdrawals) are fully taxable
@@ -162,10 +175,38 @@ export function computeTax(
   const fedEmploymentCredit = yd.employmentIncome > 0
     ? Math.min(yd.employmentIncome, federalEmploymentAmount ?? 0) * bpaCreditRate
     : 0;
+
+  // Pension income credit: up to $2,000 of eligible pension income at lowest bracket rate
+  // Eligible: RRIF withdrawals when age >= 65
+  const pensionIncomeAmount = 2000;
+  const eligiblePensionIncome = (isRRIF && age !== null && age >= 65) ? yd.rrspWithdrawal : 0;
+  const fedPensionCredit = Math.min(eligiblePensionIncome, pensionIncomeAmount) * bpaCreditRate;
+
+  // Age amount credit: $8,396 (2024), clawed back at 15% of net income above $42,335
+  const fedAgeAmountBase = 8396;
+  const ageClawbackThreshold = 42335;
+  let fedAgeCredit = 0;
+  if (age !== null && age >= 65) {
+    const ageAmount = Math.max(0, fedAgeAmountBase - 0.15 * Math.max(0, netTaxableIncome - ageClawbackThreshold));
+    fedAgeCredit = ageAmount * bpaCreditRate;
+  }
+
+  // Charitable donation credit
+  // Federal: first $200 at 15%, above $200 at 29% (33% if income > top bracket threshold)
+  const donations = Math.min(yd.charitableDonations ?? 0, netTaxableIncome * 0.75); // 75% of net income limit
+  let fedDonationCredit = 0;
+  if (donations > 0) {
+    const first200 = Math.min(donations, 200) * 0.15;
+    const above200 = Math.max(0, donations - 200);
+    const topBracket = federalBrackets[federalBrackets.length - 1];
+    const highRate = (topBracket && netTaxableIncome > (topBracket.min ?? 0)) ? 0.33 : 0.29;
+    fedDonationCredit = first200 + above200 * highRate;
+  }
+
   const eligibleDivCredit = grossedUpEligibleDiv * dividendRates.eligible.federalCredit;
   const nonEligibleDivCredit = grossedUpNonEligibleDiv * dividendRates.nonEligible.federalCredit;
 
-  const federalCredits = bpaCredit + cppCredit + eiCredit + fedEmploymentCredit + eligibleDivCredit + nonEligibleDivCredit;
+  const federalCredits = bpaCredit + cppCredit + eiCredit + fedEmploymentCredit + fedPensionCredit + fedAgeCredit + fedDonationCredit + eligibleDivCredit + nonEligibleDivCredit;
   let federalTaxPayable = Math.max(0, federalTaxBeforeCredits - federalCredits);
 
   // --- Quebec Abatement (16.5% reduction of basic federal tax) ---
@@ -184,10 +225,31 @@ export function computeTax(
   const provEmploymentCredit = yd.employmentIncome > 0
     ? Math.min(yd.employmentIncome, provEmploymentAmt) * (provincialBrackets[0]?.rate ?? 0.0505)
     : 0;
+
+  // Provincial pension income credit (same $2,000 eligible amount, provincial rate)
+  const provPensionCredit = Math.min(eligiblePensionIncome, pensionIncomeAmount) * (provincialBrackets[0]?.rate ?? 0.0505);
+
+  // Provincial age amount credit (varies by province, using federal amount as approximation)
+  const provAgeAmountBase = PROVINCIAL_AGE_AMOUNT[prov] ?? 0;
+  let provAgeCredit = 0;
+  if (age !== null && age >= 65 && provAgeAmountBase > 0) {
+    const provAgeClawbackThreshold = PROVINCIAL_AGE_CLAWBACK[prov] ?? ageClawbackThreshold;
+    const provAgeAmount = Math.max(0, provAgeAmountBase - 0.15 * Math.max(0, netTaxableIncome - provAgeClawbackThreshold));
+    provAgeCredit = provAgeAmount * (provincialBrackets[0]?.rate ?? 0.0505);
+  }
+
+  // Provincial donation credit: first $200 at lowest bracket rate, above $200 at top bracket rate
+  let provDonationCredit = 0;
+  if (donations > 0) {
+    const provLowRate = provincialBrackets[0]?.rate ?? 0.0505;
+    const provHighRate = provincialBrackets[provincialBrackets.length - 1]?.rate ?? provLowRate;
+    provDonationCredit = Math.min(donations, 200) * provLowRate + Math.max(0, donations - 200) * provHighRate;
+  }
+
   const provEligibleDivCredit = grossedUpEligibleDiv * dividendRates.eligible.provincialCredit;
   const provNonEligibleDivCredit = grossedUpNonEligibleDiv * dividendRates.nonEligible.provincialCredit;
 
-  const provincialCredits = provBPACredit + provCPPCredit + provEICredit + provEmploymentCredit + provEligibleDivCredit + provNonEligibleDivCredit;
+  const provincialCredits = provBPACredit + provCPPCredit + provEICredit + provEmploymentCredit + provPensionCredit + provAgeCredit + provDonationCredit + provEligibleDivCredit + provNonEligibleDivCredit;
   let provincialTaxPayable = Math.max(0, provincialTaxBeforeCredits - provincialCredits);
 
   // Ontario surtax
@@ -202,6 +264,26 @@ export function computeTax(
   let oasClawback = 0;
   if (retirementIncome.oasIncome > 0 && netTaxableIncome > oasClawbackThreshold) {
     oasClawback = Math.min(retirementIncome.oasIncome, 0.15 * (netTaxableIncome - oasClawbackThreshold));
+  }
+
+  // --- Alternative Minimum Tax (2024 redesigned) ---
+  // AMT adjusted taxable income: net taxable income + capital gains add-back
+  // Under 2024 AMT: 100% CG inclusion instead of 50% (or tiered), minus $250K exemption
+  // AMT rate: 20.5%, limited credits allowed (BPA only)
+  const amtExemption = 173205; // 2024 basic AMT exemption
+  const netGainsForAMT = Math.max(0, yd.capitalGainsRealized - yd.capitalLossApplied);
+  const cgAddBack = netGainsForAMT - taxableCapitalGains; // difference between 100% and partial inclusion
+  const donationAddBack = donations * 0.50; // 50% of donation add-back for AMT
+  const amtAdjustedIncome = netTaxableIncome + cgAddBack + donationAddBack;
+  const amtTaxableIncome = Math.max(0, amtAdjustedIncome - amtExemption);
+  const amtGross = amtTaxableIncome * 0.205;
+  // AMT allows only BPA credit (at 15%)
+  const amtCredits = bpaCredit;
+  const amtTax = Math.max(0, amtGross - amtCredits);
+  const regularFederalTax = federalTaxPayable;
+  const amtAdditional = Math.max(0, amtTax - regularFederalTax);
+  if (amtAdditional > 0) {
+    federalTaxPayable += amtAdditional;
   }
 
   const totalIncomeTax = federalTaxPayable + provincialTaxPayable;
@@ -227,12 +309,18 @@ export function computeTax(
     fedCPPCredit: cppCredit,
     fedEICredit: eiCredit,
     fedEmploymentCredit: fedEmploymentCredit,
+    fedPensionCredit,
+    fedAgeCredit,
+    fedDonationCredit,
     fedEligibleDivCredit: eligibleDivCredit,
     fedNonEligibleDivCredit: nonEligibleDivCredit,
     provBPACredit: provBPACredit,
     provCPPCredit: provCPPCredit,
     provEICredit: provEICredit,
     provEmploymentCredit: provEmploymentCredit,
+    provPensionCredit,
+    provAgeCredit,
+    provDonationCredit,
     provEligibleDivCredit: provEligibleDivCredit,
     provNonEligibleDivCredit: provNonEligibleDivCredit,
     federalBracketDetail: computeBracketDetail(netTaxableIncome, federalBrackets),
@@ -254,6 +342,8 @@ export function computeTax(
     provincialTaxPayable,
     ontarioSurtax,
     oasClawback,
+    amtTax,
+    amtAdditional,
     totalIncomeTax,
     marginalFederalRate: margFed,
     marginalProvincialRate: margProv,

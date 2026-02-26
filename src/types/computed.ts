@@ -11,12 +11,18 @@ export interface ComputedTaxDetail {
   fedCPPCredit: number;
   fedEICredit: number;
   fedEmploymentCredit: number;
+  fedPensionCredit: number;
+  fedAgeCredit: number;
+  fedDonationCredit: number;
   fedEligibleDivCredit: number;
   fedNonEligibleDivCredit: number;
   provBPACredit: number;
   provCPPCredit: number;
   provEICredit: number;
   provEmploymentCredit: number;
+  provPensionCredit: number;
+  provAgeCredit: number;
+  provDonationCredit: number;
   provEligibleDivCredit: number;
   provNonEligibleDivCredit: number;
   federalBracketDetail: BracketDetail[];
@@ -55,6 +61,8 @@ export interface ComputedTax {
   provincialTaxPayable: number;
   ontarioSurtax: number;
   oasClawback: number;
+  amtTax: number;                  // AMT computed tax (0 if AMT doesn't apply)
+  amtAdditional: number;           // AMT amount added (AMT - regular tax, if positive)
   totalIncomeTax: number;
   marginalFederalRate: number;
   marginalProvincialRate: number;

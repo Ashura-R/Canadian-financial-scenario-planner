@@ -81,6 +81,7 @@ export function makeDefaultYear(year: number): YearData {
     capitalGainsRealized: 0,
     capitalLossesRealized: 0,
     otherTaxableIncome: 0,
+    charitableDonations: 0,
     rrspContribution: 0,
     rrspDeductionClaimed: 0,
     tfsaContribution: 0,
@@ -224,6 +225,20 @@ export const PROVINCIAL_BPA: Record<string, number> = {
 export const PROVINCIAL_EMPLOYMENT_AMOUNT: Record<string, number> = {
   ON: 1368, BC: 1000, AB: 1368, QC: 0, MB: 1368, SK: 1368,
   NS: 1368, NB: 1368, NL: 1368, PE: 1368, NT: 1368, NU: 1368, YT: 1368,
+};
+
+// Provincial age amount (2024 values)
+export const PROVINCIAL_AGE_AMOUNT: Record<string, number> = {
+  ON: 5610, BC: 5591, AB: 5397, QC: 3574, MB: 3728,
+  SK: 5397, NS: 4141, NB: 5397, NL: 5397, PE: 4141,
+  NT: 7898, NU: 13555, YT: 8396,
+};
+
+// Provincial age amount clawback threshold (2024 values)
+export const PROVINCIAL_AGE_CLAWBACK: Record<string, number> = {
+  ON: 42335, BC: 39784, AB: 42335, QC: 37680, MB: 27749,
+  SK: 42335, NS: 24950, NB: 42335, NL: 42335, PE: 27749,
+  NT: 42335, NU: 42335, YT: 42335,
 };
 
 export const PROVINCIAL_DIV_CREDITS: Record<string, { eligibleProvCredit: number; nonEligibleProvCredit: number }> = {

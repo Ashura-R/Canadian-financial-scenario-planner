@@ -12,6 +12,7 @@ const SCHEDULED_FIELD_OPTIONS: { value: ScheduledField; label: string; group: st
   { value: 'capitalGainsRealized', label: 'Capital Gains Realized', group: 'Income' },
   { value: 'capitalLossesRealized', label: 'Capital Losses Realized', group: 'Income' },
   { value: 'otherTaxableIncome', label: 'Other Taxable Income', group: 'Income' },
+  { value: 'charitableDonations', label: 'Charitable Donations', group: 'Income' },
   { value: 'rrspContribution', label: 'RRSP Contribution', group: 'Contributions' },
   { value: 'rrspDeductionClaimed', label: 'RRSP Deduction Claimed', group: 'Contributions' },
   { value: 'tfsaContribution', label: 'TFSA Contribution', group: 'Contributions' },

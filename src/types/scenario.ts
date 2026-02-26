@@ -76,6 +76,10 @@ export interface Assumptions {
   numYears: number;
   inflationRate: number;
   capitalGainsInclusionRate: number;
+  cgInclusionTiered?: boolean;           // enable post-June 2024 two-tier system
+  cgInclusionTier1Rate?: number;         // rate on first tranche (default 0.5)
+  cgInclusionTier2Rate?: number;         // rate above threshold (default 2/3)
+  cgInclusionThreshold?: number;         // individual threshold (default 250000)
   dividendRates: {
     eligible: DivRate;
     nonEligible: DivRate;
@@ -124,6 +128,7 @@ export type ScheduledField =
   | 'capitalGainsRealized'
   | 'capitalLossesRealized'
   | 'otherTaxableIncome'
+  | 'charitableDonations'
   | 'rrspContribution'
   | 'rrspDeductionClaimed'
   | 'tfsaContribution'
@@ -170,6 +175,7 @@ export interface YearData {
   capitalGainsRealized: number;
   capitalLossesRealized: number;
   otherTaxableIncome: number;
+  charitableDonations: number;
   // Account contributions
   rrspContribution: number;
   rrspDeductionClaimed: number;

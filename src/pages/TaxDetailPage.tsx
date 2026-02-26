@@ -103,10 +103,16 @@ function SingleYearView({ yr, rawYd }: { yr: ComputedYear; rawYd: import('../typ
           <Row label="CPP Credit" value={`(${formatCAD(taxDetail.fedCPPCredit)})`} cls="text-emerald-600" />
           <Row label="EI Credit" value={`(${formatCAD(taxDetail.fedEICredit)})`} cls="text-emerald-600" />
           <Row label="Employment Amount Credit" value={`(${formatCAD(taxDetail.fedEmploymentCredit)})`} cls="text-emerald-600" />
+          {taxDetail.fedPensionCredit > 0 && <Row label="Pension Income Credit" value={`(${formatCAD(taxDetail.fedPensionCredit)})`} cls="text-emerald-600" />}
+          {taxDetail.fedAgeCredit > 0 && <Row label="Age Amount Credit" value={`(${formatCAD(taxDetail.fedAgeCredit)})`} cls="text-emerald-600" />}
+          {taxDetail.fedDonationCredit > 0 && <Row label="Donation Credit" value={`(${formatCAD(taxDetail.fedDonationCredit)})`} cls="text-emerald-600" />}
           <Row label="Eligible Div Credit" value={`(${formatCAD(taxDetail.fedEligibleDivCredit)})`} cls="text-emerald-600" />
           <Row label="Non-Eligible Div Credit" value={`(${formatCAD(taxDetail.fedNonEligibleDivCredit)})`} cls="text-emerald-600" />
           {tax.quebecAbatement > 0 && (
             <Row label="Quebec Abatement (16.5%)" value={`(${formatCAD(tax.quebecAbatement)})`} cls="text-emerald-600" />
+          )}
+          {tax.amtAdditional > 0 && (
+            <Row label="AMT Additional" value={formatCAD(tax.amtAdditional)} cls="text-red-600" />
           )}
           <TotalRow label="Federal Tax Payable" value={formatCAD(tax.federalTaxPayable)} cls="text-red-600" />
         </div>
@@ -124,6 +130,9 @@ function SingleYearView({ yr, rawYd }: { yr: ComputedYear; rawYd: import('../typ
           <Row label="CPP Credit" value={`(${formatCAD(taxDetail.provCPPCredit)})`} cls="text-emerald-600" />
           <Row label="EI Credit" value={`(${formatCAD(taxDetail.provEICredit)})`} cls="text-emerald-600" />
           <Row label="Employment Amount Credit" value={`(${formatCAD(taxDetail.provEmploymentCredit)})`} cls="text-emerald-600" />
+          {taxDetail.provPensionCredit > 0 && <Row label="Pension Income Credit" value={`(${formatCAD(taxDetail.provPensionCredit)})`} cls="text-emerald-600" />}
+          {taxDetail.provAgeCredit > 0 && <Row label="Age Amount Credit" value={`(${formatCAD(taxDetail.provAgeCredit)})`} cls="text-emerald-600" />}
+          {taxDetail.provDonationCredit > 0 && <Row label="Donation Credit" value={`(${formatCAD(taxDetail.provDonationCredit)})`} cls="text-emerald-600" />}
           <Row label="Eligible Div Credit" value={`(${formatCAD(taxDetail.provEligibleDivCredit)})`} cls="text-emerald-600" />
           <Row label="Non-Eligible Div Credit" value={`(${formatCAD(taxDetail.provNonEligibleDivCredit)})`} cls="text-emerald-600" />
           {tax.ontarioSurtax > 0 && (
