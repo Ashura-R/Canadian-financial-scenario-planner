@@ -5,6 +5,9 @@ import {
 import { useScenario, useWhatIf } from '../store/ScenarioContext';
 import { formatCAD, formatPct, formatShort, safe } from '../utils/formatters';
 import { usePersistedYear } from '../utils/usePersistedYear';
+import { usePersistedState } from '../utils/usePersistedState';
+import { ChartRangeSelector, sliceByRange } from '../components/ChartRangeSelector';
+import type { ChartRange } from '../components/ChartRangeSelector';
 import type { ComputedYear, BracketDetail } from '../types/computed';
 import { useChartColors } from '../hooks/useChartColors';
 
@@ -282,26 +285,32 @@ function AllYearsView({ years, rawYears }: { years: ComputedYear[]; rawYears: im
   );
 }
 
-function MarginalRateChart({ years, selectedYearIdx, onSelectYear }: {
+function MarginalRateChart({ years, selectedYearIdx, onSelectYear, chartRange, onChartRangeChange }: {
   years: ComputedYear[];
   selectedYearIdx: number;
   onSelectYear: (i: number) => void;
+  chartRange: ChartRange;
+  onChartRangeChange: (v: ChartRange) => void;
 }) {
   const chartColors = useChartColors();
+  const slicedYears = sliceByRange(years, chartRange);
   const data = useMemo(() =>
-    years.map(y => ({
+    slicedYears.map(y => ({
       year: y.year,
       Federal: safe(y.tax.marginalFederalRate),
       Provincial: safe(y.tax.marginalProvincialRate),
       Combined: safe(y.tax.marginalCombinedRate),
       'Avg All-In': safe(y.tax.avgAllInRate),
     })),
-    [years]
+    [slicedYears]
   );
 
   return (
     <div className="bg-app-surface border border-app-border rounded-lg overflow-hidden mb-4">
-      <div className="px-4 py-2 border-b border-app-border text-xs font-semibold text-app-text2">Marginal & Average Tax Rates Over Time</div>
+      <div className="px-4 py-2 border-b border-app-border flex items-center justify-between">
+        <span className="text-xs font-semibold text-app-text2">Marginal & Average Tax Rates Over Time</span>
+        <ChartRangeSelector value={chartRange} onChange={onChartRangeChange} />
+      </div>
       <div style={{ height: 200, padding: '12px 12px 8px' }}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
@@ -335,6 +344,7 @@ export function TaxDetailPage() {
     try { const v = localStorage.getItem('cdn-tax-taxdetail-view'); return v === 'all' ? 'all' : 'single'; } catch { return 'single'; }
   });
   function setViewMode(v: 'single' | 'all') { setViewModeRaw(v); try { localStorage.setItem('cdn-tax-taxdetail-view', v); } catch {} }
+  const [chartRange, setChartRange] = usePersistedState<ChartRange>('cdn-tax-chart-range-taxdetail', 'all');
 
   if (!activeComputed || !activeScenario) {
     return <div className="p-8 text-app-text4 text-sm">No scenario data.</div>;
@@ -388,7 +398,7 @@ export function TaxDetailPage() {
         </div>
 
         {/* Marginal Rate Chart — always visible */}
-        <MarginalRateChart years={years} selectedYearIdx={selectedYearIdx} onSelectYear={setSelectedYearIdx} />
+        <MarginalRateChart years={years} selectedYearIdx={selectedYearIdx} onSelectYear={setSelectedYearIdx} chartRange={chartRange} onChartRangeChange={setChartRange} />
 
         {viewMode === 'single' ? (
           <SingleYearView yr={yr} rawYd={rawYd} />

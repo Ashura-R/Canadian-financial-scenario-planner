@@ -7,7 +7,7 @@ import { ChartRangeSelector, sliceByRange } from '../components/ChartRangeSelect
 import type { ChartRange } from '../components/ChartRangeSelector';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  ComposedChart, Line,
+  ComposedChart, Line, PieChart, Pie, Cell,
 } from 'recharts';
 import type { ComputedYear } from '../types/computed';
 import type { YearData, OpeningBalances } from '../types/scenario';
@@ -170,6 +170,136 @@ function buildPrevBalances(
   };
 }
 
+const ACCOUNT_COLORS = ['#2563eb', '#059669', '#06b6d4', '#d97706', '#0284c7', '#7c3aed', '#e11d48'];
+
+function NetWorthBreakdown({ yr }: { yr: ComputedYear }) {
+  const chartColors = useChartColors();
+  const accounts = [
+    { label: 'RRSP', value: yr.accounts.rrspEOY, fill: ACCOUNT_COLORS[0] },
+    { label: 'TFSA', value: yr.accounts.tfsaEOY, fill: ACCOUNT_COLORS[1] },
+    { label: 'FHSA', value: yr.accounts.fhsaEOY, fill: ACCOUNT_COLORS[2] },
+    { label: 'Non-Reg', value: yr.accounts.nonRegEOY, fill: ACCOUNT_COLORS[3] },
+    { label: 'Savings', value: yr.accounts.savingsEOY, fill: ACCOUNT_COLORS[4] },
+    { label: 'LIRA/LIF', value: yr.accounts.liraEOY, fill: ACCOUNT_COLORS[5] },
+    { label: 'RESP', value: yr.accounts.respEOY, fill: ACCOUNT_COLORS[6] },
+  ];
+  const pieData = accounts.filter(a => a.value > 0);
+
+  return (
+    <Section title="Net Worth Breakdown">
+      <div className="flex gap-4">
+        {/* Pie chart */}
+        <div className="flex-shrink-0" style={{ width: 160, height: 160 }}>
+          {pieData.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={pieData}
+                  dataKey="value"
+                  nameKey="label"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={30}
+                  outerRadius={65}
+                  paddingAngle={2}
+                  strokeWidth={0}
+                >
+                  {pieData.map(a => (
+                    <Cell key={a.label} fill={a.fill} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={chartColors.tooltipStyle} formatter={(v: number, name: string) => [formatCAD(v), name]} />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-[10px] text-app-text4">No balances</p>
+            </div>
+          )}
+        </div>
+
+        {/* Account list */}
+        <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-1 content-start">
+          {accounts.map(a => (
+            <div key={a.label} className="flex items-center justify-between py-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: a.fill }} />
+                <span className="text-xs text-app-text3">{a.label}</span>
+              </div>
+              <div className="text-right">
+                <span className="text-xs font-medium tabular-nums text-app-text">{formatShort(a.value)}</span>
+                <span className="text-[10px] text-app-text4 ml-1">
+                  {yr.accounts.netWorth > 0 ? formatPct(a.value / yr.accounts.netWorth) : '—'}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+      {(yr.totalDebt ?? 0) > 0 && (
+        <div className="mt-3 pt-2 border-t border-app-border flex items-center justify-between">
+          <span className="text-xs text-red-600 font-medium">Total Debt</span>
+          <span className="text-xs font-bold text-red-700">-{formatShort(yr.totalDebt ?? 0)}</span>
+        </div>
+      )}
+    </Section>
+  );
+}
+
+function AccountCompositionChart({ flows }: { flows: AccountFlowData[] }) {
+  const chartColors = useChartColors();
+  const data = flows.filter(f => f.eoy > 0).map(f => ({ name: f.label, Balance: Math.round(f.eoy) }));
+  if (data.length === 0) return null;
+
+  return (
+    <Section title="Account Composition">
+      <div style={{ height: 180 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} layout="vertical" margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
+            <XAxis type="number" tickFormatter={v => formatShort(v)} tick={chartColors.axisTick} />
+            <YAxis type="category" dataKey="name" tick={chartColors.axisTick} width={60} />
+            <Tooltip contentStyle={chartColors.tooltipStyle} formatter={(v: number) => [formatCAD(v), 'Balance']} />
+            <Bar dataKey="Balance" fill="#2563eb" radius={[0, 4, 4, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </Section>
+  );
+}
+
+function AccountFlowChart({ flows }: { flows: AccountFlowData[] }) {
+  const chartColors = useChartColors();
+  const data = flows
+    .filter(f => f.contribution > 0 || f.returnAmt !== 0 || f.withdrawal > 0)
+    .map(f => ({
+      name: f.label,
+      Contributions: Math.round(f.contribution),
+      Returns: Math.round(f.returnAmt),
+      Withdrawals: Math.round(f.withdrawal),
+    }));
+  if (data.length === 0) return null;
+
+  return (
+    <Section title="Account Flows">
+      <div style={{ height: 180 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
+            <XAxis dataKey="name" tick={chartColors.axisTick} />
+            <YAxis tickFormatter={v => formatShort(v)} tick={chartColors.axisTick} />
+            <Tooltip contentStyle={chartColors.tooltipStyle} formatter={(v: number, name: string) => [formatCAD(v), name]} />
+            <Legend wrapperStyle={{ fontSize: 10 }} />
+            <Bar dataKey="Contributions" fill="#059669" />
+            <Bar dataKey="Returns" fill="#2563eb" />
+            <Bar dataKey="Withdrawals" fill="#dc2626" />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+    </Section>
+  );
+}
+
 function SingleYearView({ yr, rawYd, prevBalances }: {
   yr: ComputedYear;
   rawYd: YearData;
@@ -182,6 +312,11 @@ function SingleYearView({ yr, rawYd, prevBalances }: {
       <Section title="Account Balance Flow">
         <AccountFlowTable flows={flows} />
       </Section>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <AccountCompositionChart flows={flows} />
+        <AccountFlowChart flows={flows} />
+      </div>
 
       <div className="grid grid-cols-2 gap-4">
         <Section title="Room Tracking">
@@ -242,33 +377,7 @@ function SingleYearView({ yr, rawYd, prevBalances }: {
         </Section>
       )}
 
-      <Section title="Net Worth Breakdown">
-        <div className="grid grid-cols-5 gap-4 text-center">
-          {[
-            { label: 'RRSP', value: yr.accounts.rrspEOY, color: 'text-app-accent' },
-            { label: 'TFSA', value: yr.accounts.tfsaEOY, color: 'text-emerald-600' },
-            { label: 'FHSA', value: yr.accounts.fhsaEOY, color: 'text-cyan-600' },
-            { label: 'Non-Reg', value: yr.accounts.nonRegEOY, color: 'text-amber-600' },
-            { label: 'Savings', value: yr.accounts.savingsEOY, color: 'text-sky-600' },
-            { label: 'LIRA/LIF', value: yr.accounts.liraEOY, color: 'text-purple-600' },
-            { label: 'RESP', value: yr.accounts.respEOY, color: 'text-rose-600' },
-          ].filter(a => a.value > 0 || a.label === 'RRSP' || a.label === 'TFSA').map(a => (
-            <div key={a.label}>
-              <div className={`text-lg font-bold tabular-nums ${a.color}`}>{formatShort(a.value)}</div>
-              <div className="text-xs text-app-text3">{a.label}</div>
-              <div className="text-[10px] text-app-text4">
-                {yr.accounts.netWorth > 0 ? formatPct(a.value / yr.accounts.netWorth) : '—'}
-              </div>
-            </div>
-          ))}
-        </div>
-        {(yr.totalDebt ?? 0) > 0 && (
-          <div className="mt-3 pt-2 border-t border-app-border flex items-center justify-between">
-            <span className="text-xs text-red-600 font-medium">Total Debt</span>
-            <span className="text-xs font-bold text-red-700">-{formatShort(yr.totalDebt ?? 0)}</span>
-          </div>
-        )}
-      </Section>
+      <NetWorthBreakdown yr={yr} />
     </div>
   );
 }

@@ -17,6 +17,7 @@ import type { DeferralScenario } from '../engine/retirementAnalysis';
 import type { SensitivityAnalysis } from '../engine/sensitivityEngine';
 import type { WithdrawalStrategy } from '../engine/optimizerEngine';
 import type { ComputedYear, ComputedScenario } from '../types/computed';
+import type { Assumptions } from '../types/scenario';
 
 // ── Shared styles ────────────────────────────────────────────────────
 const COLORS = ['#2563eb', '#059669', '#d97706', '#7c3aed', '#dc2626', '#0891b2'];
@@ -154,7 +155,7 @@ function TaxEfficiencySection({ computed }: { computed: ComputedScenario }) {
 // ══════════════════════════════════════════════════════════════════════
 // Section 2: Marginal Rates & Retirement Income
 // ══════════════════════════════════════════════════════════════════════
-function RateTimelineSection({ computed }: { computed: ComputedScenario }) {
+function RateTimelineSection({ computed, assumptions }: { computed: ComputedScenario; assumptions: Assumptions }) {
   const { years } = computed;
   const chartColors = useChartColors();
 
@@ -169,6 +170,17 @@ function RateTimelineSection({ computed }: { computed: ComputedScenario }) {
   );
 
   const hasRetirement = years.some(y => y.retirement.cppIncome > 0 || y.retirement.oasIncome > 0 || y.retirement.gisIncome > 0);
+
+  const hasRetirementConfig = assumptions.birthYear != null &&
+    (assumptions.retirement?.cppBenefit?.enabled || assumptions.retirement?.oasBenefit?.enabled);
+
+  const retirementStartInfo = useMemo(() => {
+    if (!hasRetirementConfig || !assumptions.birthYear) return null;
+    const cppStart = assumptions.retirement?.cppBenefit?.enabled ? (assumptions.retirement.cppBenefit.startAge ?? 65) : Infinity;
+    const oasStart = assumptions.retirement?.oasBenefit?.enabled ? (assumptions.retirement.oasBenefit.startAge ?? 65) : Infinity;
+    const startAge = Math.min(cppStart, oasStart);
+    return { startAge, startYear: assumptions.birthYear + startAge };
+  }, [hasRetirementConfig, assumptions.birthYear, assumptions.retirement]);
 
   const retirementData = useMemo(() => {
     if (!hasRetirement) return [];
@@ -199,8 +211,8 @@ function RateTimelineSection({ computed }: { computed: ComputedScenario }) {
           </ResponsiveContainer>
         </AnalysisChartCard>
 
-        {hasRetirement ? (
-          <AnalysisChartCard title="Retirement Income Sources">
+        <AnalysisChartCard title="Retirement Income Sources">
+          {hasRetirement ? (
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={retirementData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
@@ -213,12 +225,21 @@ function RateTimelineSection({ computed }: { computed: ComputedScenario }) {
                 <Area type="monotone" dataKey="GIS" stackId="1" stroke="#7c3aed" fill="#7c3aed" fillOpacity={0.4} />
               </AreaChart>
             </ResponsiveContainer>
-          </AnalysisChartCard>
-        ) : (
-          <div className="bg-app-surface border border-app-border rounded-lg flex items-center justify-center h-[280px]">
-            <p className="text-xs text-app-text4">Configure retirement age &amp; birth year to see retirement income sources.</p>
-          </div>
-        )}
+          ) : hasRetirementConfig && retirementStartInfo ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center">
+                <p className="text-xs text-app-text4 mt-1">
+                  Retirement income begins at age {retirementStartInfo.startAge} (year {retirementStartInfo.startYear}).
+                </p>
+                <p className="text-[10px] text-app-text4 mt-0.5">Extend your timeline to see projected benefits.</p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-xs text-app-text4">Configure retirement age &amp; birth year in Assumptions.</p>
+            </div>
+          )}
+        </AnalysisChartCard>
       </div>
     </section>
   );
@@ -670,7 +691,7 @@ export function AnalysisPage() {
       <TaxEfficiencySection computed={displayComputed!} />
 
       {/* Section 2: Marginal Rates & Retirement Income */}
-      <RateTimelineSection computed={displayComputed!} />
+      <RateTimelineSection computed={displayComputed!} assumptions={effectiveScenario!.assumptions} />
 
       {/* Section 3: CPP / OAS Deferral */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">

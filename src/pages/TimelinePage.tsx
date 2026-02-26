@@ -381,7 +381,7 @@ export function TimelinePage() {
 
   if (!activeScenario) return null;
 
-  const years = activeComputed?.effectiveYears ?? activeScenario.years;
+  const years = activeScenario.years;
   const computed = activeComputed?.years ?? [];
 
   function updateYear(yearIdx: number, key: YDKey, val: number) {
@@ -644,9 +644,11 @@ export function TimelinePage() {
   function renderRow(label: string, key: YDKey, opts: { readOnly?: boolean; pct?: boolean; computedFn?: (i: number) => number } = {}) {
     const isEditable = !opts.readOnly && !opts.computedFn;
     const myIdx = bandRowIdx++;
-    const bandCls = banding && myIdx % 2 === 1 ? 'bg-app-surface2/60' : 'bg-app-surface';
+    const isBanded = banding && myIdx % 2 === 1;
     return (
-      <tr key={key} className={`border-b border-app-border hover:bg-app-accent-light/30 transition-colors ${bandCls}`}>
+      <tr key={key} className={`border-b border-app-border hover:bg-app-accent-light/30 transition-colors`}
+        style={isBanded ? { backgroundColor: 'var(--app-surface2)' } : undefined}
+      >
         {labelCell(label, key, opts.pct, isEditable)}
         {years.map((yd, i) => {
           const warns = warningFields(i);

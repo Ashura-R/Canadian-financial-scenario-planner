@@ -30,7 +30,7 @@ export function TopBar({ page, onPageChange, whatIfOpen, onWhatIfToggle }: Props
       {/* App title — left */}
       <div className="flex items-center gap-2 shrink-0">
         <div className="w-2 h-2 rounded-full bg-emerald-400" />
-        <span className="text-sm font-semibold text-white whitespace-nowrap">CDN Tax</span>
+        <span className="text-sm font-semibold text-white whitespace-nowrap">Canadian Financial Scenario Planner</span>
       </div>
 
       {/* Page tabs — truly centered via flex-1 spacers */}
