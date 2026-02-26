@@ -99,8 +99,9 @@ export function computeWaterfall(
 ): ComputedWaterfall {
   // Gross income includes RRSP/RRIF withdrawals, LIF withdrawals, and CPP/OAS benefits
   const rentalNet = yd.rentalGrossIncome - yd.rentalExpenses;
+  const seNet = Math.max(0, yd.selfEmploymentIncome - (yd.selfEmploymentExpenses ?? 0));
   const grossIncome =
-    yd.employmentIncome + yd.selfEmploymentIncome +
+    yd.employmentIncome + seNet +
     yd.rrspWithdrawal + yd.lifWithdrawal +
     retirementIncome.cppBenefitIncome + retirementIncome.oasIncome +
     yd.eligibleDividends + yd.nonEligibleDividends +

@@ -100,7 +100,7 @@ function buildScheduleOverlay(
 
 // Default group order
 const DEFAULT_GROUP_ORDER = [
-  'Income', 'RRSP', 'TFSA', 'FHSA', 'Non-Reg & Savings', 'LIRA/LIF', 'RESP',
+  'Income', 'Deductions & Credits', 'RRSP', 'TFSA', 'FHSA', 'Non-Reg & Savings', 'LIRA/LIF', 'RESP',
   'Asset Allocation', 'Capital Loss', 'ACB Tracking',
   'EOY Overrides', 'Retirement (Computed)', 'Liabilities (Computed)', 'Rate Overrides',
   'Contribution Room', 'Tax Results (Computed)',
@@ -108,6 +108,7 @@ const DEFAULT_GROUP_ORDER = [
 
 const GROUP_DEFAULTS: Record<string, boolean> = {
   'Income': true,
+  'Deductions & Credits': false,
   'RRSP': true,
   'TFSA': true,
   'FHSA': true,
@@ -161,6 +162,15 @@ const ROW_REGISTRY: RowEntry[] = [
   { rowId: 'foreignTaxPaid', editable: true, group: 'Income' },
   { rowId: 'charitableDonations', editable: true, group: 'Income' },
   { rowId: '_summary_grossIncome', editable: false, group: 'Income' },
+  // Deductions & Credits
+  { rowId: 'selfEmploymentExpenses', editable: true, group: 'Deductions & Credits' },
+  { rowId: 'childCareExpenses', editable: true, group: 'Deductions & Credits' },
+  { rowId: 'unionDues', editable: true, group: 'Deductions & Credits' },
+  { rowId: 'movingExpenses', editable: true, group: 'Deductions & Credits' },
+  { rowId: 'otherDeductions', editable: true, group: 'Deductions & Credits' },
+  { rowId: 'medicalExpenses', editable: true, group: 'Deductions & Credits' },
+  { rowId: 'studentLoanInterest', editable: true, group: 'Deductions & Credits' },
+  { rowId: 'otherNonRefundableCredits', editable: true, group: 'Deductions & Credits' },
   // RRSP
   { rowId: 'rrspContribution', editable: true, group: 'RRSP' },
   { rowId: 'rrspDeductionClaimed', editable: true, group: 'RRSP' },
@@ -796,6 +806,20 @@ export function TimelinePage() {
                 );
               })}
             </tr>
+          </>
+        );
+
+      case 'Deductions & Credits':
+        return (
+          <>
+            {renderRow('SE Expenses', 'selfEmploymentExpenses' as YDKey)}
+            {renderRow('Child Care', 'childCareExpenses' as YDKey)}
+            {renderRow('Union/Prof. Dues', 'unionDues' as YDKey)}
+            {renderRow('Moving Expenses', 'movingExpenses' as YDKey)}
+            {renderRow('Other Deductions', 'otherDeductions' as YDKey)}
+            {renderRow('Medical Expenses', 'medicalExpenses' as YDKey)}
+            {renderRow('Student Loan Int.', 'studentLoanInterest' as YDKey)}
+            {renderRow('Other Credits ($)', 'otherNonRefundableCredits' as YDKey)}
           </>
         );
 

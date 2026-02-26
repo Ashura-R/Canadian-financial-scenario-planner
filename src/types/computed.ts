@@ -27,6 +27,15 @@ export interface ComputedTaxDetail {
   provNonEligibleDivCredit: number;
   fedForeignTaxCredit: number;
   provForeignTaxCredit: number;
+  fedDTCCredit: number;
+  provDTCCredit: number;
+  fedMedicalCredit: number;
+  provMedicalCredit: number;
+  fedStudentLoanCredit: number;
+  provStudentLoanCredit: number;
+  fedHomeBuyersCredit: number;
+  fedOtherCredits: number;
+  provOtherCredits: number;
   federalBracketDetail: BracketDetail[];
   provincialBracketDetail: BracketDetail[];
 }
@@ -64,6 +73,7 @@ export interface ComputedTax {
   ontarioSurtax: number;
   oasClawback: number;
   foreignTaxCredit: number;          // total FTC claimed (federal + provincial)
+  cwbCredit: number;                 // Canada Workers Benefit (refundable)
   amtTax: number;                  // AMT computed tax (0 if AMT doesn't apply)
   amtAdditional: number;           // AMT amount added (AMT - regular tax, if positive)
   totalIncomeTax: number;

@@ -106,6 +106,11 @@ function SingleYearView({ yr, rawYd }: { yr: ComputedYear; rawYd: import('../typ
           {taxDetail.fedPensionCredit > 0 && <Row label="Pension Income Credit" value={`(${formatCAD(taxDetail.fedPensionCredit)})`} cls="text-emerald-600" />}
           {taxDetail.fedAgeCredit > 0 && <Row label="Age Amount Credit" value={`(${formatCAD(taxDetail.fedAgeCredit)})`} cls="text-emerald-600" />}
           {taxDetail.fedDonationCredit > 0 && <Row label="Donation Credit" value={`(${formatCAD(taxDetail.fedDonationCredit)})`} cls="text-emerald-600" />}
+          {taxDetail.fedDTCCredit > 0 && <Row label="Disability Credit" value={`(${formatCAD(taxDetail.fedDTCCredit)})`} cls="text-emerald-600" />}
+          {taxDetail.fedMedicalCredit > 0 && <Row label="Medical Credit" value={`(${formatCAD(taxDetail.fedMedicalCredit)})`} cls="text-emerald-600" />}
+          {taxDetail.fedStudentLoanCredit > 0 && <Row label="Student Loan Credit" value={`(${formatCAD(taxDetail.fedStudentLoanCredit)})`} cls="text-emerald-600" />}
+          {taxDetail.fedHomeBuyersCredit > 0 && <Row label="Home Buyers' Credit" value={`(${formatCAD(taxDetail.fedHomeBuyersCredit)})`} cls="text-emerald-600" />}
+          {taxDetail.fedOtherCredits > 0 && <Row label="Other Credits" value={`(${formatCAD(taxDetail.fedOtherCredits)})`} cls="text-emerald-600" />}
           <Row label="Eligible Div Credit" value={`(${formatCAD(taxDetail.fedEligibleDivCredit)})`} cls="text-emerald-600" />
           <Row label="Non-Eligible Div Credit" value={`(${formatCAD(taxDetail.fedNonEligibleDivCredit)})`} cls="text-emerald-600" />
           {tax.quebecAbatement > 0 && (
@@ -133,6 +138,10 @@ function SingleYearView({ yr, rawYd }: { yr: ComputedYear; rawYd: import('../typ
           {taxDetail.provPensionCredit > 0 && <Row label="Pension Income Credit" value={`(${formatCAD(taxDetail.provPensionCredit)})`} cls="text-emerald-600" />}
           {taxDetail.provAgeCredit > 0 && <Row label="Age Amount Credit" value={`(${formatCAD(taxDetail.provAgeCredit)})`} cls="text-emerald-600" />}
           {taxDetail.provDonationCredit > 0 && <Row label="Donation Credit" value={`(${formatCAD(taxDetail.provDonationCredit)})`} cls="text-emerald-600" />}
+          {taxDetail.provDTCCredit > 0 && <Row label="Disability Credit" value={`(${formatCAD(taxDetail.provDTCCredit)})`} cls="text-emerald-600" />}
+          {taxDetail.provMedicalCredit > 0 && <Row label="Medical Credit" value={`(${formatCAD(taxDetail.provMedicalCredit)})`} cls="text-emerald-600" />}
+          {taxDetail.provStudentLoanCredit > 0 && <Row label="Student Loan Credit" value={`(${formatCAD(taxDetail.provStudentLoanCredit)})`} cls="text-emerald-600" />}
+          {taxDetail.provOtherCredits > 0 && <Row label="Other Credits" value={`(${formatCAD(taxDetail.provOtherCredits)})`} cls="text-emerald-600" />}
           <Row label="Eligible Div Credit" value={`(${formatCAD(taxDetail.provEligibleDivCredit)})`} cls="text-emerald-600" />
           <Row label="Non-Eligible Div Credit" value={`(${formatCAD(taxDetail.provNonEligibleDivCredit)})`} cls="text-emerald-600" />
           {tax.ontarioSurtax > 0 && (
@@ -220,6 +229,8 @@ function AllYearsView({ years, rawYears }: { years: ComputedYear[]; rawYears: im
     { group: 'Tax', label: 'Prov Tax Payable', fn: yr => formatShort(yr.tax.provincialTaxPayable), cls: 'text-red-600 font-semibold' },
     { group: 'Tax', label: 'Ontario Surtax', fn: yr => formatShort(yr.tax.ontarioSurtax), cls: 'text-red-600' },
     { group: 'Tax', label: 'OAS Clawback', fn: yr => formatShort(yr.tax.oasClawback), cls: 'text-red-600' },
+    { group: 'Tax', label: 'Foreign Tax Credit', fn: yr => formatShort(yr.tax.foreignTaxCredit), cls: 'text-emerald-600' },
+    { group: 'Tax', label: 'CWB Credit', fn: yr => formatShort(yr.tax.cwbCredit), cls: 'text-emerald-600' },
     { group: 'Tax', label: 'Total Income Tax', fn: yr => formatShort(yr.tax.totalIncomeTax), cls: 'text-red-700 font-bold' },
     { group: 'CPP/EI', label: 'CPP Paid', fn: yr => formatShort(yr.cpp.totalCPPPaid), cls: 'text-amber-600' },
     { group: 'CPP/EI', label: 'EI Paid', fn: yr => formatShort(yr.ei.totalEI), cls: 'text-amber-600' },

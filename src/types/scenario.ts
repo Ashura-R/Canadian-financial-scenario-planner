@@ -165,7 +165,15 @@ export type ScheduledField =
   | 'respContribution'
   | 'respWithdrawal'
   | 'liraEquityPct' | 'liraFixedPct' | 'liraCashPct'
-  | 'respEquityPct' | 'respFixedPct' | 'respCashPct';
+  | 'respEquityPct' | 'respFixedPct' | 'respCashPct'
+  | 'selfEmploymentExpenses'
+  | 'childCareExpenses'
+  | 'medicalExpenses'
+  | 'unionDues'
+  | 'studentLoanInterest'
+  | 'movingExpenses'
+  | 'otherDeductions'
+  | 'otherNonRefundableCredits';
 
 export interface ScheduledItem {
   id: string;
@@ -201,6 +209,17 @@ export interface YearData {
   pensionIncome: number;
   foreignIncome: number;
   foreignTaxPaid: number;
+  // Additional deductions & credits (Priority 5)
+  selfEmploymentExpenses: number;
+  childCareExpenses: number;
+  medicalExpenses: number;
+  unionDues: number;
+  studentLoanInterest: number;
+  movingExpenses: number;
+  disabilityTaxCredit: boolean;
+  otherDeductions: number;
+  otherNonRefundableCredits: number;
+  homeBuyersPurchaseYear: boolean;  // true in the year of first-time home purchase
   // Account contributions
   rrspContribution: number;
   rrspDeductionClaimed: number;

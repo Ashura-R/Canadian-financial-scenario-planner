@@ -34,6 +34,14 @@ export function buildTimelineCSV(
   rows.push({ label: 'Foreign Income', values: rawYears.map(y => y.foreignIncome) });
   rows.push({ label: 'Foreign Tax Paid', values: rawYears.map(y => y.foreignTaxPaid) });
   rows.push({ label: 'Charitable Donations', values: rawYears.map(y => y.charitableDonations) });
+  rows.push({ label: 'SE Expenses', values: rawYears.map(y => (y as any).selfEmploymentExpenses ?? 0) });
+  rows.push({ label: 'Child Care Expenses', values: rawYears.map(y => (y as any).childCareExpenses ?? 0) });
+  rows.push({ label: 'Union/Prof. Dues', values: rawYears.map(y => (y as any).unionDues ?? 0) });
+  rows.push({ label: 'Moving Expenses', values: rawYears.map(y => (y as any).movingExpenses ?? 0) });
+  rows.push({ label: 'Medical Expenses', values: rawYears.map(y => (y as any).medicalExpenses ?? 0) });
+  rows.push({ label: 'Student Loan Interest', values: rawYears.map(y => (y as any).studentLoanInterest ?? 0) });
+  rows.push({ label: 'Other Deductions', values: rawYears.map(y => (y as any).otherDeductions ?? 0) });
+  rows.push({ label: 'Other Non-Ref. Credits', values: rawYears.map(y => (y as any).otherNonRefundableCredits ?? 0) });
   rows.push({ label: 'Gross Income', values: years.map(y => fmt(y.waterfall.grossIncome)) });
 
   // Contributions & Withdrawals
@@ -60,6 +68,7 @@ export function buildTimelineCSV(
   rows.push({ label: 'Federal Tax', values: years.map(y => fmt(y.tax.federalTaxPayable)) });
   rows.push({ label: 'Provincial Tax', values: years.map(y => fmt(y.tax.provincialTaxPayable)) });
   rows.push({ label: 'Total Income Tax', values: years.map(y => fmt(y.tax.totalIncomeTax)) });
+  rows.push({ label: 'CWB Credit', values: years.map(y => fmt(y.tax.cwbCredit)) });
   rows.push({ label: 'CPP Paid', values: years.map(y => fmt(y.cpp.totalCPPPaid)) });
   rows.push({ label: 'EI Paid', values: years.map(y => fmt(y.ei.totalEI)) });
   rows.push({ label: 'After-Tax Income', values: years.map(y => fmt(y.waterfall.afterTaxIncome)) });

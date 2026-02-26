@@ -707,7 +707,7 @@ export function compute(scenario: Scenario): ComputedScenario {
     fhsaUnusedRoom = finalResult.newFhsaUnusedRoom;
     tfsaUnusedRoom = finalResult.newTfsaUnusedRoom;
     prevACB = finalResult.newACB;
-    priorYearEarnedIncome = rawYd.employmentIncome + rawYd.selfEmploymentIncome;
+    priorYearEarnedIncome = rawYd.employmentIncome + Math.max(0, rawYd.selfEmploymentIncome - (rawYd.selfEmploymentExpenses ?? 0));
     prevBalances = { ...finalResult.newBalances };
 
     // FHSA transfer-rrsp: add FHSA balance to RRSP for next year

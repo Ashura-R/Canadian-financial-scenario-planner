@@ -143,12 +143,15 @@ export function computeTax(
   // Net rental income (can be negative — loss reduces other income)
   const rentalNet = yd.rentalGrossIncome - yd.rentalExpenses;
 
+  // SE net income (after expenses)
+  const seNetIncome = Math.max(0, yd.selfEmploymentIncome - (yd.selfEmploymentExpenses ?? 0));
+
   // Total income before deductions
   // Note: rrspWithdrawal (and RRIF withdrawals), LIF withdrawals are fully taxable
   // CPP pension benefit, OAS, pension income, foreign income, rental net are also taxable
   const totalIncomeBeforeDeductions =
     yd.employmentIncome +
-    yd.selfEmploymentIncome +
+    seNetIncome +
     yd.rrspWithdrawal +
     yd.lifWithdrawal +
     retirementIncome.cppBenefitIncome +
@@ -162,13 +165,24 @@ export function computeTax(
     yd.foreignIncome +
     rentalNet;
 
-  // Net taxable income
+  // Net taxable income: deductions reduce taxable income
+  // Union dues (line 21200), child care (line 21400), moving expenses (line 21900),
+  // other deductions are all line deductions
+  const unionDues = yd.unionDues ?? 0;
+  const childCare = yd.childCareExpenses ?? 0;
+  const movingExp = yd.movingExpenses ?? 0;
+  const otherDed = yd.otherDeductions ?? 0;
+
   const netTaxableIncome = Math.max(
     0,
     totalIncomeBeforeDeductions
       - yd.rrspDeductionClaimed
       - yd.fhsaDeductionClaimed
       - cpp.cppSEEmployerHalfDed
+      - unionDues
+      - childCare
+      - movingExp
+      - otherDed
   );
 
   // --- Federal Tax ---
@@ -214,10 +228,35 @@ export function computeTax(
     fedDonationCredit = first200 + above200 * highRate;
   }
 
+  // Disability Tax Credit (DTC) — ~$9,428 federal base (2024)
+  const dtcBase = 9428;
+  const fedDTCCredit = yd.disabilityTaxCredit ? dtcBase * bpaCreditRate : 0;
+
+  // Medical expense credit: expenses above 3% of net income or $2,759 (whichever is lower)
+  const medExpenses = yd.medicalExpenses ?? 0;
+  let fedMedicalCredit = 0;
+  if (medExpenses > 0) {
+    const medThreshold = Math.min(netTaxableIncome * 0.03, 2759);
+    fedMedicalCredit = Math.max(0, medExpenses - medThreshold) * bpaCreditRate;
+  }
+
+  // Student loan interest credit: 15% federal credit on interest paid on govt student loans
+  const studentLoanInt = yd.studentLoanInterest ?? 0;
+  const fedStudentLoanCredit = studentLoanInt * bpaCreditRate;
+
+  // Home Buyers' Amount: $10,000 non-refundable credit ($1,500 federal credit) in purchase year
+  const homeBuyersAmount = 10000;
+  const fedHomeBuyersCredit = yd.homeBuyersPurchaseYear ? homeBuyersAmount * bpaCreditRate : 0;
+
+  // Other non-refundable credits (user-entered catch-all)
+  const fedOtherCredits = yd.otherNonRefundableCredits ?? 0;
+
   const eligibleDivCredit = grossedUpEligibleDiv * dividendRates.eligible.federalCredit;
   const nonEligibleDivCredit = grossedUpNonEligibleDiv * dividendRates.nonEligible.federalCredit;
 
-  const federalCredits = bpaCredit + cppCredit + eiCredit + fedEmploymentCredit + fedPensionCredit + fedAgeCredit + fedDonationCredit + eligibleDivCredit + nonEligibleDivCredit;
+  const federalCredits = bpaCredit + cppCredit + eiCredit + fedEmploymentCredit + fedPensionCredit + fedAgeCredit + fedDonationCredit
+    + fedDTCCredit + fedMedicalCredit + fedStudentLoanCredit + fedHomeBuyersCredit + fedOtherCredits
+    + eligibleDivCredit + nonEligibleDivCredit;
   let federalTaxPayable = Math.max(0, federalTaxBeforeCredits - federalCredits);
 
   // --- Quebec Abatement (16.5% reduction of basic federal tax) ---
@@ -257,10 +296,28 @@ export function computeTax(
     provDonationCredit = Math.min(donations, 200) * provLowRate + Math.max(0, donations - 200) * provHighRate;
   }
 
+  // Provincial DTC credit (same base, provincial rate)
+  const provDTCCredit = yd.disabilityTaxCredit ? dtcBase * (provincialBrackets[0]?.rate ?? 0.0505) : 0;
+
+  // Provincial medical expense credit
+  let provMedicalCredit = 0;
+  if (medExpenses > 0) {
+    const medThreshold = Math.min(netTaxableIncome * 0.03, 2759);
+    provMedicalCredit = Math.max(0, medExpenses - medThreshold) * (provincialBrackets[0]?.rate ?? 0.0505);
+  }
+
+  // Provincial student loan interest credit
+  const provStudentLoanCredit = studentLoanInt * (provincialBrackets[0]?.rate ?? 0.0505);
+
+  // Provincial other credits
+  const provOtherCredits = yd.otherNonRefundableCredits ?? 0;
+
   const provEligibleDivCredit = grossedUpEligibleDiv * dividendRates.eligible.provincialCredit;
   const provNonEligibleDivCredit = grossedUpNonEligibleDiv * dividendRates.nonEligible.provincialCredit;
 
-  const provincialCredits = provBPACredit + provCPPCredit + provEICredit + provEmploymentCredit + provPensionCredit + provAgeCredit + provDonationCredit + provEligibleDivCredit + provNonEligibleDivCredit;
+  const provincialCredits = provBPACredit + provCPPCredit + provEICredit + provEmploymentCredit + provPensionCredit + provAgeCredit + provDonationCredit
+    + provDTCCredit + provMedicalCredit + provStudentLoanCredit + provOtherCredits
+    + provEligibleDivCredit + provNonEligibleDivCredit;
   let provincialTaxPayable = Math.max(0, provincialTaxBeforeCredits - provincialCredits);
 
   // Ontario surtax
@@ -312,12 +369,25 @@ export function computeTax(
   }
   const foreignTaxCredit = fedForeignTaxCredit + provForeignTaxCredit;
 
-  const totalIncomeTax = federalTaxPayable + provincialTaxPayable;
+  // --- Canada Workers Benefit (CWB) — refundable credit ---
+  // Single: phase-in from $3,000 earned income at 27%, phase-out from $23,495 at 15%
+  // Max CWB ~$1,518 for singles (2024). We use single rates; spousal would need task 6.1
+  let cwbCredit = 0;
+  const earnedIncome = yd.employmentIncome + seNetIncome;
+  if (earnedIncome > 3000 && netTaxableIncome < 33015) {
+    const cwbPhaseIn = (earnedIncome - 3000) * 0.27;
+    const cwbMax = 1518;
+    const cwbBase = Math.min(cwbPhaseIn, cwbMax);
+    const cwbPhaseOut = netTaxableIncome > 23495 ? (netTaxableIncome - 23495) * 0.15 : 0;
+    cwbCredit = Math.max(0, cwbBase - cwbPhaseOut);
+  }
+
+  const totalIncomeTax = Math.max(0, federalTaxPayable + provincialTaxPayable - cwbCredit);
 
   // Gross income for rate calculations (pre-gross-up, pre-deductions)
   const rentalNetForGross = yd.rentalGrossIncome - yd.rentalExpenses;
   const grossIncome =
-    yd.employmentIncome + yd.selfEmploymentIncome +
+    yd.employmentIncome + seNetIncome +
     yd.rrspWithdrawal + yd.lifWithdrawal +
     retirementIncome.cppBenefitIncome + retirementIncome.oasIncome +
     yd.eligibleDividends + yd.nonEligibleDividends +
@@ -353,6 +423,15 @@ export function computeTax(
     provNonEligibleDivCredit: provNonEligibleDivCredit,
     fedForeignTaxCredit,
     provForeignTaxCredit,
+    fedDTCCredit,
+    provDTCCredit,
+    fedMedicalCredit,
+    provMedicalCredit,
+    fedStudentLoanCredit,
+    provStudentLoanCredit,
+    fedHomeBuyersCredit,
+    fedOtherCredits,
+    provOtherCredits,
     federalBracketDetail: computeBracketDetail(netTaxableIncome, federalBrackets),
     provincialBracketDetail: computeBracketDetail(netTaxableIncome, provincialBrackets),
   };
@@ -373,6 +452,7 @@ export function computeTax(
     ontarioSurtax,
     oasClawback,
     foreignTaxCredit,
+    cwbCredit,
     amtTax,
     amtAdditional,
     totalIncomeTax,
