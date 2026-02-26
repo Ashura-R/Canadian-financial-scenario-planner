@@ -357,12 +357,13 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => vo
   const cfChange = pctChange(netCashFlow, prevCF);
   const grossChange = pctChange(grossIncome, prevGross);
 
-  // Sparkline data
-  const sparkNW = years.map(y => realMode ? y.realNetWorth : y.accounts.netWorth);
-  const sparkAT = years.map(y => realMode ? y.realAfterTaxIncome : y.waterfall.afterTaxIncome);
-  const sparkTax = years.map(y => y.tax.totalIncomeTax + y.cpp.totalCPPPaid + y.ei.totalEI);
-  const sparkCF = years.map(y => realMode ? y.realNetCashFlow : y.waterfall.netCashFlow);
-  const sparkGross = years.map(y => realMode ? y.realGrossIncome : y.waterfall.grossIncome);
+  // Sparkline data — respect the chart range selector
+  const sparkYears = sliceByRange(years, chartRange);
+  const sparkNW = sparkYears.map(y => realMode ? y.realNetWorth : y.accounts.netWorth);
+  const sparkAT = sparkYears.map(y => realMode ? y.realAfterTaxIncome : y.waterfall.afterTaxIncome);
+  const sparkTax = sparkYears.map(y => y.tax.totalIncomeTax + y.cpp.totalCPPPaid + y.ei.totalEI);
+  const sparkCF = sparkYears.map(y => realMode ? y.realNetCashFlow : y.waterfall.netCashFlow);
+  const sparkGross = sparkYears.map(y => realMode ? y.realGrossIncome : y.waterfall.grossIncome);
 
   const warnings = years.flatMap(y => y.warnings.filter(w => w.severity === 'error'));
 
