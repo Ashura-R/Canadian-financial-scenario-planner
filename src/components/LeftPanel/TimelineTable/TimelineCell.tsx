@@ -75,9 +75,22 @@ export const TimelineCell = React.memo(function TimelineCell({
     setRaw(pct ? (editVal * 100).toFixed(0) : String(Math.round(editVal)));
   }
 
+  /** Parse shorthand like 50k → 50000, 1.5m → 1500000 */
+  function parseShorthand(input: string): number {
+    const cleaned = input.replace(/[$,%\s]/g, '').replace(/,/g, '');
+    const match = cleaned.match(/^(-?\d*\.?\d+)\s*([kKmMbB]?)$/);
+    if (!match) return NaN;
+    const num = parseFloat(match[1]);
+    const suffix = match[2].toLowerCase();
+    if (suffix === 'k') return num * 1_000;
+    if (suffix === 'm') return num * 1_000_000;
+    if (suffix === 'b') return num * 1_000_000_000;
+    return num;
+  }
+
   /** Parse and apply the edit, returning the final numeric value (or undefined if invalid) */
   function commit(): number | undefined {
-    const n = parseFloat(raw.replace(/[$,%\s,]/g, ''));
+    const n = parseShorthand(raw);
     if (!isNaN(n)) {
       const final = pct ? n / 100 : n;
       onChange(final);

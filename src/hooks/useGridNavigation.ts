@@ -199,12 +199,23 @@ export function useGridNavigation(
     if (shiftKey) {
       setAnchor(a => a ?? focusedCellRef.current ?? cell);
       setFocusedCell(cell);
+      setEditing(false);
+      setInitialKey(null);
     } else {
+      const rows = activeRowsRef.current;
+      const row = rows.find(r => r.rowId === rowId);
       setFocusedCell(cell);
       setAnchor(null);
+      // Single-click on editable cell → enter edit mode immediately
+      if (row?.editable) {
+        selectionAtEditStartRef.current = null;
+        setEditing(true);
+        setInitialKey(null);
+      } else {
+        setEditing(false);
+        setInitialKey(null);
+      }
     }
-    setEditing(false);
-    setInitialKey(null);
   }, []);
 
   const handleCellDblClick = useCallback((rowId: string, col: number) => {
@@ -259,6 +270,11 @@ export function useGridNavigation(
     setInitialKey(key);
   }, []);
 
+  // Refocus the table container so keyboard navigation keeps working after edit
+  const refocusTable = useCallback(() => {
+    requestAnimationFrame(() => tableRef.current?.focus());
+  }, [tableRef]);
+
   const commitEdit = useCallback((direction: 'down' | 'right', committedValue?: number) => {
     // Multi-cell commit: if we had a selection at edit start and have a value, apply to all
     const selSnap = selectionAtEditStartRef.current;
@@ -285,13 +301,15 @@ export function useGridNavigation(
       }
       setAnchor(null);
     }
-  }, [moveFocus]);
+    refocusTable();
+  }, [moveFocus, refocusTable]);
 
   const cancelEdit = useCallback(() => {
     selectionAtEditStartRef.current = null;
     setEditing(false);
     setInitialKey(null);
-  }, []);
+    refocusTable();
+  }, [refocusTable]);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (editingRef.current) return;

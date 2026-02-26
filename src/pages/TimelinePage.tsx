@@ -515,6 +515,8 @@ export function TimelinePage() {
     if (!cell) return;
     // Prevent text selection during drag
     e.preventDefault();
+    // Ensure table container has focus for keyboard navigation
+    tableRef.current?.focus();
     grid.handleCellMouseDown(cell.rowId, cell.col, e.shiftKey);
   }, [findCellFromEvent, grid.handleCellMouseDown]);
 
