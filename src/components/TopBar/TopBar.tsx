@@ -7,6 +7,7 @@ const PAGE_TABS: { id: Page; label: string }[] = [
   { id: 'tax-detail', label: 'Tax Detail' },
   { id: 'accounts', label: 'Accounts' },
   { id: 'scheduling', label: 'Scheduling' },
+  { id: 'analysis', label: 'Analysis' },
   { id: 'assumptions', label: 'Settings' },
 ];
 
