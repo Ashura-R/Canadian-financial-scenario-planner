@@ -299,6 +299,23 @@ function computeOneYear(
       Math.pow(1 + assumptions.inflationRate, yearsReceiving);
   }
 
+  // GIS: Guaranteed Income Supplement for low-income seniors (age 65+)
+  // Max ~$1,065/month single (2024) = $12,780/yr. Clawed back at 50% of income above $21,624
+  let gisIncome = 0;
+  if (age !== null && age >= 65 && oasIncome > 0) {
+    const gisMaxAnnual = 12780 * Math.pow(1 + assumptions.inflationRate, Math.max(0, yd.year - assumptions.startYear));
+    const gisIncomeThreshold = 21624 * Math.pow(1 + assumptions.inflationRate, Math.max(0, yd.year - assumptions.startYear));
+    // GIS income test: total income excluding OAS
+    const incomeForGIS = yd.employmentIncome + yd.selfEmploymentIncome + yd.rrspWithdrawal +
+      yd.lifWithdrawal + cppBenefitIncome + yd.pensionIncome + yd.interestIncome +
+      yd.eligibleDividends + yd.nonEligibleDividends + yd.foreignIncome +
+      (yd.rentalGrossIncome - yd.rentalExpenses) + yd.otherTaxableIncome;
+    if (incomeForGIS < gisMaxAnnual / 0.5 + gisIncomeThreshold) {
+      const clawback = Math.max(0, incomeForGIS - gisIncomeThreshold) * 0.50;
+      gisIncome = Math.max(0, gisMaxAnnual - clawback);
+    }
+  }
+
   const retirementIncome: RetirementIncome = { cppBenefitIncome, oasIncome };
 
   const warnings = validateYear(
@@ -345,12 +362,13 @@ function computeOneYear(
 
   const taxResult = computeTax(ydForTax, assumptions, cpp, ei, retirementIncome, assumptions.province, age, isRRIF);
   const { detail: taxDetail, ...tax } = taxResult;
-  const waterfall = computeWaterfall(ydEffective, cpp, ei, tax, accounts, retirementIncome);
+  const waterfall = computeWaterfall(ydEffective, cpp, ei, tax, accounts, retirementIncome, gisIncome);
 
   const retirement: ComputedRetirement = {
     age,
     cppIncome: cppBenefitIncome,
     oasIncome,
+    gisIncome,
     isRRIF,
     rrifMinWithdrawal,
     isLIF,

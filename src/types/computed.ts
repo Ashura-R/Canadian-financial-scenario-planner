@@ -120,6 +120,7 @@ export interface ComputedRetirement {
   age: number | null;       // null if birthYear not set
   cppIncome: number;        // CPP pension benefit this year (0 if not yet receiving)
   oasIncome: number;        // OAS benefit this year (0 if not yet receiving)
+  gisIncome: number;        // GIS benefit this year (0 if not eligible)
   isRRIF: boolean;          // true once RRSP has converted to RRIF
   rrifMinWithdrawal: number; // CRA minimum withdrawal amount (0 if not RRIF yet)
   isLIF: boolean;            // true once LIRA has converted to LIF

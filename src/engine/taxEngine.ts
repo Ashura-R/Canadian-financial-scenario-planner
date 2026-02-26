@@ -126,7 +126,9 @@ export function computeTax(
   const grossedUpNonEligibleDiv = yd.nonEligibleDividends * (1 + dividendRates.nonEligible.grossUp);
 
   // Taxable capital gains (two-tier post-June 2024 rules if enabled)
-  const netGains = yd.capitalGainsRealized - yd.capitalLossApplied;
+  // LCGE: subtract qualifying small business / farm / fishing CG exemption (up to $1,016,602 in 2024)
+  const lcgeClaim = yd.lcgeClaimAmount ?? 0;
+  const netGains = Math.max(0, yd.capitalGainsRealized - yd.capitalLossApplied - lcgeClaim);
   let taxableCapitalGains: number;
   if (ass.cgInclusionTiered) {
     const tier1Rate = ass.cgInclusionTier1Rate ?? 0.5;

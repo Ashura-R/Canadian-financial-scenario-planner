@@ -97,6 +97,7 @@ export function makeDefaultYear(year: number): YearData {
     otherDeductions: 0,
     otherNonRefundableCredits: 0,
     homeBuyersPurchaseYear: false,
+    lcgeClaimAmount: 0,
     rrspContribution: 0,
     rrspDeductionClaimed: 0,
     tfsaContribution: 0,

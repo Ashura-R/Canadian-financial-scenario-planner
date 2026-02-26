@@ -173,7 +173,8 @@ export type ScheduledField =
   | 'studentLoanInterest'
   | 'movingExpenses'
   | 'otherDeductions'
-  | 'otherNonRefundableCredits';
+  | 'otherNonRefundableCredits'
+  | 'lcgeClaimAmount';
 
 export interface ScheduledItem {
   id: string;
@@ -220,6 +221,7 @@ export interface YearData {
   otherDeductions: number;
   otherNonRefundableCredits: number;
   homeBuyersPurchaseYear: boolean;  // true in the year of first-time home purchase
+  lcgeClaimAmount: number;          // Lifetime Capital Gains Exemption claimed this year
   // Account contributions
   rrspContribution: number;
   rrspDeductionClaimed: number;

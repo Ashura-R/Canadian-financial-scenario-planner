@@ -9,10 +9,11 @@ import { AccountsPage } from './pages/AccountsPage';
 import { TimelinePage } from './pages/TimelinePage';
 import { SchedulingPage } from './pages/SchedulingPage';
 import { AssumptionsPage } from './pages/AssumptionsPage';
+import { AnalysisPage } from './pages/AnalysisPage';
 import type { Page } from './components/PageNav/PageNav';
 
 const PAGE_STORAGE_KEY = 'cdn-tax-active-page';
-const VALID_PAGES: Page[] = ['overview', 'timeline', 'tax-detail', 'accounts', 'scheduling', 'assumptions'];
+const VALID_PAGES: Page[] = ['overview', 'timeline', 'tax-detail', 'accounts', 'scheduling', 'analysis', 'assumptions'];
 
 function loadPage(): Page {
   try {
@@ -42,6 +43,7 @@ export default function App() {
           {page === 'accounts' && <AccountsPage />}
           {page === 'timeline' && <TimelinePage />}
           {page === 'scheduling' && <SchedulingPage />}
+          {page === 'analysis' && <AnalysisPage />}
           {page === 'assumptions' && <AssumptionsPage />}
         </div>
         {compareOpen && <CompareModal onClose={() => setCompareOpen(false)} />}

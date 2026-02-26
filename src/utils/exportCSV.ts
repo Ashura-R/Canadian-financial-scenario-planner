@@ -42,6 +42,7 @@ export function buildTimelineCSV(
   rows.push({ label: 'Student Loan Interest', values: rawYears.map(y => (y as any).studentLoanInterest ?? 0) });
   rows.push({ label: 'Other Deductions', values: rawYears.map(y => (y as any).otherDeductions ?? 0) });
   rows.push({ label: 'Other Non-Ref. Credits', values: rawYears.map(y => (y as any).otherNonRefundableCredits ?? 0) });
+  rows.push({ label: 'LCGE Claim', values: rawYears.map(y => (y as any).lcgeClaimAmount ?? 0) });
   rows.push({ label: 'Gross Income', values: years.map(y => fmt(y.waterfall.grossIncome)) });
 
   // Contributions & Withdrawals
@@ -105,6 +106,7 @@ export function buildTimelineCSV(
   rows.push({ label: 'Age', values: years.map(y => y.retirement.age ?? '') });
   rows.push({ label: 'CPP Benefit Income', values: years.map(y => fmt(y.retirement.cppIncome)) });
   rows.push({ label: 'OAS Income', values: years.map(y => fmt(y.retirement.oasIncome)) });
+  rows.push({ label: 'GIS Income', values: years.map(y => fmt(y.retirement.gisIncome ?? 0)) });
 
   // Real Values
   rows.push({ label: '', values: [] });

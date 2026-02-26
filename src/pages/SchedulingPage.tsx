@@ -26,6 +26,7 @@ const SCHEDULED_FIELD_OPTIONS: { value: ScheduledField; label: string; group: st
   { value: 'movingExpenses', label: 'Moving Expenses', group: 'Deductions' },
   { value: 'otherDeductions', label: 'Other Deductions', group: 'Deductions' },
   { value: 'otherNonRefundableCredits', label: 'Other Credits', group: 'Deductions' },
+  { value: 'lcgeClaimAmount', label: 'LCGE Claim', group: 'Deductions' },
   { value: 'rrspContribution', label: 'RRSP Contribution', group: 'Contributions' },
   { value: 'rrspDeductionClaimed', label: 'RRSP Deduction Claimed', group: 'Contributions' },
   { value: 'tfsaContribution', label: 'TFSA Contribution', group: 'Contributions' },

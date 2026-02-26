@@ -95,7 +95,8 @@ export function computeWaterfall(
   ei: ComputedEI,
   tax: ComputedTax,
   accounts: ComputedAccounts,
-  retirementIncome: RetirementIncome = { cppBenefitIncome: 0, oasIncome: 0 }
+  retirementIncome: RetirementIncome = { cppBenefitIncome: 0, oasIncome: 0 },
+  gisIncome: number = 0,
 ): ComputedWaterfall {
   // Gross income includes RRSP/RRIF withdrawals, LIF withdrawals, and CPP/OAS benefits
   const rentalNet = yd.rentalGrossIncome - yd.rentalExpenses;
@@ -117,7 +118,7 @@ export function computeWaterfall(
   const afterFederalTax = netTaxableIncome - tax.federalTaxPayable;
   const afterProvincialTax = afterFederalTax - tax.provincialTaxPayable;
   const afterCPPEI = afterProvincialTax - cpp.totalCPPPaid - ei.totalEI;
-  const afterTaxIncome = afterCPPEI;
+  const afterTaxIncome = afterCPPEI + gisIncome; // GIS is tax-free, added after tax
 
   const totalContributions =
     yd.rrspContribution + yd.tfsaContribution + yd.fhsaContribution +

@@ -171,6 +171,7 @@ const ROW_REGISTRY: RowEntry[] = [
   { rowId: 'medicalExpenses', editable: true, group: 'Deductions & Credits' },
   { rowId: 'studentLoanInterest', editable: true, group: 'Deductions & Credits' },
   { rowId: 'otherNonRefundableCredits', editable: true, group: 'Deductions & Credits' },
+  { rowId: 'lcgeClaimAmount', editable: true, group: 'Deductions & Credits' },
   // RRSP
   { rowId: 'rrspContribution', editable: true, group: 'RRSP' },
   { rowId: 'rrspDeductionClaimed', editable: true, group: 'RRSP' },
@@ -239,6 +240,7 @@ const ROW_REGISTRY: RowEntry[] = [
   { rowId: '_computed_age', editable: false, group: 'Retirement (Computed)' },
   { rowId: '_computed_cppIncome', editable: false, group: 'Retirement (Computed)' },
   { rowId: '_computed_oasIncome', editable: false, group: 'Retirement (Computed)' },
+  { rowId: '_computed_gisIncome', editable: false, group: 'Retirement (Computed)' },
   { rowId: '_computed_rrifStatus', editable: false, group: 'Retirement (Computed)' },
   { rowId: '_computed_rrifMin', editable: false, group: 'Retirement (Computed)' },
   { rowId: '_computed_hbpBalance', editable: false, group: 'Retirement (Computed)' },
@@ -820,6 +822,7 @@ export function TimelinePage() {
             {renderRow('Medical Expenses', 'medicalExpenses' as YDKey)}
             {renderRow('Student Loan Int.', 'studentLoanInterest' as YDKey)}
             {renderRow('Other Credits ($)', 'otherNonRefundableCredits' as YDKey)}
+            {renderRow('LCGE Claim', 'lcgeClaimAmount' as YDKey)}
           </>
         );
 
@@ -988,6 +991,7 @@ export function TimelinePage() {
             {renderComputedRow('_computed_age', 'Age', i => { const v = computed[i]?.retirement?.age ?? null; return v !== null ? String(v) : '—'; })}
             {renderComputedRow('_computed_cppIncome', 'CPP Benefit Income', i => { const v = computed[i]?.retirement?.cppIncome ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
             {renderComputedRow('_computed_oasIncome', 'OAS Income', i => { const v = computed[i]?.retirement?.oasIncome ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
+            {renderComputedRow('_computed_gisIncome', 'GIS Income', i => { const v = computed[i]?.retirement?.gisIncome ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
             {renderComputedRow('_computed_rrifStatus', 'RRIF Status', i => computed[i]?.retirement?.isRRIF ? 'RRIF' : 'RRSP')}
             {renderComputedRow('_computed_rrifMin', 'RRIF Min Withdrawal', i => { const v = computed[i]?.retirement?.rrifMinWithdrawal ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
             {renderComputedRow('_computed_hbpBalance', 'HBP Balance', i => { const v = computed[i]?.hbpBalance ?? 0; return v >= 1000 ? '$' + Math.round(v / 1000) + 'K' : v === 0 ? '—' : '$' + Math.round(v).toLocaleString(); })}
