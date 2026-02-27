@@ -65,8 +65,7 @@ export function resolveAssumptions(
     // Account limits
     resolved.rrspLimit = Math.round(base.rrspLimit * factor);
     resolved.tfsaAnnualLimit = roundToNearest500(base.tfsaAnnualLimit * factor);
-    resolved.fhsaAnnualLimit = Math.round(base.fhsaAnnualLimit * factor);
-    resolved.fhsaLifetimeLimit = Math.round(base.fhsaLifetimeLimit * factor);
+    // FHSA limits are legislatively fixed at $8k/$40k — do NOT auto-index
 
     // OAS clawback threshold
     if (base.oasClawbackThreshold !== undefined) {

@@ -25,9 +25,12 @@ export function computeAccumulatedTfsaRoom(
   birthYear: number,
   startYear: number,
   currentAnnualLimit: number,
+  overrideOpeningYear?: number,
 ): number {
-  // TFSA started in 2009; eligible at age 18
-  const firstEligibleYear = Math.max(2009, birthYear + 18);
+  // TFSA started in 2009; eligible at age 18 (or override)
+  const firstEligibleYear = overrideOpeningYear
+    ? Math.max(2009, overrideOpeningYear)
+    : Math.max(2009, birthYear + 18);
 
   if (firstEligibleYear >= startYear) return 0; // not yet 18 or no years to accumulate
 

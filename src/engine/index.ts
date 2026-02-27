@@ -493,16 +493,18 @@ export function compute(scenario: Scenario): ComputedScenario {
   if (assumptions.birthYear && tfsaUnusedRoom === 0 && openingBalances.tfsa === 0) {
     tfsaUnusedRoom = computeAccumulatedTfsaRoom(
       assumptions.birthYear, assumptions.startYear, assumptions.tfsaAnnualLimit,
+      assumptions.accountOpeningYears?.tfsa,
     );
   }
 
   let prevYearTfsaWithdrawals = 0;
   let inflationFactor = 1;
   let fhsaDisposed = false;
-  // FHSA opening year tracking: opened if there's an opening balance or first contribution
-  let fhsaOpeningYear: number | null = openingBalances.fhsa > 0 || fhsaContribLifetime > 0
-    ? (assumptions.startYear - 1) // assume opened before start year if has balance/contribs
-    : null;
+  // FHSA opening year tracking: explicit override > opening balance/contribs > auto-detect
+  let fhsaOpeningYear: number | null = assumptions.accountOpeningYears?.fhsa
+    ?? (openingBalances.fhsa > 0 || fhsaContribLifetime > 0
+      ? (assumptions.startYear - 1) // assume opened before start year if has balance/contribs
+      : null);
   let prevACB = acbConfig?.openingACB ?? openingBalances.nonReg;
   let prevLiACB = acbConfig?.liOpeningACB ?? openingBalances.li;
   let prevBookValues: BookValues = {

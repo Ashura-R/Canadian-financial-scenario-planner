@@ -188,16 +188,21 @@ const ROW_REGISTRY: RowEntry[] = [
   { rowId: 'rrspContribution', editable: true, group: 'RRSP' },
   { rowId: 'rrspDeductionClaimed', editable: true, group: 'RRSP' },
   { rowId: 'rrspWithdrawal', editable: true, group: 'RRSP' },
+  { rowId: '_computed_rrspNewRoom', editable: false, group: 'RRSP' },
   { rowId: '_computed_rrspRoom', editable: false, group: 'RRSP' },
   // TFSA
   { rowId: 'tfsaContribution', editable: true, group: 'TFSA' },
   { rowId: 'tfsaWithdrawal', editable: true, group: 'TFSA' },
+  { rowId: '_computed_tfsaNewRoom', editable: false, group: 'TFSA' },
   { rowId: '_computed_tfsaRoom', editable: false, group: 'TFSA' },
+  { rowId: '_computed_tfsaTotalRoom', editable: false, group: 'TFSA' },
   // FHSA
   { rowId: 'fhsaContribution', editable: true, group: 'FHSA' },
   { rowId: 'fhsaDeductionClaimed', editable: true, group: 'FHSA' },
   { rowId: 'fhsaWithdrawal', editable: true, group: 'FHSA' },
+  { rowId: '_computed_fhsaLifetimeContrib', editable: false, group: 'FHSA' },
   { rowId: '_computed_fhsaRoom', editable: false, group: 'FHSA' },
+  { rowId: '_computed_fhsaTotalRoom', editable: false, group: 'FHSA' },
   // Non-Reg & Savings
   { rowId: 'nonRegContribution', editable: true, group: 'Non-Reg & Savings' },
   { rowId: 'nonRegWithdrawal', editable: true, group: 'Non-Reg & Savings' },
@@ -922,7 +927,8 @@ export function TimelinePage() {
             {renderRow('Contribution', 'rrspContribution')}
             {renderRow('Deduction Claimed', 'rrspDeductionClaimed')}
             {renderRow('Withdrawal', 'rrspWithdrawal')}
-            {renderComputedRow('_computed_rrspRoom', 'Unused Room', i => { const v = computed[i]?.rrspUnusedRoom ?? 0; return fmtVal(v); })}
+            {renderComputedRow('_computed_rrspNewRoom', 'Annual Limit', i => { const v = computed[i]?.resolvedAssumptions?.rrspLimit ?? 0; return fmtVal(v); })}
+            {renderComputedRow('_computed_rrspRoom', 'Total Room', i => { const v = computed[i]?.rrspUnusedRoom ?? 0; return fmtVal(v); })}
           </>
         );
 
@@ -931,7 +937,9 @@ export function TimelinePage() {
           <>
             {renderRow('Contribution', 'tfsaContribution')}
             {renderRow('Withdrawal', 'tfsaWithdrawal')}
-            {renderComputedRow('_computed_tfsaRoom', 'Unused Room', i => { const v = computed[i]?.tfsaUnusedRoom ?? 0; return fmtVal(v); })}
+            {renderComputedRow('_computed_tfsaNewRoom', 'New Room', i => { const v = computed[i]?.tfsaRoomGenerated ?? 0; return fmtVal(v); })}
+            {renderComputedRow('_computed_tfsaRoom', 'Carry-Forward', i => { const v = computed[i]?.tfsaUnusedRoom ?? 0; return fmtVal(v); })}
+            {renderComputedRow('_computed_tfsaTotalRoom', 'Total Room', i => { const c = computed[i]; return fmtVal((c?.tfsaUnusedRoom ?? 0) + (c?.tfsaRoomGenerated ?? 0)); })}
           </>
         );
 
@@ -941,7 +949,31 @@ export function TimelinePage() {
             {renderRow('Contribution', 'fhsaContribution')}
             {renderRow('Deduction Claimed', 'fhsaDeductionClaimed')}
             {renderRow('Withdrawal', 'fhsaWithdrawal')}
-            {renderComputedRow('_computed_fhsaRoom', 'Unused Room', i => { const v = computed[i]?.fhsaUnusedRoom ?? 0; return fmtVal(v); })}
+            <tr key="_computed_fhsaLifetimeContrib" className="border-b border-app-border">
+              <td className="sticky left-0 bg-app-surface z-10 py-0.5 pl-3 pr-2 text-[10px] text-app-text3 whitespace-nowrap border-r border-app-border" style={{ minWidth: LABEL_WIDTH }}>Lifetime Contrib</td>
+              {years.map((_, i) => {
+                const c = computed[i];
+                const lifetime = c?.fhsaContribLifetime ?? 0;
+                const limit = c?.resolvedAssumptions?.fhsaLifetimeLimit ?? 40000;
+                const atLimit = lifetime >= limit;
+                const nearLimit = lifetime >= limit * 0.8 && !atLimit;
+                const focused = grid.isFocused('_computed_fhsaLifetimeContrib', i);
+                const selected = grid.isSelected('_computed_fhsaLifetimeContrib', i);
+                return (
+                  <td
+                    key={i}
+                    className={`py-0.5 px-0.5 text-right text-[10px] rounded ${focused ? 'ring-2 ring-app-accent ring-inset' : ''} ${selected && !focused ? 'bg-app-accent-light' : ''} ${atLimit ? 'text-red-500 font-semibold' : nearLimit ? 'text-amber-500' : 'text-app-text4'}`}
+                    data-row="_computed_fhsaLifetimeContrib"
+                    data-col={i}
+                    onClick={(e) => onCellClick('_computed_fhsaLifetimeContrib', i, e.shiftKey)}
+                  >
+                    {fmtVal(lifetime)}{atLimit ? ' ✕' : ''}
+                  </td>
+                );
+              })}
+            </tr>
+            {renderComputedRow('_computed_fhsaRoom', 'Carry-Forward', i => { const v = computed[i]?.fhsaUnusedRoom ?? 0; return fmtVal(v); })}
+            {renderComputedRow('_computed_fhsaTotalRoom', 'Total Room', i => { const c = computed[i]; const annual = c?.resolvedAssumptions?.fhsaAnnualLimit ?? 8000; const cf = c?.fhsaUnusedRoom ?? 0; return fmtVal(annual + Math.min(cf, annual)); })}
           </>
         );
 

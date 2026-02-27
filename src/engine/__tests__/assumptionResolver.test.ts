@@ -26,8 +26,9 @@ describe('resolveAssumptions', () => {
     expect(resolved.cpp.basicExemption).toBe(Math.round(base.cpp.basicExemption * factor));
     expect(resolved.ei.maxInsurableEarnings).toBe(Math.round(base.ei.maxInsurableEarnings * factor));
     expect(resolved.rrspLimit).toBe(Math.round(base.rrspLimit * factor));
-    expect(resolved.fhsaAnnualLimit).toBe(Math.round(base.fhsaAnnualLimit * factor));
-    expect(resolved.fhsaLifetimeLimit).toBe(Math.round(base.fhsaLifetimeLimit * factor));
+    // FHSA limits are legislatively fixed — NOT auto-indexed
+    expect(resolved.fhsaAnnualLimit).toBe(base.fhsaAnnualLimit);
+    expect(resolved.fhsaLifetimeLimit).toBe(base.fhsaLifetimeLimit);
   });
 
   it('indexes bracket thresholds but keeps rates unchanged', () => {

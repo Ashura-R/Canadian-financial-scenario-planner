@@ -591,9 +591,16 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => vo
               <div className="text-[10px] font-semibold uppercase tracking-widest text-app-text4">Room & Lifetime</div>
             </div>
             <div className="px-4 pb-3 space-y-0.5">
-              <DKPI label="RRSP Unused Room" value={formatShort(yr.rrspUnusedRoom)} />
-              <DKPI label="TFSA Unused Room" value={formatShort(yr.tfsaUnusedRoom)} />
-              <DKPI label="FHSA Unused Room" value={formatShort(yr.fhsaUnusedRoom)} />
+              <DKPI label="RRSP Total Room" value={formatShort(yr.rrspUnusedRoom)} />
+              <DKPI label="TFSA Total Room" value={formatShort((yr.tfsaUnusedRoom ?? 0) + (yr.tfsaRoomGenerated ?? 0))} />
+              <DKPI label="TFSA Carry-Forward" value={formatShort(yr.tfsaUnusedRoom)} />
+              <DKPI label="FHSA Total Room" value={formatShort((yr.resolvedAssumptions?.fhsaAnnualLimit ?? 8000) + Math.min(yr.fhsaUnusedRoom, yr.resolvedAssumptions?.fhsaAnnualLimit ?? 8000))} />
+              <DKPI label="FHSA Carry-Forward" value={formatShort(yr.fhsaUnusedRoom)} />
+              <DKPI
+                label="FHSA Lifetime"
+                value={formatShort(yr.fhsaContribLifetime)}
+                cls={yr.fhsaContribLifetime >= (yr.resolvedAssumptions?.fhsaLifetimeLimit ?? 40000) ? 'text-red-500' : yr.fhsaContribLifetime >= (yr.resolvedAssumptions?.fhsaLifetimeLimit ?? 40000) * 0.8 ? 'text-amber-500' : 'text-app-text'}
+              />
               <DKPI label="Capital Loss C/F" value={formatShort(yr.capitalLossCF)} />
               <div className="border-t border-app-border my-1" />
               <div className="text-[10px] text-app-text4 uppercase tracking-wider font-semibold mb-0.5">Lifetime</div>

@@ -158,6 +158,12 @@ export interface Assumptions {
   oasClawbackThreshold?: number; // default 86912
   // Auto-indexing
   autoIndexAssumptions?: boolean; // default true — index dollar thresholds by inflation
+  // Account opening years (for room calculations)
+  accountOpeningYears?: {
+    tfsa?: number;   // year TFSA opened (default: max(2009, birthYear+18))
+    fhsa?: number;   // year FHSA opened (default: auto-detect from first contribution)
+    rrsp?: number;   // year RRSP opened (default: birthYear+18)
+  };
   // Home Buyers' Plan (HBP)
   hbp?: {
     withdrawalYear: number;       // year of HBP withdrawal from RRSP

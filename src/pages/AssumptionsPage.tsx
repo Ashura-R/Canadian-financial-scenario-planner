@@ -968,6 +968,65 @@ export function AssumptionsPage() {
 
             <Divider />
 
+            <Section title="Account Opening Years">
+              <div className="text-[11px] text-app-text4 mb-2">Year each account was opened. Defaults to age 18 (or 2009 for TFSA). Used for room calculations and FHSA 15-year rule.</div>
+              {(() => {
+                const aoy = ass.accountOpeningYears ?? {};
+                const defaultTfsa = ass.birthYear ? Math.max(2009, ass.birthYear + 18) : ass.startYear;
+                const defaultRrsp = ass.birthYear ? ass.birthYear + 18 : ass.startYear;
+                const setAOY = (key: 'tfsa' | 'fhsa' | 'rrsp', v: number | undefined) =>
+                  update(s => ({
+                    ...s,
+                    assumptions: {
+                      ...s.assumptions,
+                      accountOpeningYears: { ...s.assumptions.accountOpeningYears, [key]: v },
+                    },
+                  }));
+                return (
+                  <>
+                    <FormRow label="TFSA" hint={`Default: ${defaultTfsa}`}>
+                      <input
+                        type="number"
+                        className={inputCls}
+                        placeholder={String(defaultTfsa)}
+                        value={aoy.tfsa ?? ''}
+                        onChange={e => {
+                          const raw = e.target.value;
+                          setAOY('tfsa', raw === '' ? undefined : Math.round(parseFloat(raw)));
+                        }}
+                      />
+                    </FormRow>
+                    <FormRow label="FHSA" hint="Default: auto-detect from first contribution">
+                      <input
+                        type="number"
+                        className={inputCls}
+                        placeholder="Auto"
+                        value={aoy.fhsa ?? ''}
+                        onChange={e => {
+                          const raw = e.target.value;
+                          setAOY('fhsa', raw === '' ? undefined : Math.round(parseFloat(raw)));
+                        }}
+                      />
+                    </FormRow>
+                    <FormRow label="RRSP" hint={`Default: ${defaultRrsp}`}>
+                      <input
+                        type="number"
+                        className={inputCls}
+                        placeholder={String(defaultRrsp)}
+                        value={aoy.rrsp ?? ''}
+                        onChange={e => {
+                          const raw = e.target.value;
+                          setAOY('rrsp', raw === '' ? undefined : Math.round(parseFloat(raw)));
+                        }}
+                      />
+                    </FormRow>
+                  </>
+                );
+              })()}
+            </Section>
+
+            <Divider />
+
             <Section title="FHSA Disposition">
               <div className="text-[11px] text-app-text4 mb-2">
                 Control what happens to the FHSA account.
