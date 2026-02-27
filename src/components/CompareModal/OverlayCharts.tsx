@@ -145,7 +145,7 @@ export function OverlayCharts({ scenarios, computed }: Props) {
   const hasPnL = hasAccount(c => c.years.some(y => (y.pnl?.totalGain ?? 0) !== 0));
 
   return (
-    <div className="p-4">
+    <div>
       {/* Global range selector */}
       <div className="flex items-center justify-end mb-3">
         <ChartRangeSelector value={chartRange} onChange={setChartRange} />

@@ -1,47 +1,16 @@
 import React, { useState, useMemo } from 'react';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
-} from 'recharts';
 import { useScenario } from '../../store/ScenarioContext';
 import { DiffTable } from './DiffTable';
 import { OverlayCharts, SCENARIO_COLORS } from './OverlayCharts';
-import { formatCAD, formatPct, formatShort } from '../../utils/formatters';
+import { formatCAD, formatPct } from '../../utils/formatters';
 import type { ComputedScenario, ComputedYear } from '../../types/computed';
 import type { Scenario } from '../../types/scenario';
-
-type Tab = 'lifetime' | 'diff' | 'charts' | 'tax' | 'accounts';
 
 interface Props {
   onClose: () => void;
 }
 
-function YearScrubber({ yearIdx, allYears, onChange }: {
-  yearIdx: number;
-  allYears: number[];
-  onChange: (i: number) => void;
-}) {
-  return (
-    <div className="flex items-center gap-3 mb-4">
-      <span className="text-xs text-app-text3 shrink-0">Year:</span>
-      <input
-        type="range"
-        min={0}
-        max={allYears.length - 1}
-        value={yearIdx}
-        onChange={e => onChange(Number(e.target.value))}
-        className="flex-1 accent-[var(--app-accent)] h-1.5"
-      />
-      <span className="text-xs font-semibold text-app-text tabular-nums w-10 text-center">{allYears[yearIdx] ?? ''}</span>
-      <select
-        className="text-xs border border-app-border rounded px-2 py-1 bg-app-surface text-app-text2"
-        value={yearIdx}
-        onChange={e => onChange(Number(e.target.value))}
-      >
-        {allYears.map((y, i) => <option key={y} value={i}>{y}</option>)}
-      </select>
-    </div>
-  );
-}
+/* ── Shared helpers ─────────────────────────────────────── */
 
 function getBestWorstIdx(values: number[], higherIsBetter: boolean): { best: number; worst: number } {
   let bestIdx = 0, worstIdx = 0;
@@ -52,129 +21,104 @@ function getBestWorstIdx(values: number[], higherIsBetter: boolean): { best: num
   return { best: bestIdx, worst: worstIdx };
 }
 
-function CompareBarChart({ data, scenarios }: {
-  data: { label: string; values: number[] }[];
-  scenarios: Scenario[];
-}) {
-  const chartData = data.map(d => {
-    const row: Record<string, number | string> = { metric: d.label };
-    scenarios.forEach((sc, i) => { row[sc.name] = Math.round(d.values[i] ?? 0); });
-    return row;
-  });
-
+function SectionHeader({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <div className="bg-app-surface border border-app-border rounded-lg p-3 mb-4">
-      <div className="text-[10px] font-semibold text-app-text2 uppercase tracking-wide mb-2">Key Metrics Comparison</div>
-      <div style={{ height: 160 }}>
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--app-chart-grid)" />
-            <XAxis dataKey="metric" tick={{ fill: 'var(--app-chart-tick)', fontSize: 9 }} />
-            <YAxis tickFormatter={v => formatShort(v as number)} tick={{ fill: 'var(--app-chart-tick)', fontSize: 9 }} />
-            <Tooltip contentStyle={{ background: 'var(--app-surface)', border: '1px solid var(--app-border)', borderRadius: 6, fontSize: 11 }}
-              formatter={(v: number, name: string) => [formatShort(v), name]} />
-            {scenarios.map((sc, i) => (
-              <Bar key={sc.id} dataKey={sc.name} fill={SCENARIO_COLORS[i % SCENARIO_COLORS.length]} fillOpacity={0.75} />
-            ))}
-          </BarChart>
-        </ResponsiveContainer>
+    <div className="flex items-center gap-3 pt-6 pb-3">
+      <div className="h-px flex-1 bg-app-border" />
+      <div className="text-center shrink-0">
+        <div className="text-[11px] font-semibold text-app-text uppercase tracking-wider">{title}</div>
+        {subtitle && <div className="text-[10px] text-app-text4 mt-0.5">{subtitle}</div>}
       </div>
+      <div className="h-px flex-1 bg-app-border" />
     </div>
   );
 }
 
-function TaxCompareTab({ scenarios, computed }: { scenarios: Scenario[]; computed: ComputedScenario[] }) {
-  const [yearIdx, setYearIdx] = useState(0);
-  const allYears = computed[0]?.years.map(y => y.year) ?? [];
+/* ── Transposed table (scenarios = rows, metrics = columns) ── */
 
-  const rows: { label: string; fn: (yr: ComputedYear) => number; format: 'cad' | 'pct'; higherIsBetter: boolean }[] = [
-    { label: 'Gross Income', fn: yr => yr.waterfall.grossIncome, format: 'cad', higherIsBetter: true },
-    { label: 'Net Taxable Income', fn: yr => yr.tax.netTaxableIncome, format: 'cad', higherIsBetter: false },
-    { label: 'Federal Tax Before Credits', fn: yr => yr.tax.federalTaxBeforeCredits, format: 'cad', higherIsBetter: false },
-    { label: 'Federal Credits', fn: yr => yr.tax.federalCredits, format: 'cad', higherIsBetter: true },
-    { label: 'Federal Tax Payable', fn: yr => yr.tax.federalTaxPayable, format: 'cad', higherIsBetter: false },
-    { label: 'Provincial Tax Before Credits', fn: yr => yr.tax.provincialTaxBeforeCredits, format: 'cad', higherIsBetter: false },
-    { label: 'Provincial Credits', fn: yr => yr.tax.provincialCredits, format: 'cad', higherIsBetter: true },
-    { label: 'Provincial Tax Payable', fn: yr => yr.tax.provincialTaxPayable, format: 'cad', higherIsBetter: false },
-    { label: 'Total Income Tax', fn: yr => yr.tax.totalIncomeTax, format: 'cad', higherIsBetter: false },
-    { label: 'CPP Paid', fn: yr => yr.cpp.totalCPPPaid, format: 'cad', higherIsBetter: false },
-    { label: 'EI Paid', fn: yr => yr.ei.totalEI, format: 'cad', higherIsBetter: false },
-    { label: 'After-Tax Income', fn: yr => yr.waterfall.afterTaxIncome, format: 'cad', higherIsBetter: true },
-    { label: 'Net Cash Flow', fn: yr => yr.waterfall.netCashFlow, format: 'cad', higherIsBetter: true },
-    { label: 'Marginal Combined', fn: yr => yr.tax.marginalCombinedRate, format: 'pct', higherIsBetter: false },
-    { label: 'Avg Tax Rate', fn: yr => yr.tax.avgIncomeTaxRate, format: 'pct', higherIsBetter: false },
-    { label: 'Avg All-In Rate', fn: yr => yr.tax.avgAllInRate, format: 'pct', higherIsBetter: false },
-  ];
+interface MetricCol {
+  label: string;
+  values: number[];
+  format: 'cad' | 'pct';
+  higherIsBetter: boolean;
+}
 
-  const barData = useMemo(() => {
-    const yr = (c: ComputedScenario) => c.years[yearIdx];
-    return [
-      { label: 'Total Tax', values: computed.map(c => yr(c)?.tax.totalIncomeTax ?? 0) },
-      { label: 'After-Tax', values: computed.map(c => yr(c)?.waterfall.afterTaxIncome ?? 0) },
-      { label: 'Net Cash Flow', values: computed.map(c => yr(c)?.waterfall.netCashFlow ?? 0) },
-    ];
-  }, [computed, yearIdx]);
+function TransposedTable({ scenarios, computed, metrics, title }: {
+  scenarios: Scenario[];
+  computed: ComputedScenario[];
+  metrics: MetricCol[];
+  title: string;
+}) {
+  const is2 = computed.length === 2;
 
   return (
-    <div className="p-4">
-      <YearScrubber yearIdx={yearIdx} allYears={allYears} onChange={setYearIdx} />
-      <CompareBarChart data={barData} scenarios={scenarios} />
-
+    <div className="bg-app-surface border border-app-border rounded-lg shadow-sm overflow-hidden">
+      <div className="px-3 py-2 border-b border-app-border bg-app-surface2/50">
+        <span className="text-[10px] font-semibold text-app-text2 uppercase tracking-wide">{title}</span>
+      </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-xs border-collapse">
+        <table className="text-xs border-collapse w-full">
           <thead>
             <tr className="bg-app-surface2 border-b border-app-border">
-              <th className="py-2 px-3 text-left text-[10px] text-app-text3 font-semibold w-48">Tax Metric</th>
-              {scenarios.map((sc, i) => (
-                <th key={sc.id} className="py-2 px-3 text-right text-[10px] text-app-text2 font-semibold">
-                  <span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: SCENARIO_COLORS[i % SCENARIO_COLORS.length] }} />
-                  {sc.name}
-                </th>
+              <th className="sticky left-0 z-10 bg-app-surface2 py-2 px-3 text-left text-[10px] text-app-text3 font-semibold whitespace-nowrap w-0">Scenario</th>
+              {metrics.map(m => (
+                <th key={m.label} className="py-2 px-3 text-right text-[10px] text-app-text3 font-medium whitespace-nowrap">{m.label}</th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {rows.map(row => {
-              const values = computed.map(c => {
-                const yr = c.years[yearIdx];
-                return yr ? row.fn(yr) : 0;
-              });
-              const { best, worst } = getBestWorstIdx(values, row.higherIsBetter);
-              const showWinner = computed.length >= 2 && values[best] !== values[worst];
+            {scenarios.map((sc, sIdx) => {
+              const stripe = sIdx % 2 !== 0 ? 'bg-app-surface2/50' : '';
               return (
-                <tr key={row.label} className="border-b border-app-border hover:bg-app-accent-light/30">
-                  <td className="py-1.5 px-3 text-app-text2">{row.label}</td>
-                  {computed.map((c, i) => {
-                    const yr = c.years[yearIdx];
-                    const isBest = showWinner && i === best;
-                    const isWorst = showWinner && i === worst;
+                <tr key={sc.id} className={`border-b border-app-border hover:bg-app-accent-light/30 ${stripe}`}>
+                  <td className="sticky left-0 z-10 bg-app-surface py-1.5 px-3 whitespace-nowrap border-r border-app-border">
+                    <div className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: SCENARIO_COLORS[sIdx % SCENARIO_COLORS.length] }} />
+                      <span className="text-xs font-medium text-app-text">{sc.name}</span>
+                    </div>
+                  </td>
+                  {metrics.map(m => {
+                    const { best, worst } = getBestWorstIdx(m.values, m.higherIsBetter);
+                    const showWinner = computed.length >= 2 && m.values[best] !== m.values[worst];
+                    const isBest = showWinner && sIdx === best;
+                    const isWorst = showWinner && sIdx === worst;
                     return (
-                      <td key={i} className={`py-1.5 px-3 text-right text-app-text2 tabular-nums ${isBest ? 'bg-emerald-50 font-semibold text-emerald-700' : isWorst ? 'bg-red-50/50 text-red-600' : ''}`}>
-                        {yr ? (row.format === 'pct' ? formatPct(row.fn(yr)) : formatCAD(row.fn(yr))) : '—'}
+                      <td key={m.label} className={`py-1.5 px-3 text-right tabular-nums text-xs ${isBest ? 'bg-emerald-50/60 text-emerald-700 font-semibold' : isWorst ? 'text-app-text3' : 'text-app-text2'}`}>
+                        {m.format === 'pct' ? formatPct(m.values[sIdx]) : formatCAD(m.values[sIdx])}
                       </td>
                     );
                   })}
                 </tr>
               );
             })}
-            {/* Delta row */}
-            {computed.length >= 2 && (
-              <tr className="border-t-2 border-app-border bg-app-surface2">
-                <td className="py-2 px-3 text-app-text3 font-semibold text-[10px] uppercase">Delta (max−min)</td>
-                {computed.map((_, i) => {
-                  if (i > 0) return <td key={i} />;
+            {/* Diff (2) or Spread (3+) */}
+            <tr className="border-t-2 border-app-border bg-app-surface2">
+              <td className="sticky left-0 z-10 bg-app-surface2 py-1.5 px-3 whitespace-nowrap border-r border-app-border">
+                <span className="text-[10px] font-semibold text-app-text3 uppercase">{is2 ? 'Diff' : 'Spread'}</span>
+                {!is2 && <span className="text-[9px] text-app-text4 ml-1">(max−min)</span>}
+              </td>
+              {metrics.map(m => {
+                if (is2) {
+                  const diff = m.values[1] - m.values[0];
+                  const isGood = m.higherIsBetter ? diff > 0 : diff < 0;
                   return (
-                    <td key={i} colSpan={computed.length} className="py-2 px-3 text-right text-[10px] text-app-text4">
-                      {rows.filter(r => r.format === 'cad').slice(0, 3).map(r => {
-                        const vals = computed.map(c => { const yr = c.years[yearIdx]; return yr ? r.fn(yr) : 0; });
-                        const delta = Math.max(...vals) - Math.min(...vals);
-                        return `${r.label}: ${formatShort(delta)}`;
-                      }).join(' · ')}
+                    <td key={m.label} className="py-1.5 px-3 text-right text-xs">
+                      <span className={`font-medium ${isGood ? 'text-emerald-600' : diff === 0 ? 'text-app-text4' : 'text-app-text3'}`}>
+                        {diff >= 0 ? '+' : ''}{m.format === 'pct' ? formatPct(diff) : formatCAD(diff)}
+                      </span>
                     </td>
                   );
-                })}
-              </tr>
-            )}
+                }
+                const spread = Math.max(...m.values) - Math.min(...m.values);
+                return (
+                  <td key={m.label} className="py-1.5 px-3 text-right text-xs">
+                    <span className={`font-medium ${spread === 0 ? 'text-app-text4' : 'text-app-text3'}`}>
+                      {m.format === 'pct' ? formatPct(spread) : formatCAD(spread)}
+                    </span>
+                  </td>
+                );
+              })}
+            </tr>
           </tbody>
         </table>
       </div>
@@ -182,166 +126,150 @@ function TaxCompareTab({ scenarios, computed }: { scenarios: Scenario[]; compute
   );
 }
 
-function AccountsCompareTab({ scenarios, computed }: { scenarios: Scenario[]; computed: ComputedScenario[] }) {
+/* ── Net Benefit insight bar ──────────────────────────────── */
+
+function NetBenefitBar({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="px-3 py-2 bg-emerald-50/60 border border-emerald-200 rounded-lg text-xs">
+      <span className="font-semibold text-app-text">Net Benefit: </span>
+      {children}
+    </div>
+  );
+}
+
+/* ── Section: Lifetime Summary ────────────────────────────── */
+
+function LifetimeSection({ scenarios, computed }: { scenarios: Scenario[]; computed: ComputedScenario[] }) {
+  const metricDefs: { label: string; fn: (c: ComputedScenario) => number; format: 'cad' | 'pct'; higherIsBetter: boolean }[] = [
+    { label: 'Gross Income', fn: c => c.analytics.lifetimeGrossIncome, format: 'cad', higherIsBetter: true },
+    { label: 'Total Tax', fn: c => c.analytics.lifetimeTotalTax, format: 'cad', higherIsBetter: false },
+    { label: 'CPP + EI', fn: c => c.analytics.lifetimeCPPEI, format: 'cad', higherIsBetter: false },
+    { label: 'After-Tax', fn: c => c.analytics.lifetimeAfterTaxIncome, format: 'cad', higherIsBetter: true },
+    { label: 'Avg Tax %', fn: c => c.analytics.lifetimeAvgTaxRate, format: 'pct', higherIsBetter: false },
+    { label: 'All-In %', fn: c => c.analytics.lifetimeAvgAllInRate, format: 'pct', higherIsBetter: false },
+    { label: 'Net Cash Flow', fn: c => c.analytics.lifetimeCashFlow, format: 'cad', higherIsBetter: true },
+    { label: 'Final NW', fn: c => c.years[c.years.length - 1]?.accounts.netWorth ?? 0, format: 'cad', higherIsBetter: true },
+    { label: 'Real Final NW', fn: c => c.years[c.years.length - 1]?.realNetWorth ?? 0, format: 'cad', higherIsBetter: true },
+  ];
+
+  const metrics = metricDefs.map(d => ({
+    label: d.label,
+    values: computed.map(c => d.fn(c)),
+    format: d.format,
+    higherIsBetter: d.higherIsBetter,
+  }));
+
+  const netBenefit = useMemo(() => {
+    if (computed.length < 2) return null;
+    const afterTax = computed.map(c => c.analytics.lifetimeAfterTaxIncome);
+    const nw = computed.map(c => c.years[c.years.length - 1]?.accounts.netWorth ?? 0);
+    const atBest = afterTax.indexOf(Math.max(...afterTax));
+    const nwBest = nw.indexOf(Math.max(...nw));
+    const atDiff = afterTax[atBest] - Math.min(...afterTax);
+    const nwDiff = nw[nwBest] - Math.min(...nw);
+    if (atDiff === 0 && nwDiff === 0) return null;
+    const bestIdx = atBest === nwBest ? atBest : atBest;
+    return { bestIdx, atDiff, nwDiff: atBest === nwBest ? nwDiff : 0, name: scenarios[bestIdx]?.name ?? '' };
+  }, [computed, scenarios]);
+
+  return (
+    <div className="space-y-3">
+      <TransposedTable scenarios={scenarios} computed={computed} metrics={metrics} title="Lifetime Summary" />
+      {netBenefit && (
+        <NetBenefitBar>
+          <span className="text-emerald-700 font-semibold">{netBenefit.name}</span>
+          <span className="text-app-text2"> has </span>
+          <span className="text-emerald-600 font-semibold">+{formatCAD(netBenefit.atDiff)}</span>
+          <span className="text-app-text2"> more lifetime after-tax income</span>
+          {netBenefit.nwDiff > 0 && (
+            <>
+              <span className="text-app-text2"> and </span>
+              <span className="text-emerald-600 font-semibold">+{formatCAD(netBenefit.nwDiff)}</span>
+              <span className="text-app-text2"> more final net worth</span>
+            </>
+          )}
+        </NetBenefitBar>
+      )}
+    </div>
+  );
+}
+
+/* ── Section: Year-by-Year Detail ─────────────────────────── */
+
+function YearDetailSection({ scenarios, computed }: { scenarios: Scenario[]; computed: ComputedScenario[] }) {
   const [yearIdx, setYearIdx] = useState(0);
   const allYears = computed[0]?.years.map(y => y.year) ?? [];
 
-  const rows: { label: string; fn: (yr: ComputedYear) => number; format: 'cad' | 'pct'; higherIsBetter: boolean }[] = [
-    { label: 'RRSP EOY', fn: yr => yr.accounts.rrspEOY, format: 'cad', higherIsBetter: true },
-    { label: 'TFSA EOY', fn: yr => yr.accounts.tfsaEOY, format: 'cad', higherIsBetter: true },
-    { label: 'FHSA EOY', fn: yr => yr.accounts.fhsaEOY, format: 'cad', higherIsBetter: true },
-    { label: 'Non-Reg EOY', fn: yr => yr.accounts.nonRegEOY, format: 'cad', higherIsBetter: true },
-    { label: 'Savings EOY', fn: yr => yr.accounts.savingsEOY, format: 'cad', higherIsBetter: true },
+  const taxDefs: { label: string; fn: (yr: ComputedYear) => number; format: 'cad' | 'pct'; higherIsBetter: boolean }[] = [
+    { label: 'Gross Income', fn: yr => yr.waterfall.grossIncome, format: 'cad', higherIsBetter: true },
+    { label: 'Net Taxable', fn: yr => yr.tax.netTaxableIncome, format: 'cad', higherIsBetter: false },
+    { label: 'Fed Tax', fn: yr => yr.tax.federalTaxPayable, format: 'cad', higherIsBetter: false },
+    { label: 'Prov Tax', fn: yr => yr.tax.provincialTaxPayable, format: 'cad', higherIsBetter: false },
+    { label: 'Total Tax', fn: yr => yr.tax.totalIncomeTax, format: 'cad', higherIsBetter: false },
+    { label: 'CPP', fn: yr => yr.cpp.totalCPPPaid, format: 'cad', higherIsBetter: false },
+    { label: 'EI', fn: yr => yr.ei.totalEI, format: 'cad', higherIsBetter: false },
+    { label: 'After-Tax', fn: yr => yr.waterfall.afterTaxIncome, format: 'cad', higherIsBetter: true },
+    { label: 'Net CF', fn: yr => yr.waterfall.netCashFlow, format: 'cad', higherIsBetter: true },
+    { label: 'Marginal %', fn: yr => yr.tax.marginalCombinedRate, format: 'pct', higherIsBetter: false },
+    { label: 'Avg Tax %', fn: yr => yr.tax.avgIncomeTaxRate, format: 'pct', higherIsBetter: false },
+    { label: 'All-In %', fn: yr => yr.tax.avgAllInRate, format: 'pct', higherIsBetter: false },
+  ];
+
+  const acctDefs: { label: string; fn: (yr: ComputedYear) => number; format: 'cad' | 'pct'; higherIsBetter: boolean }[] = [
+    { label: 'RRSP', fn: yr => yr.accounts.rrspEOY, format: 'cad', higherIsBetter: true },
+    { label: 'TFSA', fn: yr => yr.accounts.tfsaEOY, format: 'cad', higherIsBetter: true },
+    { label: 'FHSA', fn: yr => yr.accounts.fhsaEOY, format: 'cad', higherIsBetter: true },
+    { label: 'Non-Reg', fn: yr => yr.accounts.nonRegEOY, format: 'cad', higherIsBetter: true },
+    { label: 'Savings', fn: yr => yr.accounts.savingsEOY, format: 'cad', higherIsBetter: true },
     { label: 'Net Worth', fn: yr => yr.accounts.netWorth, format: 'cad', higherIsBetter: true },
-    { label: 'Real Net Worth', fn: yr => yr.realNetWorth, format: 'cad', higherIsBetter: true },
-    { label: 'RRSP Return %', fn: yr => yr.accounts.rrspReturn, format: 'pct', higherIsBetter: true },
-    { label: 'TFSA Return %', fn: yr => yr.accounts.tfsaReturn, format: 'pct', higherIsBetter: true },
-    { label: 'RRSP Unused Room', fn: yr => yr.rrspUnusedRoom, format: 'cad', higherIsBetter: true },
-    { label: 'TFSA Unused Room', fn: yr => yr.tfsaUnusedRoom, format: 'cad', higherIsBetter: true },
-    { label: 'FHSA Lifetime Contrib', fn: yr => yr.fhsaContribLifetime, format: 'cad', higherIsBetter: true },
-    { label: 'FHSA Unused Room', fn: yr => yr.fhsaUnusedRoom, format: 'cad', higherIsBetter: true },
-    { label: 'Capital Loss C/F', fn: yr => yr.capitalLossCF, format: 'cad', higherIsBetter: false },
+    { label: 'Real NW', fn: yr => yr.realNetWorth, format: 'cad', higherIsBetter: true },
+    { label: 'RRSP Room', fn: yr => yr.rrspUnusedRoom, format: 'cad', higherIsBetter: true },
+    { label: 'TFSA Room', fn: yr => yr.tfsaUnusedRoom, format: 'cad', higherIsBetter: true },
   ];
 
-  const barData = useMemo(() => {
-    const yr = (c: ComputedScenario) => c.years[yearIdx];
-    return [
-      { label: 'Net Worth', values: computed.map(c => yr(c)?.accounts.netWorth ?? 0) },
-      { label: 'RRSP', values: computed.map(c => yr(c)?.accounts.rrspEOY ?? 0) },
-      { label: 'TFSA', values: computed.map(c => yr(c)?.accounts.tfsaEOY ?? 0) },
-    ];
-  }, [computed, yearIdx]);
+  const toMetrics = (defs: typeof taxDefs) => defs.map(d => ({
+    label: d.label,
+    values: computed.map(c => { const yr = c.years[yearIdx]; return yr ? d.fn(yr) : 0; }),
+    format: d.format,
+    higherIsBetter: d.higherIsBetter,
+  }));
+
+  const taxMetrics = toMetrics(taxDefs);
+  const acctMetrics = toMetrics(acctDefs);
 
   return (
-    <div className="p-4">
-      <YearScrubber yearIdx={yearIdx} allYears={allYears} onChange={setYearIdx} />
-      <CompareBarChart data={barData} scenarios={scenarios} />
+    <div className="space-y-3">
+      {/* Year scrubber */}
+      <div className="bg-app-surface border border-app-border rounded-lg px-3 py-2 flex items-center gap-3">
+        <span className="text-xs text-app-text3 shrink-0 font-medium">Year:</span>
+        <input
+          type="range"
+          min={0}
+          max={allYears.length - 1}
+          value={yearIdx}
+          onChange={e => setYearIdx(Number(e.target.value))}
+          className="flex-1 accent-[var(--app-accent)] h-1.5"
+        />
+        <span className="text-sm font-bold text-app-text tabular-nums w-12 text-center">{allYears[yearIdx] ?? ''}</span>
+        <select
+          className="text-xs border border-app-border rounded px-2 py-1 bg-app-surface text-app-text2"
+          value={yearIdx}
+          onChange={e => setYearIdx(Number(e.target.value))}
+        >
+          {allYears.map((y, i) => <option key={y} value={i}>{y}</option>)}
+        </select>
+      </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-xs border-collapse">
-          <thead>
-            <tr className="bg-app-surface2 border-b border-app-border">
-              <th className="py-2 px-3 text-left text-[10px] text-app-text3 font-semibold w-48">Account Metric</th>
-              {scenarios.map((sc, i) => (
-                <th key={sc.id} className="py-2 px-3 text-right text-[10px] text-app-text2 font-semibold">
-                  <span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: SCENARIO_COLORS[i % SCENARIO_COLORS.length] }} />
-                  {sc.name}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map(row => {
-              const values = computed.map(c => {
-                const yr = c.years[yearIdx];
-                return yr ? row.fn(yr) : 0;
-              });
-              const { best, worst } = getBestWorstIdx(values, row.higherIsBetter);
-              const showWinner = computed.length >= 2 && values[best] !== values[worst];
-              return (
-                <tr key={row.label} className="border-b border-app-border hover:bg-app-accent-light/30">
-                  <td className="py-1.5 px-3 text-app-text2">{row.label}</td>
-                  {computed.map((c, i) => {
-                    const yr = c.years[yearIdx];
-                    const isBest = showWinner && i === best;
-                    const isWorst = showWinner && i === worst;
-                    return (
-                      <td key={i} className={`py-1.5 px-3 text-right text-app-text2 tabular-nums ${isBest ? 'bg-emerald-50 font-semibold text-emerald-700' : isWorst ? 'bg-red-50/50 text-red-600' : ''}`}>
-                        {yr ? (row.format === 'pct' ? formatPct(row.fn(yr)) : formatCAD(row.fn(yr))) : '—'}
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      {/* Tax + Accounts side by side on large screens */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+        <TransposedTable scenarios={scenarios} computed={computed} metrics={taxMetrics} title="Tax Detail" />
+        <TransposedTable scenarios={scenarios} computed={computed} metrics={acctMetrics} title="Accounts" />
       </div>
     </div>
   );
 }
 
-function LifetimeSummaryTab({ scenarios, computed }: { scenarios: Scenario[]; computed: ComputedScenario[] }) {
-  interface MetricDef {
-    label: string;
-    rawFn: (c: ComputedScenario) => number;
-    fmtFn: (c: ComputedScenario) => string;
-    cls?: string;
-    best?: 'min' | 'max';
-  }
-
-  const metrics: MetricDef[] = [
-    { label: 'Lifetime Gross Income', rawFn: c => c.analytics.lifetimeGrossIncome, fmtFn: c => formatCAD(c.analytics.lifetimeGrossIncome) },
-    { label: 'Lifetime Total Tax', rawFn: c => c.analytics.lifetimeTotalTax, fmtFn: c => formatCAD(c.analytics.lifetimeTotalTax), cls: 'text-red-600', best: 'min' },
-    { label: 'Lifetime CPP + EI', rawFn: c => c.analytics.lifetimeCPPEI, fmtFn: c => formatCAD(c.analytics.lifetimeCPPEI), cls: 'text-amber-600' },
-    { label: 'Lifetime After-Tax Income', rawFn: c => c.analytics.lifetimeAfterTaxIncome, fmtFn: c => formatCAD(c.analytics.lifetimeAfterTaxIncome), cls: 'text-emerald-600', best: 'max' },
-    { label: 'Lifetime Avg Tax Rate', rawFn: c => c.analytics.lifetimeAvgTaxRate, fmtFn: c => formatPct(c.analytics.lifetimeAvgTaxRate), best: 'min' },
-    { label: 'Lifetime Avg All-In Rate', rawFn: c => c.analytics.lifetimeAvgAllInRate, fmtFn: c => formatPct(c.analytics.lifetimeAvgAllInRate), best: 'min' },
-    { label: 'Lifetime Net Cash Flow', rawFn: c => c.analytics.lifetimeCashFlow, fmtFn: c => formatCAD(c.analytics.lifetimeCashFlow) },
-    { label: 'Final Net Worth', rawFn: c => c.years[c.years.length - 1]?.accounts.netWorth ?? 0, fmtFn: c => {
-      const last = c.years[c.years.length - 1];
-      return last ? formatCAD(last.accounts.netWorth) : '—';
-    }, best: 'max' },
-    { label: 'Final Real Net Worth', rawFn: c => c.years[c.years.length - 1]?.realNetWorth ?? 0, fmtFn: c => {
-      const last = c.years[c.years.length - 1];
-      return last ? formatCAD(last.realNetWorth) : '—';
-    }, best: 'max' },
-  ];
-
-  return (
-    <div className="p-5">
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-        {metrics.map(row => {
-          const values = computed.map(c => row.rawFn(c));
-          let bestIdx: number | null = null;
-          let worstIdx: number | null = null;
-          if (row.best && computed.length >= 2) {
-            const target = row.best === 'min' ? Math.min(...values) : Math.max(...values);
-            const worst = row.best === 'min' ? Math.max(...values) : Math.min(...values);
-            bestIdx = values.indexOf(target);
-            worstIdx = values.indexOf(worst);
-            if (bestIdx === worstIdx) { bestIdx = null; worstIdx = null; }
-          }
-
-          const maxVal = Math.max(...values.map(Math.abs), 1);
-
-          return (
-            <div key={row.label} className="bg-app-surface border border-app-border rounded-lg p-3.5 hover:shadow-sm transition-shadow">
-              <div className="text-[10px] text-app-text4 uppercase tracking-wider font-medium mb-2.5">{row.label}</div>
-              <div className="space-y-1.5">
-                {computed.map((c, i) => {
-                  const isBest = i === bestIdx;
-                  const isWorst = i === worstIdx;
-                  const barPct = Math.abs(values[i]) / maxVal * 100;
-                  return (
-                    <div key={i} className={`flex items-center gap-2 rounded-md px-2 py-1 ${isBest ? 'border-l-2 border-emerald-500 bg-emerald-50/50' : isWorst ? 'border-l-2 border-red-300 bg-red-50/30' : ''}`}>
-                      <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: SCENARIO_COLORS[i % SCENARIO_COLORS.length] }} />
-                      <span className="text-xs text-app-text3 truncate w-24 shrink-0">{scenarios[i]?.name}</span>
-                      {computed.length >= 3 && (
-                        <div className="flex-1 h-3 bg-app-surface2 rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all"
-                            style={{ width: `${barPct}%`, backgroundColor: SCENARIO_COLORS[i % SCENARIO_COLORS.length], opacity: 0.6 }}
-                          />
-                        </div>
-                      )}
-                      <span className={`text-xs font-semibold tabular-nums shrink-0 ${row.cls ?? 'text-app-text'} ${isBest ? 'font-bold' : ''}`}>
-                        {row.fmtFn(c)}
-                      </span>
-                      {isBest && (
-                        <span className="text-[8px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full shrink-0">BEST</span>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+/* ── CSV Export ────────────────────────────────────────────── */
 
 function exportCompareCSV(scenarios: Scenario[], computed: ComputedScenario[]) {
   if (computed.length === 0) return;
@@ -366,12 +294,13 @@ function exportCompareCSV(scenarios: Scenario[], computed: ComputedScenario[]) {
   URL.revokeObjectURL(url);
 }
 
+/* ── Main Modal ───────────────────────────────────────────── */
+
 export function CompareModal({ onClose }: Props) {
   const { state } = useScenario();
   const [selected, setSelected] = useState<Set<string>>(
     () => new Set(state.scenarios.slice(0, 2).map(s => s.id))
   );
-  const [tab, setTab] = useState<Tab>('lifetime');
 
   function toggle(id: string) {
     setSelected(prev => {
@@ -394,25 +323,16 @@ export function CompareModal({ onClose }: Props) {
     }
   }
 
-  // Pair scenarios with their computed data, then filter together to avoid index mismatch
   const paired = state.scenarios
     .filter(s => selected.has(s.id))
     .map(s => ({ scenario: s, computed: state.computed[s.id] }))
     .filter((p): p is { scenario: Scenario; computed: ComputedScenario } => !!p.computed);
   const selectedScenarios = paired.map(p => p.scenario);
   const selectedComputed = paired.map(p => p.computed);
-
-  const TAB_LABELS: Record<Tab, string> = {
-    lifetime: 'Lifetime Summary',
-    diff: 'Metrics Diff',
-    charts: 'Overlay Charts',
-    tax: 'Tax Detail',
-    accounts: 'Accounts',
-  };
+  const ready = selectedComputed.length >= 2;
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-start bg-black/40 backdrop-blur-sm">
-      {/* Top accent line */}
       <div className="w-full h-full flex">
         {/* Sidebar */}
         <div className="w-56 bg-app-surface border-r border-app-border flex flex-col shrink-0 shadow-lg">
@@ -470,22 +390,7 @@ export function CompareModal({ onClose }: Props) {
             <div className="flex-1 text-sm font-semibold text-app-text">
               Comparing: {selectedScenarios.map(s => s.name).join(' vs ')}
             </div>
-            <div className="flex gap-0">
-              {(Object.keys(TAB_LABELS) as Tab[]).map(t => (
-                <button
-                  key={t}
-                  onClick={() => setTab(t)}
-                  className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors ${
-                    tab === t
-                      ? 'border-app-accent text-app-accent'
-                      : 'border-transparent text-app-text3 hover:text-app-text2 hover:border-app-border'
-                  }`}
-                >
-                  {TAB_LABELS[t]}
-                </button>
-              ))}
-            </div>
-            {selectedComputed.length >= 2 && (
+            {ready && (
               <button
                 onClick={() => exportCompareCSV(selectedScenarios, selectedComputed)}
                 className="px-2.5 py-1 text-[10px] rounded border border-app-border bg-app-surface text-app-text3 hover:text-app-text hover:border-app-border2 transition-colors"
@@ -499,22 +404,30 @@ export function CompareModal({ onClose }: Props) {
             >&times;</button>
           </div>
 
-          {/* Content */}
-          <div className="flex-1 overflow-y-auto">
-            {selectedComputed.length < 2 ? (
+          {/* Unified scrollable content */}
+          <div className="flex-1 overflow-y-auto px-5 pb-8">
+            {!ready ? (
               <div className="p-8 text-center text-app-text4 text-sm">
                 Select at least 2 scenarios to compare.
               </div>
-            ) : tab === 'lifetime' ? (
-              <LifetimeSummaryTab scenarios={selectedScenarios} computed={selectedComputed} />
-            ) : tab === 'diff' ? (
-              <DiffTable scenarios={selectedScenarios} computed={selectedComputed} />
-            ) : tab === 'charts' ? (
-              <OverlayCharts scenarios={selectedScenarios} computed={selectedComputed} />
-            ) : tab === 'tax' ? (
-              <TaxCompareTab scenarios={selectedScenarios} computed={selectedComputed} />
             ) : (
-              <AccountsCompareTab scenarios={selectedScenarios} computed={selectedComputed} />
+              <>
+                {/* 1. Lifetime Summary */}
+                <SectionHeader title="Lifetime Summary" subtitle="Totals across all projection years" />
+                <LifetimeSection scenarios={selectedScenarios} computed={selectedComputed} />
+
+                {/* 2. Year-by-Year Detail */}
+                <SectionHeader title="Year-by-Year Detail" subtitle="Scrub through individual years" />
+                <YearDetailSection scenarios={selectedScenarios} computed={selectedComputed} />
+
+                {/* 3. Detailed Lifetime Metrics */}
+                <SectionHeader title="Detailed Metrics" subtitle="Full breakdown by category" />
+                <DiffTable scenarios={selectedScenarios} computed={selectedComputed} />
+
+                {/* 4. Overlay Charts */}
+                <SectionHeader title="Charts" subtitle="Visual trends over time" />
+                <OverlayCharts scenarios={selectedScenarios} computed={selectedComputed} />
+              </>
             )}
           </div>
         </div>
