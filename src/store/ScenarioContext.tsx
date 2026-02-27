@@ -2,7 +2,7 @@ import React, { createContext, useContext, useReducer, useEffect, useCallback, u
 import type { Scenario, AssumptionOverrides } from '../types/scenario';
 import type { ComputedScenario } from '../types/computed';
 import { compute } from '../engine';
-import { makeDefaultScenario } from './defaults';
+import { makeDefaultScenario, makeDefaultYear } from './defaults';
 import { DEFAULT_WHATIF, isWhatIfActive, applyWhatIfAdjustments } from '../engine/whatIfEngine';
 import type { WhatIfAdjustments } from '../engine/whatIfEngine';
 
@@ -135,12 +135,39 @@ function reducer(state: ScenarioState, action: Action): ScenarioState {
 
 const STORAGE_KEY = 'cdn-tax-scenarios-v1';
 
+/** Merge saved data with defaults so newly-added fields get zero values instead of undefined */
+function migrateScenarios(scenarios: Scenario[]): Scenario[] {
+  const defaultSc = makeDefaultScenario('_');
+  const defaultOB = defaultSc.openingBalances;
+  const defaultAss = defaultSc.assumptions;
+  for (const sc of scenarios) {
+    // Migrate opening balances (add lira, resp if missing)
+    sc.openingBalances = { ...defaultOB, ...sc.openingBalances };
+    // Migrate assumptions (add federalEmploymentAmount, etc. if missing)
+    sc.assumptions = { ...defaultAss, ...sc.assumptions };
+    // Deep-merge nested assumption objects (cpp, ei, dividendRates)
+    sc.assumptions.cpp = { ...defaultAss.cpp, ...sc.assumptions.cpp };
+    sc.assumptions.ei = { ...defaultAss.ei, ...sc.assumptions.ei };
+    sc.assumptions.dividendRates = {
+      eligible: { ...defaultAss.dividendRates.eligible, ...sc.assumptions.dividendRates?.eligible },
+      nonEligible: { ...defaultAss.dividendRates.nonEligible, ...sc.assumptions.dividendRates?.nonEligible },
+    };
+    // Migrate year data
+    for (let i = 0; i < sc.years.length; i++) {
+      const defaults = makeDefaultYear(sc.years[i].year);
+      sc.years[i] = { ...defaults, ...sc.years[i] };
+    }
+  }
+  return scenarios;
+}
+
 function loadFromStorage(): ScenarioState | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return null;
     const { scenarios, activeId } = JSON.parse(raw) as { scenarios: Scenario[]; activeId: string };
     if (!scenarios?.length) return null;
+    migrateScenarios(scenarios);
     const computed: Record<string, ComputedScenario> = {};
     for (const sc of scenarios) {
       try { computed[sc.id] = compute(sc); } catch { /* skip */ }

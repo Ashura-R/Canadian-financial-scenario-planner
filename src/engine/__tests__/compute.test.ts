@@ -83,7 +83,7 @@ describe('compute', () => {
 
   it('scheduled rules integrate end-to-end with account balances', () => {
     const scenario = makeTestScenario({
-      openingBalances: { rrsp: 50000, tfsa: 30000, fhsa: 0, nonReg: 0, savings: 10000, lira: 0, resp: 0 },
+      openingBalances: { rrsp: 50000, tfsa: 30000, fhsa: 0, nonReg: 0, savings: 10000, lira: 0, resp: 0, li: 0 },
       openingCarryForwards: { rrspUnusedRoom: 30000, tfsaUnusedRoom: 0, capitalLossCF: 0, fhsaContribLifetime: 0 },
       scheduledItems: [
         makeTestSchedule({ field: 'employmentIncome', amount: 80000, startYear: 2025 }),
@@ -101,7 +101,7 @@ describe('compute', () => {
     // Savings: 10000 + 3000 = 13000
     expect(yr0.accounts.savingsEOY).toBe(13000);
     // Net worth should include all accounts
-    expect(yr0.accounts.netWorth).toBe(55000 + 30000 + 0 + 0 + 13000 + 0 + 0);
+    expect(yr0.accounts.netWorth).toBe(55000 + 30000 + 0 + 0 + 13000 + 0 + 0 + 0);
   });
 
   it('analytics cumulative sums are running totals', () => {
@@ -209,7 +209,7 @@ describe('compute', () => {
 
   it('PnL tracks book value and unrealized gains', () => {
     const scenario = makeTestScenario({
-      openingBalances: { rrsp: 10000, tfsa: 5000, fhsa: 0, nonReg: 0, savings: 0, lira: 0, resp: 0 },
+      openingBalances: { rrsp: 10000, tfsa: 5000, fhsa: 0, nonReg: 0, savings: 0, lira: 0, resp: 0, li: 0 },
       assumptions: {
         ...makeTestScenario().assumptions,
         assetReturns: { equity: 0.10, fixedIncome: 0, cash: 0, savings: 0 },
@@ -249,7 +249,7 @@ describe('compute', () => {
 
   it('PnL proportional withdrawal reduces book value correctly', () => {
     const scenario = makeTestScenario({
-      openingBalances: { rrsp: 0, tfsa: 20000, fhsa: 0, nonReg: 0, savings: 0, lira: 0, resp: 0 },
+      openingBalances: { rrsp: 0, tfsa: 20000, fhsa: 0, nonReg: 0, savings: 0, lira: 0, resp: 0, li: 0 },
       assumptions: {
         ...makeTestScenario().assumptions,
         assetReturns: { equity: 0.10, fixedIncome: 0, cash: 0, savings: 0 },
@@ -276,7 +276,7 @@ describe('compute', () => {
 
   it('return sequence overrides global asset returns', () => {
     const scenario = makeTestScenario({
-      openingBalances: { rrsp: 100000, tfsa: 0, fhsa: 0, nonReg: 0, savings: 0, lira: 0, resp: 0 },
+      openingBalances: { rrsp: 100000, tfsa: 0, fhsa: 0, nonReg: 0, savings: 0, lira: 0, resp: 0, li: 0 },
       assumptions: {
         ...makeTestScenario().assumptions,
         numYears: 3,
@@ -326,5 +326,86 @@ describe('compute', () => {
     // Year 2 should be 2 * baseLimit
     const yr2Room = result.years[2].rrspUnusedRoom;
     expect(yr2Room).toBeCloseTo(2 * baseLimit, 0);
+  });
+
+  it('life insurance cash value tracks across years', () => {
+    const scenario = makeTestScenario({
+      openingBalances: { rrsp: 0, tfsa: 0, fhsa: 0, nonReg: 0, savings: 0, lira: 0, resp: 0, li: 50000 },
+      assumptions: {
+        ...makeTestScenario().assumptions,
+        numYears: 3,
+      },
+      scheduledItems: [
+        makeTestSchedule({ field: 'liPremium', amount: 5000, startYear: 2025 }),
+        makeTestSchedule({ field: 'liCOI', amount: 1000, startYear: 2025 }),
+      ],
+    });
+    scenario.years = scenario.years.slice(0, 3);
+
+    const result = compute(scenario);
+    // Year 0: (50000 + 5000 - 1000) * 1.0 = 54000 (0% returns by default)
+    expect(result.years[0].accounts.liCashValueEOY).toBe(54000);
+    // Year 1: (54000 + 5000 - 1000) * 1.0 = 58000
+    expect(result.years[1].accounts.liCashValueEOY).toBe(58000);
+    // Year 2: (58000 + 5000 - 1000) * 1.0 = 62000
+    expect(result.years[2].accounts.liCashValueEOY).toBe(62000);
+  });
+
+  it('insurance surrender gain flows into taxable income with ACB', () => {
+    const scenario = makeTestScenario({
+      openingBalances: { rrsp: 0, tfsa: 0, fhsa: 0, nonReg: 0, savings: 0, lira: 0, resp: 0, li: 50000 },
+      acbConfig: { autoComputeGains: true, openingACB: 0, liOpeningACB: 20000 },
+      scheduledItems: [
+        makeTestSchedule({ field: 'employmentIncome', amount: 50000, startYear: 2025 }),
+        makeTestSchedule({ field: 'liWithdrawal', amount: 10000, startYear: 2025, endYear: 2025 }),
+      ],
+    });
+
+    const result = compute(scenario);
+    const yr0 = result.years[0];
+
+    // ACB should be computed
+    expect(yr0.acb).toBeDefined();
+    expect(yr0.acb!.insurance).toBeDefined();
+
+    // Withdrawal 10000 from cash value 50000, ACB 20000
+    // Fraction = 10000/50000 = 0.2
+    // ACB removed = 20000 * 0.2 = 4000
+    // Surrender gain = 10000 - 4000 = 6000
+    expect(yr0.acb!.insurance!.computedSurrenderGain).toBeCloseTo(6000, 0);
+
+    // Surrender gain flows into tax computation (via ydForTax.otherTaxableIncome)
+    // so total tax should be higher than if there were no surrender gain
+    const baseScenario = makeTestScenario({
+      scheduledItems: [
+        makeTestSchedule({ field: 'employmentIncome', amount: 50000, startYear: 2025 }),
+      ],
+    });
+    const baseResult = compute(baseScenario);
+    expect(yr0.tax.totalIncomeTax).toBeGreaterThan(baseResult.years[0].tax.totalIncomeTax);
+  });
+
+  it('PnL includes life insurance account', () => {
+    const scenario = makeTestScenario({
+      openingBalances: { rrsp: 0, tfsa: 0, fhsa: 0, nonReg: 0, savings: 0, lira: 0, resp: 0, li: 30000 },
+      assumptions: {
+        ...makeTestScenario().assumptions,
+        assetReturns: { equity: 0.10, fixedIncome: 0.05, cash: 0, savings: 0 },
+      },
+      scheduledItems: [
+        makeTestSchedule({ field: 'employmentIncome', amount: 50000, startYear: 2025 }),
+        makeTestSchedule({ field: 'liPremium', amount: 5000, startYear: 2025 }),
+      ],
+    });
+
+    const result = compute(scenario);
+    const pnl = result.years[0].pnl!;
+
+    expect(pnl.li).toBeDefined();
+    // Book value = 30000 + 5000 = 35000 (opening + premium)
+    expect(pnl.li.bookValue).toBe(35000);
+    // Market value = (30000 + 5000) * (1 + 0.05) = 36750 (default liFixedPct = 1)
+    expect(pnl.li.marketValue).toBeCloseTo(36750, 0);
+    expect(pnl.li.gain).toBeCloseTo(1750, 0);
   });
 });

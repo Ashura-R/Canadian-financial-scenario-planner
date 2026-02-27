@@ -4,7 +4,7 @@ import { DEFAULT_ASSUMPTIONS, makeDefaultYear } from '../../store/defaults';
 import type { OpeningBalances } from '../../types/scenario';
 
 const ass = DEFAULT_ASSUMPTIONS;
-const zeroBal: OpeningBalances = { rrsp: 0, tfsa: 0, fhsa: 0, nonReg: 0, savings: 0, lira: 0, resp: 0 };
+const zeroBal: OpeningBalances = { rrsp: 0, tfsa: 0, fhsa: 0, nonReg: 0, savings: 0, lira: 0, resp: 0, li: 0 };
 const zeroCPP = { pensionableEarnings: 0, cppEmployee: 0, cpp2Employee: 0, cppSE: 0, cpp2SE: 0, cppSEEmployerHalfDed: 0, totalCPPForCredit: 0, totalCPPPaid: 0 };
 const zeroEI = { eiEmployment: 0, eiSE: 0, totalEI: 0 };
 const zeroTax = {
@@ -48,10 +48,10 @@ describe('computeAccounts', () => {
   });
 
   it('net worth = sum of all accounts', () => {
-    const prev: OpeningBalances = { rrsp: 10000, tfsa: 5000, fhsa: 3000, nonReg: 2000, savings: 1000, lira: 500, resp: 200 };
+    const prev: OpeningBalances = { rrsp: 10000, tfsa: 5000, fhsa: 3000, nonReg: 2000, savings: 1000, lira: 500, resp: 200, li: 0 };
     const yd = makeDefaultYear(2025);
     const result = computeAccounts(yd, ass, prev);
-    const expected = result.rrspEOY + result.tfsaEOY + result.fhsaEOY + result.nonRegEOY + result.savingsEOY + result.liraEOY + result.respEOY;
+    const expected = result.rrspEOY + result.tfsaEOY + result.fhsaEOY + result.nonRegEOY + result.savingsEOY + result.liraEOY + result.respEOY + result.liCashValueEOY;
     expect(result.netWorth).toBeCloseTo(expected, 2);
   });
 
@@ -60,6 +60,32 @@ describe('computeAccounts', () => {
     const prev: OpeningBalances = { ...zeroBal, rrsp: 50000 };
     const result = computeAccounts(yd, ass, prev);
     expect(result.rrspEOY).toBe(99999);
+  });
+
+  it('life insurance cash value: (prev + premium - COI) * (1 + return) - withdrawal', () => {
+    const assWithReturns = { ...ass, assetReturns: { equity: 0.07, fixedIncome: 0.04, cash: 0.01, savings: 0.02 } };
+    const yd = { ...makeDefaultYear(2025), liPremium: 6000, liCOI: 1000, liWithdrawal: 0, liEquityPct: 0, liFixedPct: 1, liCashPct: 0 };
+    const prev: OpeningBalances = { ...zeroBal, li: 50000 };
+    const result = computeAccounts(yd, assWithReturns, prev);
+    // (50000 + 6000 - 1000) * (1 + 0.04) = 55000 * 1.04 = 57200
+    expect(result.liCashValueEOY).toBeCloseTo(57200, 2);
+    expect(result.liReturn).toBeCloseTo(0.04, 4);
+  });
+
+  it('life insurance with withdrawal', () => {
+    const yd = { ...makeDefaultYear(2025), liPremium: 3000, liCOI: 500, liWithdrawal: 10000, liEquityPct: 0, liFixedPct: 1, liCashPct: 0 };
+    const prev: OpeningBalances = { ...zeroBal, li: 40000 };
+    const result = computeAccounts(yd, ass, prev);
+    // (40000 + 3000 - 500) * (1 + 0) - 10000 = 42500 - 10000 = 32500
+    expect(result.liCashValueEOY).toBe(32500);
+  });
+
+  it('life insurance included in net worth', () => {
+    const prev: OpeningBalances = { ...zeroBal, li: 25000 };
+    const yd = makeDefaultYear(2025);
+    const result = computeAccounts(yd, ass, prev);
+    expect(result.netWorth).toBe(result.rrspEOY + result.tfsaEOY + result.fhsaEOY + result.nonRegEOY + result.savingsEOY + result.liraEOY + result.respEOY + result.liCashValueEOY);
+    expect(result.liCashValueEOY).toBe(25000);
   });
 });
 

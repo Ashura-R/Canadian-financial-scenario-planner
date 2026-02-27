@@ -101,6 +101,7 @@ function buildScheduleOverlay(
 // Default group order
 const DEFAULT_GROUP_ORDER = [
   'Income', 'Expenses & Deductions', 'RRSP', 'TFSA', 'FHSA', 'Non-Reg & Savings', 'LIRA/LIF', 'RESP',
+  'Life Insurance',
   'Asset Allocation', 'Capital Loss', 'ACB Tracking', 'P&L Tracking',
   'EOY Overrides', 'Retirement (Computed)', 'Liabilities (Computed)', 'Rate Overrides',
   'Contribution Room', 'Tax Results (Computed)',
@@ -115,6 +116,7 @@ const GROUP_DEFAULTS: Record<string, boolean> = {
   'Non-Reg & Savings': true,
   'LIRA/LIF': false,
   'RESP': false,
+  'Life Insurance': false,
   'Asset Allocation': false,
   'Capital Loss': false,
   'ACB Tracking': false,
@@ -208,6 +210,12 @@ const ROW_REGISTRY: RowEntry[] = [
   { rowId: 'respWithdrawal', editable: true, group: 'RESP' },
   { rowId: '_computed_respEOY', editable: false, group: 'RESP' },
   { rowId: '_computed_respCESG', editable: false, group: 'RESP' },
+  // Life Insurance
+  { rowId: 'liPremium', editable: true, group: 'Life Insurance' },
+  { rowId: 'liCOI', editable: true, group: 'Life Insurance' },
+  { rowId: 'liWithdrawal', editable: true, group: 'Life Insurance' },
+  { rowId: 'liDeathBenefit', editable: true, group: 'Life Insurance' },
+  { rowId: '_computed_liCashValue', editable: false, group: 'Life Insurance' },
   // Asset Allocation
   { rowId: 'rrspEquityPct', editable: true, group: 'Asset Allocation', pct: true },
   { rowId: 'rrspFixedPct', editable: true, group: 'Asset Allocation', pct: true },
@@ -228,6 +236,9 @@ const ROW_REGISTRY: RowEntry[] = [
   { rowId: 'respEquityPct', editable: true, group: 'Asset Allocation', pct: true },
   { rowId: 'respFixedPct', editable: true, group: 'Asset Allocation', pct: true },
   { rowId: 'respCashPct', editable: true, group: 'Asset Allocation', pct: true },
+  { rowId: 'liEquityPct', editable: true, group: 'Asset Allocation', pct: true },
+  { rowId: 'liFixedPct', editable: true, group: 'Asset Allocation', pct: true },
+  { rowId: 'liCashPct', editable: true, group: 'Asset Allocation', pct: true },
   // Capital Loss
   { rowId: 'capitalLossApplied', editable: true, group: 'Capital Loss' },
   { rowId: '_computed_capitalLossCF', editable: false, group: 'Capital Loss' },
@@ -238,6 +249,13 @@ const ROW_REGISTRY: RowEntry[] = [
   { rowId: '_computed_acbClosing', editable: false, group: 'ACB Tracking' },
   { rowId: '_computed_acbPerUnit', editable: false, group: 'ACB Tracking' },
   { rowId: '_computed_acbCG', editable: false, group: 'ACB Tracking' },
+  { rowId: '_computed_liAcbOpening', editable: false, group: 'ACB Tracking' },
+  { rowId: '_computed_liAcbPremiums', editable: false, group: 'ACB Tracking' },
+  { rowId: '_computed_liAcbCOI', editable: false, group: 'ACB Tracking' },
+  { rowId: '_computed_liAcbRemoved', editable: false, group: 'ACB Tracking' },
+  { rowId: '_computed_liAcbClosing', editable: false, group: 'ACB Tracking' },
+  { rowId: '_computed_liAcbSurrGain', editable: false, group: 'ACB Tracking' },
+  { rowId: '_computed_acbTotal', editable: false, group: 'ACB Tracking' },
   // P&L Tracking
   { rowId: '_computed_pnlBookValue', editable: false, group: 'P&L Tracking' },
   { rowId: '_computed_pnlMarketValue', editable: false, group: 'P&L Tracking' },
@@ -251,6 +269,7 @@ const ROW_REGISTRY: RowEntry[] = [
   { rowId: 'savingsEOYOverride', editable: true, group: 'EOY Overrides', isOverride: true },
   { rowId: 'liraEOYOverride', editable: true, group: 'EOY Overrides', isOverride: true },
   { rowId: 'respEOYOverride', editable: true, group: 'EOY Overrides', isOverride: true },
+  { rowId: 'liEOYOverride', editable: true, group: 'EOY Overrides', isOverride: true },
   // Retirement (Computed)
   { rowId: '_computed_age', editable: false, group: 'Retirement (Computed)' },
   { rowId: '_computed_cppIncome', editable: false, group: 'Retirement (Computed)' },
@@ -928,6 +947,17 @@ export function TimelinePage() {
           </>
         );
 
+      case 'Life Insurance':
+        return (
+          <>
+            {renderRow('Premium', 'liPremium' as YDKey)}
+            {renderRow('COI (Cost of Insurance)', 'liCOI' as YDKey)}
+            {renderRow('Withdrawal', 'liWithdrawal' as YDKey)}
+            {renderRow('Death Benefit', 'liDeathBenefit' as YDKey)}
+            {renderComputedRow('_computed_liCashValue', 'Cash Value EOY', i => fmtVal(computed[i]?.accounts?.liCashValueEOY ?? 0))}
+          </>
+        );
+
       case 'Asset Allocation':
         return (
           <>
@@ -976,6 +1006,13 @@ export function TimelinePage() {
             {renderRow('  Equity %', 'respEquityPct', { pct: true })}
             {renderRow('  Fixed %', 'respFixedPct', { pct: true })}
             {renderRow('  Cash %', 'respCashPct', { pct: true })}
+            <tr className="bg-app-surface2/60 border-b border-app-border">
+              <td className="sticky left-0 bg-app-surface z-10 py-0.5 pl-3 pr-2 text-[9px] text-app-text4 italic border-r border-app-border" style={{ minWidth: LABEL_WIDTH }}>Insurance Alloc</td>
+              {years.map((_, i) => <td key={i} />)}
+            </tr>
+            {renderRow('  Equity %', 'liEquityPct' as YDKey, { pct: true })}
+            {renderRow('  Fixed %', 'liFixedPct' as YDKey, { pct: true })}
+            {renderRow('  Cash %', 'liCashPct' as YDKey, { pct: true })}
           </>
         );
 
@@ -1001,17 +1038,34 @@ export function TimelinePage() {
             </tr>
           );
         }
+        const hasInsurance = computed.some(c => c?.acb?.insurance);
         return (
           <>
-            {renderComputedRow('_computed_acbOpening', 'Opening ACB', i => fmtACB(computed[i]?.acb?.openingACB ?? 0))}
-            {renderComputedRow('_computed_acbAdded', 'ACB Added', i => fmtACB(computed[i]?.acb?.acbAdded ?? 0))}
-            {renderComputedRow('_computed_acbRemoved', 'ACB Removed', i => fmtACB(computed[i]?.acb?.acbRemoved ?? 0))}
-            {renderComputedRow('_computed_acbClosing', 'Closing ACB', i => fmtACB(computed[i]?.acb?.closingACB ?? 0))}
-            {renderComputedRow('_computed_acbPerUnit', 'Per-Unit ACB', i => { const v = computed[i]?.acb?.perUnitACB ?? 0; return v > 0 ? '$' + v.toFixed(4) : '—'; })}
-            {renderComputedRow('_computed_acbCG', 'Computed CG', i => {
-              const v = computed[i]?.acb?.computedCapitalGain ?? 0;
-              return fmtVal(v);
-            })}
+            <tr className="bg-app-surface2/60 border-b border-app-border">
+              <td className="sticky left-0 bg-app-surface z-10 py-0.5 pl-3 pr-2 text-[9px] text-app-text4 italic border-r border-app-border" style={{ minWidth: LABEL_WIDTH }}>Non-Reg ACB</td>
+              {years.map((_, i) => <td key={i} />)}
+            </tr>
+            {renderComputedRow('_computed_acbOpening', '  Opening ACB', i => fmtACB(computed[i]?.acb?.nonReg?.openingACB ?? 0))}
+            {renderComputedRow('_computed_acbAdded', '  ACB Added', i => fmtACB(computed[i]?.acb?.nonReg?.acbAdded ?? 0))}
+            {renderComputedRow('_computed_acbRemoved', '  ACB Removed', i => fmtACB(computed[i]?.acb?.nonReg?.acbRemoved ?? 0))}
+            {renderComputedRow('_computed_acbClosing', '  Closing ACB', i => fmtACB(computed[i]?.acb?.nonReg?.closingACB ?? 0))}
+            {renderComputedRow('_computed_acbPerUnit', '  Per-Unit ACB', i => { const v = computed[i]?.acb?.nonReg?.perUnitACB ?? 0; return v > 0 ? '$' + v.toFixed(4) : '—'; })}
+            {renderComputedRow('_computed_acbCG', '  Computed CG', i => fmtVal(computed[i]?.acb?.nonReg?.computedCapitalGain ?? 0))}
+            {hasInsurance && (
+              <>
+                <tr className="bg-app-surface2/60 border-b border-app-border">
+                  <td className="sticky left-0 bg-app-surface z-10 py-0.5 pl-3 pr-2 text-[9px] text-app-text4 italic border-r border-app-border" style={{ minWidth: LABEL_WIDTH }}>Insurance ACB</td>
+                  {years.map((_, i) => <td key={i} />)}
+                </tr>
+                {renderComputedRow('_computed_liAcbOpening', '  Opening ACB', i => fmtACB(computed[i]?.acb?.insurance?.openingACB ?? 0))}
+                {renderComputedRow('_computed_liAcbPremiums', '  Premiums (Added)', i => fmtACB(computed[i]?.acb?.insurance?.acbAdded ?? 0))}
+                {renderComputedRow('_computed_liAcbCOI', '  COI Deducted', i => fmtACB(computed[i]?.acb?.insurance?.coiDeducted ?? 0))}
+                {renderComputedRow('_computed_liAcbRemoved', '  ACB Removed', i => fmtACB(computed[i]?.acb?.insurance?.acbRemoved ?? 0))}
+                {renderComputedRow('_computed_liAcbClosing', '  Closing ACB', i => fmtACB(computed[i]?.acb?.insurance?.closingACB ?? 0))}
+                {renderComputedRow('_computed_liAcbSurrGain', '  Surrender Gain', i => fmtVal(computed[i]?.acb?.insurance?.computedSurrenderGain ?? 0))}
+              </>
+            )}
+            {renderComputedRow('_computed_acbTotal', 'Total Closing ACB', i => fmtACB(computed[i]?.acb?.totalClosingACB ?? 0), 'text-app-text2 font-medium')}
           </>
         );
       }
@@ -1042,6 +1096,7 @@ export function TimelinePage() {
             {renderOverrideRow('savingsEOYOverride', 'SAVINGS Override')}
             {renderOverrideRow('liraEOYOverride', 'LIRA Override')}
             {renderOverrideRow('respEOYOverride', 'RESP Override')}
+            {renderOverrideRow('liEOYOverride' as YDKey, 'LI Cash Value Override')}
           </>
         );
 

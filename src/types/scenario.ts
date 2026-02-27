@@ -11,7 +11,7 @@ export type ConditionField =
   | 'capitalGainsRealized' | 'capitalLossCF'
   | 'age'
   | 'rentalGrossIncome' | 'pensionIncome' | 'foreignIncome'
-  | 'liraEOY' | 'respEOY'
+  | 'liraEOY' | 'respEOY' | 'liCashValueEOY'
   | 'totalLivingExpenses';
 
 // Reference fields for percentage-based scheduled amounts
@@ -30,7 +30,8 @@ export type AmountMaxReference =
   | 'savingsBalance'  // current Savings balance (for withdrawals)
   | 'capitalLossCF'   // available capital loss carry-forward
   | 'liraBalance'     // current LIRA/LIF balance (for withdrawals)
-  | 'respBalance';    // current RESP balance (for withdrawals)
+  | 'respBalance'     // current RESP balance (for withdrawals)
+  | 'liBalance';      // current Life Insurance cash value (for withdrawals)
 
 export interface ScheduleCondition {
   field: ConditionField;
@@ -203,6 +204,8 @@ export type ScheduledField =
   | 'respWithdrawal'
   | 'liraEquityPct' | 'liraFixedPct' | 'liraCashPct'
   | 'respEquityPct' | 'respFixedPct' | 'respCashPct'
+  | 'liPremium' | 'liCOI' | 'liWithdrawal' | 'liDeathBenefit'
+  | 'liEquityPct' | 'liFixedPct' | 'liCashPct'
   | 'selfEmploymentExpenses'
   | 'childCareExpenses'
   | 'medicalExpenses'
@@ -322,6 +325,15 @@ export interface YearData {
   savingsEOYOverride?: number;
   liraEOYOverride?: number;
   respEOYOverride?: number;
+  // Life Insurance
+  liPremium: number;
+  liCOI: number;
+  liWithdrawal: number;
+  liDeathBenefit: number;
+  liEquityPct: number;
+  liFixedPct: number;
+  liCashPct: number;
+  liEOYOverride?: number;
   // Per-year rate overrides (optional)
   inflationRateOverride?: number;
   equityReturnOverride?: number;
@@ -338,6 +350,7 @@ export interface OpeningBalances {
   savings: number;
   lira: number;
   resp: number;
+  li: number;
 }
 
 export interface OpeningCarryForwards {
@@ -352,6 +365,7 @@ export interface OpeningCarryForwards {
 export interface ACBConfig {
   openingACB?: number;           // defaults to opening nonReg balance
   autoComputeGains?: boolean;    // replace manual CG with ACB-computed
+  liOpeningACB?: number;         // opening ACB for life insurance account
 }
 
 export type LiabilityType = 'mortgage' | 'student-loan' | 'loc' | 'other';

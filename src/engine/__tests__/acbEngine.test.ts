@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeACB } from '../acbEngine';
+import { computeACB, computeInsuranceACB } from '../acbEngine';
 
 describe('computeACB', () => {
   it('opening with no activity preserves ACB', () => {
@@ -74,5 +74,58 @@ describe('computeACB', () => {
     expect(acb.computedCapitalGain).toBe(0);
     // Per-unit ACB > 1 means unrealized loss
     expect(acb.perUnitACB).toBeCloseTo(10000 / 8000, 4);
+  });
+});
+
+describe('computeInsuranceACB', () => {
+  it('premium adds to ACB', () => {
+    const acb = computeInsuranceACB(5000, 0, 0, 10000, 50000, 55000);
+    expect(acb.openingACB).toBe(10000);
+    expect(acb.acbAdded).toBe(5000);
+    expect(acb.coiDeducted).toBe(0);
+    expect(acb.closingACB).toBe(15000);
+    expect(acb.computedSurrenderGain).toBe(0);
+  });
+
+  it('COI reduces ACB', () => {
+    const acb = computeInsuranceACB(5000, 2000, 0, 10000, 50000, 53000);
+    expect(acb.acbAdded).toBe(5000);
+    expect(acb.coiDeducted).toBe(2000);
+    // ACB before withdrawal = 10000 + 5000 - 2000 = 13000
+    expect(acb.closingACB).toBe(13000);
+  });
+
+  it('withdrawal removes proportional ACB and computes surrender gain', () => {
+    // Opening: ACB 20000, cash value 50000. Premium 5000, COI 1000, withdraw 10000.
+    // ACB before withdrawal = 20000 + 5000 - 1000 = 24000
+    // Cash value before withdrawal = 50000 + 5000 - 1000 = 54000
+    // Fraction = 10000 / 54000
+    // ACB removed = 24000 * (10000/54000) ≈ 4444.44
+    // Surrender gain = 10000 - 4444.44 ≈ 5555.56
+    const acb = computeInsuranceACB(5000, 1000, 10000, 20000, 50000, 44000);
+    expect(acb.acbRemoved).toBeCloseTo(4444.44, 0);
+    expect(acb.computedSurrenderGain).toBeCloseTo(5555.56, 0);
+    expect(acb.closingACB).toBeCloseTo(24000 - 4444.44, 0);
+  });
+
+  it('full surrender removes all ACB', () => {
+    // Opening ACB 10000, cash value 20000. Premium 0, COI 0, withdraw all 20000.
+    const acb = computeInsuranceACB(0, 0, 20000, 10000, 20000, 0);
+    expect(acb.acbRemoved).toBeCloseTo(10000, 0);
+    expect(acb.closingACB).toBeCloseTo(0, 0);
+    expect(acb.computedSurrenderGain).toBeCloseTo(10000, 0);
+  });
+
+  it('no activity preserves ACB', () => {
+    const acb = computeInsuranceACB(0, 0, 0, 15000, 50000, 52000);
+    expect(acb.openingACB).toBe(15000);
+    expect(acb.closingACB).toBe(15000);
+    expect(acb.computedSurrenderGain).toBe(0);
+  });
+
+  it('COI cannot reduce ACB below zero', () => {
+    // Opening ACB 1000, COI 5000 (exceeds ACB)
+    const acb = computeInsuranceACB(0, 5000, 0, 1000, 50000, 45000);
+    expect(acb.closingACB).toBe(0); // max(0, 1000 - 5000)
   });
 });

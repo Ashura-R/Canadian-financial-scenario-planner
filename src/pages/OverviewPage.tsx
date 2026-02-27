@@ -18,7 +18,7 @@ import { safe } from '../utils/formatters';
 
 // ── Palette ────────────────────────────────────────────────────────────
 const PALETTE = {
-  accounts: { rrsp: '#3b82f6', tfsa: '#10b981', fhsa: '#8b5cf6', nonReg: '#f59e0b', savings: '#06b6d4' },
+  accounts: { rrsp: '#3b82f6', tfsa: '#10b981', fhsa: '#8b5cf6', nonReg: '#f59e0b', savings: '#06b6d4', li: '#84cc16' },
   positive: '#10b981', negative: '#f43f5e', neutral: '#64748b',
 };
 
@@ -136,6 +136,7 @@ const HERO_ACCOUNTS = [
   { key: 'FHSA', color: PALETTE.accounts.fhsa },
   { key: 'Non-Reg', color: PALETTE.accounts.nonReg },
   { key: 'Savings', color: PALETTE.accounts.savings },
+  { key: 'Life Ins', color: PALETTE.accounts.li },
 ];
 
 function HeroNetWorthChart({ years, realMode, diffMode }: { years: ComputedYear[]; realMode: boolean; diffMode: boolean }) {
@@ -180,6 +181,7 @@ function HeroNetWorthChart({ years, realMode, diffMode }: { years: ComputedYear[
       FHSA: Math.round(safe(y.accounts.fhsaEOY / f)),
       'Non-Reg': Math.round(safe(y.accounts.nonRegEOY / f)),
       Savings: Math.round(safe(y.accounts.savingsEOY / f)),
+      'Life Ins': Math.round(safe(y.accounts.liCashValueEOY / f)),
     };
   });
 
@@ -577,6 +579,7 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => vo
               <DKPI label="FHSA" value={formatShort(accounts.fhsaEOY)} />
               <DKPI label="Non-Registered" value={formatShort(accounts.nonRegEOY)} />
               <DKPI label="Savings" value={formatShort(accounts.savingsEOY)} />
+              <DKPI label="Life Ins." value={formatShort(accounts.liCashValueEOY)} />
               <div className="border-t border-app-border my-1" />
               <DKPI label={realMode ? 'Real Net Worth' : 'Net Worth'} value={formatShort(netWorth)} cls="font-bold" />
             </div>

@@ -110,6 +110,15 @@ function getAccountFlows(
       eoy: yr.accounts.respEOY,
       hasOverride: rawYd.respEOYOverride !== undefined,
     },
+    {
+      label: 'Life Ins.',
+      opening: prevBalances.li,
+      contribution: rawYd.liPremium ?? 0,
+      withdrawal: rawYd.liWithdrawal ?? 0,
+      returnAmt: (prevBalances.li + (rawYd.liPremium ?? 0) - (rawYd.liCOI ?? 0)) * yr.accounts.liReturn,
+      eoy: yr.accounts.liCashValueEOY,
+      hasOverride: rawYd.liEOYOverride !== undefined,
+    },
   ];
 }
 
@@ -167,10 +176,11 @@ function buildPrevBalances(
     savings: prev.accounts.savingsEOY,
     lira: prev.accounts.liraEOY,
     resp: prev.accounts.respEOY,
+    li: prev.accounts.liCashValueEOY,
   };
 }
 
-const ACCOUNT_COLORS = ['#2563eb', '#059669', '#06b6d4', '#d97706', '#0284c7', '#7c3aed', '#e11d48'];
+const ACCOUNT_COLORS = ['#2563eb', '#059669', '#06b6d4', '#d97706', '#0284c7', '#7c3aed', '#e11d48', '#84cc16'];
 
 function NetWorthBreakdown({ yr }: { yr: ComputedYear }) {
   const chartColors = useChartColors();
@@ -182,6 +192,7 @@ function NetWorthBreakdown({ yr }: { yr: ComputedYear }) {
     { label: 'Savings', value: yr.accounts.savingsEOY, fill: ACCOUNT_COLORS[4] },
     { label: 'LIRA/LIF', value: yr.accounts.liraEOY, fill: ACCOUNT_COLORS[5] },
     { label: 'RESP', value: yr.accounts.respEOY, fill: ACCOUNT_COLORS[6] },
+    { label: 'Life Ins.', value: yr.accounts.liCashValueEOY, fill: ACCOUNT_COLORS[7] },
   ];
   const pieData = accounts.filter(a => a.value > 0);
 
@@ -308,6 +319,7 @@ const PNL_LABELS: { key: keyof Omit<AccountPnL, 'totalBookValue' | 'totalMarketV
   { key: 'savings', label: 'Savings', color: '#0ea5e9' },
   { key: 'lira', label: 'LIRA/LIF', color: '#a855f7' },
   { key: 'resp', label: 'RESP', color: '#f43f5e' },
+  { key: 'li', label: 'Life Ins.', color: '#84cc16' },
 ];
 
 function PnLTable({ pnl }: { pnl: AccountPnL }) {
@@ -398,6 +410,7 @@ function SingleYearView({ yr, rawYd, prevBalances }: {
           <Row label="Savings" value={formatPct(yr.accounts.savingsReturn)} />
           <Row label="LIRA/LIF" value={formatPct(yr.accounts.liraReturn)} />
           <Row label="RESP" value={formatPct(yr.accounts.respReturn)} />
+          <Row label="Life Ins." value={formatPct(yr.accounts.liReturn)} />
         </Section>
       </div>
 
@@ -466,6 +479,7 @@ function AllYearsView({ years, rawYears, openingBalances }: {
     Savings: safe(yr.accounts.savingsEOY),
     'LIRA/LIF': safe(yr.accounts.liraEOY),
     RESP: safe(yr.accounts.respEOY),
+    'Life Ins.': safe(yr.accounts.liCashValueEOY),
   }));
 
   // Returns chart data
@@ -478,6 +492,7 @@ function AllYearsView({ years, rawYears, openingBalances }: {
     Savings: safe(yr.accounts.savingsReturn * 100),
     'LIRA/LIF': safe(yr.accounts.liraReturn * 100),
     RESP: safe(yr.accounts.respReturn * 100),
+    'Life Ins.': safe(yr.accounts.liReturn * 100),
   }));
 
   return (
@@ -504,6 +519,7 @@ function AllYearsView({ years, rawYears, openingBalances }: {
               <Bar dataKey="Savings" stackId="a" fill="#0ea5e9" />
               <Bar dataKey="LIRA/LIF" stackId="a" fill="#a855f7" />
               <Bar dataKey="RESP" stackId="a" fill="#f43f5e" />
+              <Bar dataKey="Life Ins." stackId="a" fill="#84cc16" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -532,6 +548,7 @@ function AllYearsView({ years, rawYears, openingBalances }: {
               <Line type="monotone" dataKey="Savings" stroke="#0ea5e9" strokeWidth={2} dot={false} />
               <Line type="monotone" dataKey="LIRA/LIF" stroke="#a855f7" strokeWidth={2} dot={false} />
               <Line type="monotone" dataKey="RESP" stroke="#f43f5e" strokeWidth={2} dot={false} />
+              <Line type="monotone" dataKey="Life Ins." stroke="#84cc16" strokeWidth={2} dot={false} />
             </ComposedChart>
           </ResponsiveContainer>
         </div>
@@ -611,6 +628,7 @@ function AllYearsView({ years, rawYears, openingBalances }: {
                 <th className="py-1.5 px-2 text-right text-[10px] text-sky-600 font-semibold">Savings</th>
                 <th className="py-1.5 px-2 text-right text-[10px] text-purple-600 font-semibold">LIRA/LIF</th>
                 <th className="py-1.5 px-2 text-right text-[10px] text-rose-600 font-semibold">RESP</th>
+                <th className="py-1.5 px-2 text-right text-[10px] text-lime-600 font-semibold">Life Ins.</th>
                 <th className="py-1.5 px-2 text-right text-[10px] text-app-text2 font-bold">Net Worth</th>
               </tr>
             </thead>
@@ -625,6 +643,7 @@ function AllYearsView({ years, rawYears, openingBalances }: {
                   <td className="py-1 px-2 text-right text-sky-600">{formatShort(yr.accounts.savingsEOY)}</td>
                   <td className="py-1 px-2 text-right text-purple-600">{formatShort(yr.accounts.liraEOY)}</td>
                   <td className="py-1 px-2 text-right text-rose-600">{formatShort(yr.accounts.respEOY)}</td>
+                  <td className="py-1 px-2 text-right text-lime-600">{formatShort(yr.accounts.liCashValueEOY)}</td>
                   <td className="py-1 px-2 text-right font-semibold">{formatShort(yr.accounts.netWorth)}</td>
                 </tr>
               ))}

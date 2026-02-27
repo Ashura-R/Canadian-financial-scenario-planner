@@ -140,6 +140,13 @@ export function makeDefaultYear(year: number): YearData {
     respEquityPct: 1,
     respFixedPct: 0,
     respCashPct: 0,
+    liPremium: 0,
+    liCOI: 0,
+    liWithdrawal: 0,
+    liDeathBenefit: 0,
+    liEquityPct: 0,
+    liFixedPct: 1,
+    liCashPct: 0,
     capitalLossApplied: 0,
   };
 }
@@ -155,7 +162,7 @@ export function makeDefaultScenario(name = 'Scenario 1'): Scenario {
     name,
     assumptions: ass,
     // Opening balances default to 0 — user enters their own values
-    openingBalances: { rrsp: 0, tfsa: 0, fhsa: 0, nonReg: 0, savings: 0, lira: 0, resp: 0 },
+    openingBalances: { rrsp: 0, tfsa: 0, fhsa: 0, nonReg: 0, savings: 0, lira: 0, resp: 0, li: 0 },
     openingCarryForwards: { rrspUnusedRoom: 0, tfsaUnusedRoom: 0, capitalLossCF: 0, fhsaContribLifetime: 0 },
     years,
   };

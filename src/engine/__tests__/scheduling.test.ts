@@ -48,7 +48,7 @@ describe('scheduling integration', () => {
 
   it('savingsWithdrawal schedule applies', () => {
     const scenario = makeTestScenario({
-      openingBalances: { rrsp: 0, tfsa: 0, fhsa: 0, nonReg: 0, savings: 10000, lira: 0, resp: 0 },
+      openingBalances: { rrsp: 0, tfsa: 0, fhsa: 0, nonReg: 0, savings: 10000, lira: 0, resp: 0, li: 0 },
       scheduledItems: [
         makeTestSchedule({ field: 'savingsWithdrawal', amount: 2000, startYear: 2025 }),
       ],

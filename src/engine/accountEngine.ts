@@ -70,6 +70,12 @@ export function computeAccounts(
     ? yd.respEOYOverride
     : (prevBalances.resp + yd.respContribution + respCESG - yd.respWithdrawal) * (1 + respReturn);
 
+  // Life Insurance (whole/universal life)
+  const liReturn = calcReturn(yd.liEquityPct ?? 0, yd.liFixedPct ?? 1, yd.liCashPct ?? 0, r);
+  const liCashValueEOY = yd.liEOYOverride !== undefined
+    ? yd.liEOYOverride
+    : Math.max(0, (prevBalances.li + (yd.liPremium ?? 0) - (yd.liCOI ?? 0)) * (1 + liReturn) - (yd.liWithdrawal ?? 0));
+
   return {
     rrspReturn,
     tfsaReturn,
@@ -78,6 +84,8 @@ export function computeAccounts(
     savingsReturn,
     liraReturn,
     respReturn,
+    liReturn,
+    liCashValueEOY: Math.max(0, liCashValueEOY),
     rrspEOY: Math.max(0, rrspEOY),
     tfsaEOY: Math.max(0, tfsaEOY),
     fhsaEOY: Math.max(0, fhsaEOY),
@@ -85,7 +93,7 @@ export function computeAccounts(
     savingsEOY: Math.max(0, savingsEOY),
     liraEOY: Math.max(0, liraEOY),
     respEOY: Math.max(0, respEOY),
-    netWorth: Math.max(0, rrspEOY) + Math.max(0, tfsaEOY) + Math.max(0, fhsaEOY) + Math.max(0, nonRegEOY) + Math.max(0, savingsEOY) + Math.max(0, liraEOY) + Math.max(0, respEOY),
+    netWorth: Math.max(0, rrspEOY) + Math.max(0, tfsaEOY) + Math.max(0, fhsaEOY) + Math.max(0, nonRegEOY) + Math.max(0, savingsEOY) + Math.max(0, liraEOY) + Math.max(0, respEOY) + Math.max(0, liCashValueEOY),
   };
 }
 
@@ -129,10 +137,12 @@ export function computeWaterfall(
 
   const totalContributions =
     yd.rrspContribution + yd.tfsaContribution + yd.fhsaContribution +
-    yd.nonRegContribution + yd.savingsDeposit + yd.respContribution;
+    yd.nonRegContribution + yd.savingsDeposit + yd.respContribution +
+    (yd.liPremium ?? 0);
   const totalWithdrawals =
     yd.rrspWithdrawal + yd.tfsaWithdrawal + yd.fhsaWithdrawal +
-    yd.nonRegWithdrawal + yd.savingsWithdrawal + yd.lifWithdrawal + yd.respWithdrawal;
+    yd.nonRegWithdrawal + yd.savingsWithdrawal + yd.lifWithdrawal + yd.respWithdrawal +
+    (yd.liWithdrawal ?? 0);
 
   const netCashFlow = afterExpenses - totalContributions + totalWithdrawals;
 
@@ -162,6 +172,7 @@ export interface BookValues {
   savings: number;
   lira: number;
   resp: number;
+  li: number;
 }
 
 function makePnLEntry(bookValue: number, marketValue: number): AccountPnLEntry {
@@ -211,9 +222,10 @@ export function computeAccountPnL(
   const savings = updateBookValue(prevBookValues.savings, prevBalances.savings, yd.savingsDeposit, yd.savingsWithdrawal, accounts.savingsEOY);
   const lira = updateBookValue(prevBookValues.lira, prevBalances.lira, 0, yd.lifWithdrawal, accounts.liraEOY);
   const resp = updateBookValue(prevBookValues.resp, prevBalances.resp, yd.respContribution + respCESG, yd.respWithdrawal, accounts.respEOY);
+  const li = updateBookValue(prevBookValues.li, prevBalances.li, (yd.liPremium ?? 0), (yd.liWithdrawal ?? 0), accounts.liCashValueEOY);
 
-  const totalBookValue = rrsp.bookValue + tfsa.bookValue + fhsa.bookValue + nonReg.bookValue + savings.bookValue + lira.bookValue + resp.bookValue;
-  const totalMarketValue = accounts.rrspEOY + accounts.tfsaEOY + accounts.fhsaEOY + accounts.nonRegEOY + accounts.savingsEOY + accounts.liraEOY + accounts.respEOY;
+  const totalBookValue = rrsp.bookValue + tfsa.bookValue + fhsa.bookValue + nonReg.bookValue + savings.bookValue + lira.bookValue + resp.bookValue + li.bookValue;
+  const totalMarketValue = accounts.rrspEOY + accounts.tfsaEOY + accounts.fhsaEOY + accounts.nonRegEOY + accounts.savingsEOY + accounts.liraEOY + accounts.respEOY + accounts.liCashValueEOY;
   const totalGain = totalMarketValue - totalBookValue;
 
   return {
@@ -225,6 +237,7 @@ export function computeAccountPnL(
       savings: savings.entry,
       lira: lira.entry,
       resp: resp.entry,
+      li: li.entry,
       totalBookValue,
       totalMarketValue,
       totalGain,
@@ -238,6 +251,7 @@ export function computeAccountPnL(
       savings: savings.bookValue,
       lira: lira.bookValue,
       resp: resp.bookValue,
+      li: li.bookValue,
     },
   };
 }

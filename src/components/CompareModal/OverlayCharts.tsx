@@ -128,6 +128,7 @@ export function OverlayCharts({ scenarios, computed }: Props) {
   const savingsData = sliceByRange(buildData(computed, scenarios, (c, i) => c.years[i]?.accounts.savingsEOY ?? 0), chartRange);
   const liraData = sliceByRange(buildData(computed, scenarios, (c, i) => c.years[i]?.accounts.liraEOY ?? 0), chartRange);
   const respData = sliceByRange(buildData(computed, scenarios, (c, i) => c.years[i]?.accounts.respEOY ?? 0), chartRange);
+  const liData = sliceByRange(buildData(computed, scenarios, (c, i) => c.years[i]?.accounts.liCashValueEOY ?? 0), chartRange);
   const marginalData = sliceByRange(buildData(computed, scenarios, (c, i) => (c.years[i]?.tax.marginalCombinedRate ?? 0) * 100), chartRange);
   const expensesData = sliceByRange(buildData(computed, scenarios, (c, i) => c.years[i]?.waterfall.totalLivingExpenses ?? 0), chartRange);
   const pnlData = sliceByRange(buildData(computed, scenarios, (c, i) => c.years[i]?.pnl?.totalGain ?? 0), chartRange);
@@ -139,6 +140,7 @@ export function OverlayCharts({ scenarios, computed }: Props) {
   const hasSavings = hasAccount(c => c.years.some(y => y.accounts.savingsEOY > 0));
   const hasLIRA = hasAccount(c => c.years.some(y => y.accounts.liraEOY > 0));
   const hasRESP = hasAccount(c => c.years.some(y => y.accounts.respEOY > 0));
+  const hasLI = hasAccount(c => c.years.some(y => y.accounts.liCashValueEOY > 0));
   const hasExpenses = hasAccount(c => c.years.some(y => (y.waterfall.totalLivingExpenses ?? 0) > 0));
   const hasPnL = hasAccount(c => c.years.some(y => (y.pnl?.totalGain ?? 0) !== 0));
 
@@ -169,6 +171,7 @@ export function OverlayCharts({ scenarios, computed }: Props) {
         {hasSavings && <OverlayLine data={savingsData} scenarios={scenarios} title="Savings Balance" />}
         {hasLIRA && <OverlayLine data={liraData} scenarios={scenarios} title="LIRA/LIF Balance" />}
         {hasRESP && <OverlayLine data={respData} scenarios={scenarios} title="RESP Balance" />}
+        {hasLI && <OverlayLine data={liData} scenarios={scenarios} title="Life Insurance Cash Value" />}
       </div>
     </div>
   );

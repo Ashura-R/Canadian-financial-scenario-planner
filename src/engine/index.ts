@@ -1,12 +1,12 @@
 import type { Scenario, OpeningBalances, ScheduledItem, YearData, ScheduleCondition, Assumptions, Liability } from '../types/scenario';
-import type { ComputedScenario, ComputedYear, ComputedRetirement, ComputedTaxDetail, ComputedACB, ComputedLiability } from '../types/computed';
+import type { ComputedScenario, ComputedYear, ComputedRetirement, ComputedTaxDetail, ComputedACB, ComputedInsuranceACB, ComputedLiability } from '../types/computed';
 import { computeCPP, computeEI, computeTax } from './taxEngine';
 import type { RetirementIncome } from './taxEngine';
 import { computeAccounts, computeWaterfall, computeAccountPnL } from './accountEngine';
 import type { ReturnOverrides, BookValues } from './accountEngine';
 import { computeAnalytics } from './analyticsEngine';
 import { validateYear } from './validationEngine';
-import { computeACB } from './acbEngine';
+import { computeACB, computeInsuranceACB } from './acbEngine';
 import { resolveAssumptions } from './assumptionResolver';
 
 // CRA RRIF minimum withdrawal factors by age
@@ -104,6 +104,7 @@ function buildConditionContext(computed: ComputedYear, rawYd: YearData): Record<
     foreignIncome: rawYd.foreignIncome,
     liraEOY: computed.accounts.liraEOY,
     respEOY: computed.accounts.respEOY,
+    liCashValueEOY: computed.accounts.liCashValueEOY,
     totalLivingExpenses: computed.waterfall.totalLivingExpenses,
   };
 }
@@ -129,6 +130,7 @@ function resolveMaxRef(
     case 'savingsBalance': return prevBalances.savings;
     case 'liraBalance': return prevBalances.lira;
     case 'respBalance': return prevBalances.resp;
+    case 'liBalance': return prevBalances.li;
     case 'capitalLossCF': return computed.capitalLossCF;
     default: return Infinity;
   }
@@ -183,9 +185,9 @@ function applySchedules(
       if (!allPass) continue;
     }
 
-    // Only apply if the field is still 0 (user hasn't manually entered a value)
+    // Only apply if the field is still 0 or undefined (user hasn't manually entered a value)
     const field = s.field as keyof YearData;
-    if ((result[field] as number) === 0) {
+    if (((result[field] as number) ?? 0) === 0) {
       let amount: number;
       if (isPercentage && ctx && s.amountReference) {
         const refValue = ctx[s.amountReference] ?? 0;
@@ -239,6 +241,7 @@ function computeOneYear(
   priorYearEarnedIncome: number = 0,
   fhsaOpeningYear: number | null = null,
   respCESG: number = 0,
+  prevLiACB: number = 0,
 ): {
   computed: ComputedYear;
   newCapitalLossCF: number;
@@ -248,6 +251,7 @@ function computeOneYear(
   newTfsaUnusedRoom: number;
   newBalances: OpeningBalances;
   newACB: number;
+  newLiACB: number;
 } {
   const birthYear = assumptions.birthYear ?? null;
   const retSettings = assumptions.retirement ?? {
@@ -336,24 +340,42 @@ function computeOneYear(
   const accounts = computeAccounts(ydEffective, assumptions, prevBalances, returnOverrides, respCESG);
 
   // ACB tracking
-  let acbResult: ComputedACB | undefined;
+  let nonRegACB: ComputedACB | undefined;
+  let insuranceACBResult: ComputedInsuranceACB | undefined;
   let ydForTax = { ...ydEffective, capitalLossApplied: lossApplied };
   if (acbEnabled) {
-    acbResult = computeACB(
+    nonRegACB = computeACB(
       ydEffective.nonRegContribution,
       ydEffective.nonRegWithdrawal,
       prevACB,
       prevBalances.nonReg,
       accounts.nonRegEOY,
     );
+    // Insurance ACB (if there's any LI activity or balance)
+    if ((ydEffective.liPremium ?? 0) > 0 || (ydEffective.liWithdrawal ?? 0) > 0 || prevBalances.li > 0) {
+      insuranceACBResult = computeInsuranceACB(
+        ydEffective.liPremium ?? 0,
+        ydEffective.liCOI ?? 0,
+        ydEffective.liWithdrawal ?? 0,
+        prevLiACB,
+        prevBalances.li,
+        accounts.liCashValueEOY,
+      );
+    }
     // When auto-compute gains: replace manual CG/CL with ACB-computed values
     if (autoComputeGains) {
-      if (acbResult.computedCapitalGain > 0) {
-        ydForTax = { ...ydForTax, capitalGainsRealized: acbResult.computedCapitalGain, capitalLossesRealized: 0 };
-      } else if (acbResult.computedCapitalGain < 0) {
-        ydForTax = { ...ydForTax, capitalGainsRealized: 0, capitalLossesRealized: Math.abs(acbResult.computedCapitalGain) };
+      // Include insurance surrender gain in taxable income
+      const insuranceSurrenderGain = insuranceACBResult?.computedSurrenderGain ?? 0;
+      if (nonRegACB.computedCapitalGain > 0) {
+        ydForTax = { ...ydForTax, capitalGainsRealized: nonRegACB.computedCapitalGain, capitalLossesRealized: 0 };
+      } else if (nonRegACB.computedCapitalGain < 0) {
+        ydForTax = { ...ydForTax, capitalGainsRealized: 0, capitalLossesRealized: Math.abs(nonRegACB.computedCapitalGain) };
       } else {
         ydForTax = { ...ydForTax, capitalGainsRealized: 0, capitalLossesRealized: 0 };
+      }
+      // Insurance surrender gain is taxed as regular income (not capital gains)
+      if (insuranceSurrenderGain > 0) {
+        ydForTax = { ...ydForTax, otherTaxableIncome: (ydForTax.otherTaxableIncome || 0) + insuranceSurrenderGain };
       }
       // Recompute loss tracking with ACB-derived values
       lossCFBeforeApply = capitalLossCF + ydForTax.capitalLossesRealized;
@@ -405,7 +427,11 @@ function computeOneYear(
     rrspUnusedRoom,
     fhsaContribLifetime,
     fhsaUnusedRoom,
-    acb: acbResult,
+    acb: nonRegACB ? {
+      nonReg: nonRegACB,
+      insurance: insuranceACBResult,
+      totalClosingACB: (nonRegACB?.closingACB ?? 0) + (insuranceACBResult?.closingACB ?? 0),
+    } : undefined,
     warnings,
   };
 
@@ -430,6 +456,7 @@ function computeOneYear(
     savings: accounts.savingsEOY,
     lira: accounts.liraEOY,
     resp: accounts.respEOY,
+    li: accounts.liCashValueEOY,
   };
 
   return {
@@ -440,7 +467,8 @@ function computeOneYear(
     newFhsaUnusedRoom,
     newTfsaUnusedRoom,
     newBalances,
-    newACB: acbResult?.closingACB ?? prevACB,
+    newACB: nonRegACB?.closingACB ?? prevACB,
+    newLiACB: insuranceACBResult?.closingACB ?? prevLiACB,
   };
 }
 
@@ -467,6 +495,7 @@ export function compute(scenario: Scenario): ComputedScenario {
     ? (assumptions.startYear - 1) // assume opened before start year if has balance/contribs
     : null;
   let prevACB = acbConfig?.openingACB ?? openingBalances.nonReg;
+  let prevLiACB = acbConfig?.liOpeningACB ?? openingBalances.li;
   let prevBookValues: BookValues = {
     rrsp: openingBalances.rrsp,
     tfsa: openingBalances.tfsa,
@@ -475,6 +504,7 @@ export function compute(scenario: Scenario): ComputedScenario {
     savings: openingBalances.savings,
     lira: openingBalances.lira,
     resp: openingBalances.resp,
+    li: openingBalances.li,
   };
   let priorYearEarnedIncome = ocf?.priorYearEarnedIncome ?? 0;
 
@@ -668,7 +698,7 @@ export function compute(scenario: Scenario): ComputedScenario {
       tfsaUnusedRoom, tfsaRoomGenerated,
       inflationFactor, returnOverrides, fhsaDisposed,
       acbEnabled, prevACB, autoComputeGains,
-      priorYearEarnedIncome, fhsaOpeningYear, cESGThisYear,
+      priorYearEarnedIncome, fhsaOpeningYear, cESGThisYear, prevLiACB,
     );
 
     // Pass 2: Check if conditional schedules apply, if so recompute
@@ -696,7 +726,7 @@ export function compute(scenario: Scenario): ComputedScenario {
           tfsaUnusedRoom, tfsaRoomGenerated,
           inflationFactor, returnOverrides, fhsaDisposed,
           acbEnabled, prevACB, autoComputeGains,
-          priorYearEarnedIncome, fhsaOpeningYear, cESGThisYear,
+          priorYearEarnedIncome, fhsaOpeningYear, cESGThisYear, prevLiACB,
         );
       }
     }
@@ -761,6 +791,7 @@ export function compute(scenario: Scenario): ComputedScenario {
     fhsaUnusedRoom = finalResult.newFhsaUnusedRoom;
     tfsaUnusedRoom = finalResult.newTfsaUnusedRoom;
     prevACB = finalResult.newACB;
+    prevLiACB = finalResult.newLiACB;
     prevBookValues = pnlResult.newBookValues;
     // Use effective year data (after scheduling) so RRSP room generation works with scheduled income
     priorYearEarnedIncome = effectiveYd.employmentIncome + Math.max(0, effectiveYd.selfEmploymentIncome - (effectiveYd.selfEmploymentExpenses ?? 0));

@@ -74,7 +74,9 @@ export function resolveAssumptions(
     }
 
     // Federal employment amount
-    resolved.federalEmploymentAmount = Math.round(base.federalEmploymentAmount * factor);
+    if (base.federalEmploymentAmount !== undefined) {
+      resolved.federalEmploymentAmount = Math.round(base.federalEmploymentAmount * factor);
+    }
   }
 
   // --- Apply manual overrides for this year ---

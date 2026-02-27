@@ -39,7 +39,7 @@ describe('Monte Carlo Engine', () => {
 
   it('seeded runs are reproducible', () => {
     const scenario = makeTestScenario({
-      openingBalances: { rrsp: 50000, tfsa: 20000, fhsa: 0, nonReg: 10000, savings: 5000, lira: 0, resp: 0 },
+      openingBalances: { rrsp: 50000, tfsa: 20000, fhsa: 0, nonReg: 10000, savings: 5000, lira: 0, resp: 0, li: 0 },
       assumptions: {
         ...makeTestScenario().assumptions,
         numYears: 5,
@@ -58,7 +58,7 @@ describe('Monte Carlo Engine', () => {
 
   it('percentile bands are ordered correctly (p10 <= p25 <= p50 <= p75 <= p90)', () => {
     const scenario = makeTestScenario({
-      openingBalances: { rrsp: 100000, tfsa: 50000, fhsa: 0, nonReg: 30000, savings: 10000, lira: 0, resp: 0 },
+      openingBalances: { rrsp: 100000, tfsa: 50000, fhsa: 0, nonReg: 30000, savings: 10000, lira: 0, resp: 0, li: 0 },
       assumptions: {
         ...makeTestScenario().assumptions,
         numYears: 10,
@@ -82,7 +82,7 @@ describe('Monte Carlo Engine', () => {
 
   it('zero stdDev produces deterministic results (all percentiles equal)', () => {
     const scenario = makeTestScenario({
-      openingBalances: { rrsp: 50000, tfsa: 0, fhsa: 0, nonReg: 0, savings: 0, lira: 0, resp: 0 },
+      openingBalances: { rrsp: 50000, tfsa: 0, fhsa: 0, nonReg: 0, savings: 0, lira: 0, resp: 0, li: 0 },
       assumptions: {
         ...makeTestScenario().assumptions,
         numYears: 3,
@@ -110,7 +110,7 @@ describe('Monte Carlo Engine', () => {
 
   it('higher stdDev produces wider bands', () => {
     const scenario = makeTestScenario({
-      openingBalances: { rrsp: 100000, tfsa: 50000, fhsa: 0, nonReg: 50000, savings: 0, lira: 0, resp: 0 },
+      openingBalances: { rrsp: 100000, tfsa: 50000, fhsa: 0, nonReg: 50000, savings: 0, lira: 0, resp: 0, li: 0 },
       assumptions: {
         ...makeTestScenario().assumptions,
         numYears: 10,

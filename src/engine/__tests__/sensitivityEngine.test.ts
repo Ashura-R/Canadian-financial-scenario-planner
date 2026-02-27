@@ -4,7 +4,7 @@ import { makeTestScenario, makeTestSchedule } from './helpers';
 
 describe('computeSensitivity', () => {
   const scenario = makeTestScenario({
-    openingBalances: { rrsp: 100000, tfsa: 50000, fhsa: 0, nonReg: 30000, savings: 0, lira: 0, resp: 0 },
+    openingBalances: { rrsp: 100000, tfsa: 50000, fhsa: 0, nonReg: 30000, savings: 0, lira: 0, resp: 0, li: 0 },
     assumptions: {
       ...makeTestScenario().assumptions,
       numYears: 5,

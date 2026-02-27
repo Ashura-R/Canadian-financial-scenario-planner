@@ -12,7 +12,7 @@ function baseAss(): Assumptions {
 }
 
 function baseBal(): OpeningBalances {
-  return { rrsp: 50000, tfsa: 30000, fhsa: 8000, nonReg: 20000, savings: 10000, lira: 0, resp: 0 };
+  return { rrsp: 50000, tfsa: 30000, fhsa: 8000, nonReg: 20000, savings: 10000, lira: 0, resp: 0, li: 0 };
 }
 
 describe('validateYear', () => {

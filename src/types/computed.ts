@@ -92,6 +92,8 @@ export interface ComputedAccounts {
   savingsReturn: number;
   liraReturn: number;
   respReturn: number;
+  liReturn: number;
+  liCashValueEOY: number;
   rrspEOY: number;
   tfsaEOY: number;
   fhsaEOY: number;
@@ -140,6 +142,16 @@ export interface ComputedACB {
   dispositionProceeds: number;
 }
 
+export interface ComputedInsuranceACB {
+  openingACB: number;
+  acbAdded: number;              // premiums
+  coiDeducted: number;           // COI reduces ACB
+  acbRemoved: number;            // proportional on withdrawal
+  closingACB: number;
+  computedSurrenderGain: number; // proceeds - proportional ACB
+  dispositionProceeds: number;
+}
+
 export interface AccountPnLEntry {
   bookValue: number;      // cumulative cost basis (contributions - proportional withdrawals)
   marketValue: number;    // end-of-year balance
@@ -155,6 +167,7 @@ export interface AccountPnL {
   savings: AccountPnLEntry;
   lira: AccountPnLEntry;
   resp: AccountPnLEntry;
+  li: AccountPnLEntry;
   totalBookValue: number;
   totalMarketValue: number;
   totalGain: number;
@@ -195,7 +208,11 @@ export interface ComputedYear {
   fhsaContribLifetime: number;
   fhsaUnusedRoom: number;
   // ACB tracking (optional)
-  acb?: ComputedACB;
+  acb?: {
+    nonReg: ComputedACB;
+    insurance?: ComputedInsuranceACB;
+    totalClosingACB: number;
+  };
   // Per-account P&L tracking
   pnl?: AccountPnL;
   // Liability tracking (optional)

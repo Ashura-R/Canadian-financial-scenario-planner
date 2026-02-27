@@ -1,5 +1,4 @@
-import type { ComputedACB } from '../types/computed';
-import type { ComputedAccounts } from '../types/computed';
+import type { ComputedACB, ComputedInsuranceACB } from '../types/computed';
 
 /**
  * Compute Adjusted Cost Base (ACB) tracking for Non-Registered accounts.
@@ -51,6 +50,55 @@ export function computeACB(
     closingACB,
     perUnitACB,
     computedCapitalGain,
+    dispositionProceeds,
+  };
+}
+
+/**
+ * Compute ACB tracking for Life Insurance (whole/universal life).
+ *
+ * ACB = cumulative premiums - cumulative COI.
+ * On withdrawal (partial surrender): proportional ACB removed.
+ * Surrender gain = proceeds - proportional ACB removed.
+ */
+export function computeInsuranceACB(
+  premium: number,
+  coi: number,
+  withdrawal: number,
+  prevACB: number,
+  prevCashValue: number,
+  cashValueEOY: number,
+): ComputedInsuranceACB {
+  const openingACB = prevACB;
+
+  // Premiums add ACB; COI reduces ACB
+  const acbAdded = premium;
+  const coiDeducted = coi;
+  const acbBeforeWithdrawal = Math.max(0, openingACB + acbAdded - coiDeducted);
+
+  // Balance before withdrawal
+  const balanceBeforeWithdrawal = prevCashValue + premium - coi +
+    (cashValueEOY - prevCashValue - premium + coi + withdrawal);
+
+  let acbRemoved = 0;
+  let computedSurrenderGain = 0;
+  const dispositionProceeds = withdrawal;
+
+  if (withdrawal > 0 && balanceBeforeWithdrawal > 0) {
+    const fraction = Math.min(1, withdrawal / balanceBeforeWithdrawal);
+    acbRemoved = acbBeforeWithdrawal * fraction;
+    computedSurrenderGain = dispositionProceeds - acbRemoved;
+  }
+
+  const closingACB = Math.max(0, acbBeforeWithdrawal - acbRemoved);
+
+  return {
+    openingACB,
+    acbAdded,
+    coiDeducted,
+    acbRemoved,
+    closingACB,
+    computedSurrenderGain,
     dispositionProceeds,
   };
 }

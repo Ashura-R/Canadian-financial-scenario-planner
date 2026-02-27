@@ -27,16 +27,15 @@ export function TopBar({ page, onPageChange, whatIfOpen, onWhatIfToggle }: Props
   const { isActive } = useWhatIf();
 
   return (
-    <div className="flex items-center px-4 py-0 bg-slate-900 shrink-0 h-11">
+    <div className="grid grid-cols-[1fr_auto_1fr] items-center px-4 py-0 bg-slate-900 shrink-0 h-11">
       {/* App title — left */}
-      <div className="flex items-center gap-2 shrink-0">
+      <div className="flex items-center gap-2 shrink-0 justify-self-start">
         <div className="w-2 h-2 rounded-full bg-emerald-400" />
         <span className="text-sm font-semibold text-white whitespace-nowrap">Canadian Financial Scenario Planner</span>
       </div>
 
-      {/* Page tabs — truly centered via flex-1 spacers */}
-      <div className="flex-1" />
-      <nav className="flex items-center gap-0.5">
+      {/* Page tabs — truly centered via grid column */}
+      <nav className="flex items-center gap-0.5 justify-self-center">
         {PAGE_TABS.map(t => {
           const active = page === t.id;
           return (
@@ -57,10 +56,9 @@ export function TopBar({ page, onPageChange, whatIfOpen, onWhatIfToggle }: Props
           );
         })}
       </nav>
-      <div className="flex-1" />
 
       {/* Right actions */}
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 justify-self-end">
         {/* What-If toggle */}
         <button
           onClick={onWhatIfToggle}

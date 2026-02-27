@@ -4,7 +4,7 @@ import { makeTestScenario, makeTestSchedule } from './helpers';
 
 describe('computeWithdrawalStrategies', () => {
   const scenario = makeTestScenario({
-    openingBalances: { rrsp: 200000, tfsa: 80000, fhsa: 0, nonReg: 50000, savings: 20000, lira: 0, resp: 0 },
+    openingBalances: { rrsp: 200000, tfsa: 80000, fhsa: 0, nonReg: 50000, savings: 20000, lira: 0, resp: 0, li: 0 },
     assumptions: {
       ...makeTestScenario().assumptions,
       numYears: 5,
