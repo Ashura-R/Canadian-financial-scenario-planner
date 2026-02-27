@@ -25,7 +25,7 @@ export function makeTestSchedule(overrides: Partial<ScheduledItem> = {}): Schedu
     id: overrides.id ?? crypto.randomUUID(),
     label: overrides.label ?? 'Test Rule',
     field: overrides.field ?? ('employmentIncome' as ScheduledField),
-    startYear: overrides.startYear ?? 2025,
+    startYear: overrides.startYear ?? 2026,
     endYear: overrides.endYear,
     amount: overrides.amount ?? 1000,
     amountType: overrides.amountType,

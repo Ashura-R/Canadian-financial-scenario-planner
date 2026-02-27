@@ -19,34 +19,35 @@ describe('computeCPP', () => {
 
   it('income between exemption and YMPE computes CPP1 correctly', () => {
     const result = computeCPP(50000, 0, ass.cpp);
-    // pensionable = 50000 - 3500 = 46500
-    const expected = 46500 * 0.0595;
+    // pensionable = 50000 - basicExemption
+    const expected = (50000 - ass.cpp.basicExemption) * ass.cpp.employeeRate;
     expect(result.cppEmployee).toBeCloseTo(expected, 2);
     expect(result.cpp2Employee).toBe(0); // below YMPE
   });
 
   it('income above YMPE computes both CPP1 and CPP2', () => {
-    const result = computeCPP(70000, 0, ass.cpp);
-    // CPP1: (68500 - 3500) * 0.0595 = 65000 * 0.0595
-    const cpp1 = 65000 * 0.0595;
+    const income = ass.cpp.ympe + 1500; // e.g. YMPE + $1500
+    const result = computeCPP(income, 0, ass.cpp);
+    // CPP1: (YMPE - basicExemption) * rate
+    const cpp1 = (ass.cpp.ympe - ass.cpp.basicExemption) * ass.cpp.employeeRate;
     expect(result.cppEmployee).toBeCloseTo(cpp1, 2);
-    // CPP2: (70000 - 68500) * 0.04 = 1500 * 0.04
-    const cpp2 = 1500 * 0.04;
+    // CPP2: (income - YMPE) * cpp2Rate
+    const cpp2 = 1500 * ass.cpp.cpp2Rate;
     expect(result.cpp2Employee).toBeCloseTo(cpp2, 2);
   });
 
   it('income above YAMPE caps CPP2', () => {
     const result = computeCPP(100000, 0, ass.cpp);
-    // CPP2: (73200 - 68500) * 0.04 = 4700 * 0.04
-    const cpp2Max = 4700 * 0.04;
+    // CPP2: (YAMPE - YMPE) * cpp2Rate
+    const cpp2Max = (ass.cpp.yampe - ass.cpp.ympe) * ass.cpp.cpp2Rate;
     expect(result.cpp2Employee).toBeCloseTo(cpp2Max, 2);
   });
 
   it('self-employed pays both halves', () => {
     const result = computeCPP(0, 50000, ass.cpp);
-    // SE pensionable = 50000 - 3500 = 46500
-    const seRate = 0.0595 * 2; // both halves
-    expect(result.cppSE).toBeCloseTo(46500 * seRate, 2);
+    // SE pensionable = 50000 - basicExemption
+    const seRate = ass.cpp.employeeRate * 2; // both halves
+    expect(result.cppSE).toBeCloseTo((50000 - ass.cpp.basicExemption) * seRate, 2);
     expect(result.cppSEEmployerHalfDed).toBeCloseTo(result.cppSE * 0.5 + result.cpp2SE * 0.5, 2);
   });
 });
@@ -59,12 +60,12 @@ describe('computeEI', () => {
 
   it('below max insurable computes correctly', () => {
     const result = computeEI(50000, 0, ass.ei);
-    expect(result.eiEmployment).toBeCloseTo(50000 * 0.0166, 2);
+    expect(result.eiEmployment).toBeCloseTo(50000 * ass.ei.employeeRate, 2);
   });
 
   it('above max insurable caps EI', () => {
     const result = computeEI(100000, 0, ass.ei);
-    expect(result.eiEmployment).toBeCloseTo(63200 * 0.0166, 2);
+    expect(result.eiEmployment).toBeCloseTo(ass.ei.maxInsurableEarnings * ass.ei.employeeRate, 2);
   });
 
   it('self-employed EI is zero when not opted in', () => {
@@ -74,13 +75,15 @@ describe('computeEI', () => {
 
   it('self-employed EI works when opted in', () => {
     const result = computeEI(0, 50000, { ...ass.ei, seOptIn: true });
-    expect(result.eiSE).toBeCloseTo(50000 * 0.0166, 2);
+    expect(result.eiSE).toBeCloseTo(50000 * ass.ei.employeeRate, 2);
   });
 });
 
 describe('computeTax', () => {
+  const startYear = ass.startYear;
+
   function taxAtIncome(income: number) {
-    const yd = { ...makeDefaultYear(2025), employmentIncome: income };
+    const yd = { ...makeDefaultYear(startYear), employmentIncome: income };
     const cpp = computeCPP(income, 0, ass.cpp);
     const ei = computeEI(income, 0, ass.ei);
     return computeTax(yd, ass, cpp, ei);
@@ -93,7 +96,7 @@ describe('computeTax', () => {
   });
 
   it('income at BPA level produces zero or minimal tax', () => {
-    const result = taxAtIncome(15705);
+    const result = taxAtIncome(ass.federalBPA);
     // At federal BPA, federal tax should be near zero (credits wipe it out)
     expect(result.federalTaxPayable).toBeLessThanOrEqual(0.01);
   });
@@ -126,7 +129,7 @@ describe('computeTax', () => {
   });
 
   it('dividend gross-up and credit (eligible)', () => {
-    const yd = { ...makeDefaultYear(2025), eligibleDividends: 50000 };
+    const yd = { ...makeDefaultYear(startYear), eligibleDividends: 50000 };
     const result = computeTax(yd, ass, zeroCPP, zeroEI);
     // Grossed up: 50000 * 1.38 = 69000
     expect(result.grossedUpEligibleDiv).toBeCloseTo(69000, 2);
@@ -135,7 +138,7 @@ describe('computeTax', () => {
   });
 
   it('dividend gross-up and credit (non-eligible)', () => {
-    const yd = { ...makeDefaultYear(2025), nonEligibleDividends: 50000 };
+    const yd = { ...makeDefaultYear(startYear), nonEligibleDividends: 50000 };
     const result = computeTax(yd, ass, zeroCPP, zeroEI);
     // Grossed up: 50000 * 1.15 = 57500
     expect(result.grossedUpNonEligibleDiv).toBeCloseTo(57500, 2);
@@ -143,14 +146,14 @@ describe('computeTax', () => {
   });
 
   it('capital gains inclusion rate', () => {
-    const yd = { ...makeDefaultYear(2025), capitalGainsRealized: 100000 };
+    const yd = { ...makeDefaultYear(startYear), capitalGainsRealized: 100000 };
     const result = computeTax(yd, ass, zeroCPP, zeroEI);
     // Default 50% inclusion
     expect(result.taxableCapitalGains).toBe(50000);
   });
 
   it('RRSP deduction reduces taxable income', () => {
-    const ydBase = { ...makeDefaultYear(2025), employmentIncome: 100000 };
+    const ydBase = { ...makeDefaultYear(startYear), employmentIncome: 100000 };
     const ydRRSP = { ...ydBase, rrspContribution: 10000, rrspDeductionClaimed: 10000 };
     const cpp = computeCPP(100000, 0, ass.cpp);
     const ei = computeEI(100000, 0, ass.ei);

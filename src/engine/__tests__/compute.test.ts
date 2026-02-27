@@ -158,19 +158,19 @@ describe('compute', () => {
   it('per-year assumption override changes tax for that year', () => {
     const scenario = makeTestScenario({
       scheduledItems: [
-        makeTestSchedule({ field: 'employmentIncome', amount: 100000, startYear: 2025 }),
+        makeTestSchedule({ field: 'employmentIncome', amount: 100000, startYear: 2026 }),
       ],
       assumptionOverrides: {
-        2027: { federalBPA: 25000 }, // Much higher BPA → lower tax
+        2028: { federalBPA: 25000 }, // Much higher BPA → lower tax
       },
     });
 
     const result = compute(scenario);
-    const yr2025 = result.years.find(y => y.year === 2025)!;
-    const yr2027 = result.years.find(y => y.year === 2027)!;
+    const yr2026 = result.years.find(y => y.year === 2026)!;
+    const yr2028 = result.years.find(y => y.year === 2028)!;
 
-    // Year 2027 should have lower tax due to higher BPA
-    expect(yr2027.tax.totalIncomeTax).toBeLessThan(yr2025.tax.totalIncomeTax);
+    // Year 2028 should have lower tax due to higher BPA
+    expect(yr2028.tax.totalIncomeTax).toBeLessThan(yr2026.tax.totalIncomeTax);
   });
 
   it('living expenses reduce net cash flow', () => {
@@ -255,8 +255,8 @@ describe('compute', () => {
         assetReturns: { equity: 0.10, fixedIncome: 0, cash: 0, savings: 0 },
       },
       scheduledItems: [
-        makeTestSchedule({ field: 'employmentIncome', amount: 50000, startYear: 2025 }),
-        makeTestSchedule({ field: 'tfsaWithdrawal', amount: 10000, startYear: 2025, endYear: 2025 }),
+        makeTestSchedule({ field: 'employmentIncome', amount: 50000, startYear: 2026 }),
+        makeTestSchedule({ field: 'tfsaWithdrawal', amount: 10000, startYear: 2026, endYear: 2026 }),
       ],
     });
 
@@ -356,8 +356,8 @@ describe('compute', () => {
       openingBalances: { rrsp: 0, tfsa: 0, fhsa: 0, nonReg: 0, savings: 0, lira: 0, resp: 0, li: 50000 },
       acbConfig: { autoComputeGains: true, openingACB: 0, liOpeningACB: 20000 },
       scheduledItems: [
-        makeTestSchedule({ field: 'employmentIncome', amount: 50000, startYear: 2025 }),
-        makeTestSchedule({ field: 'liWithdrawal', amount: 10000, startYear: 2025, endYear: 2025 }),
+        makeTestSchedule({ field: 'employmentIncome', amount: 50000, startYear: 2026 }),
+        makeTestSchedule({ field: 'liWithdrawal', amount: 10000, startYear: 2026, endYear: 2026 }),
       ],
     });
 
@@ -378,7 +378,7 @@ describe('compute', () => {
     // so total tax should be higher than if there were no surrender gain
     const baseScenario = makeTestScenario({
       scheduledItems: [
-        makeTestSchedule({ field: 'employmentIncome', amount: 50000, startYear: 2025 }),
+        makeTestSchedule({ field: 'employmentIncome', amount: 50000, startYear: 2026 }),
       ],
     });
     const baseResult = compute(baseScenario);

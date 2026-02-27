@@ -5,28 +5,28 @@ import type { ScheduledItem } from '../../types/scenario';
 
 describe('getScheduledAmount', () => {
   it('returns base amount in start year', () => {
-    const item = makeTestSchedule({ amount: 1000, startYear: 2025 });
-    expect(getScheduledAmount(item, 2025, 0.025)).toBe(1000);
+    const item = makeTestSchedule({ amount: 1000, startYear: 2026 });
+    expect(getScheduledAmount(item, 2026, 0.025)).toBe(1000);
   });
 
   it('applies fixed growth rate', () => {
-    const item = makeTestSchedule({ amount: 1000, startYear: 2025, growthRate: 0.03, growthType: 'fixed' });
+    const item = makeTestSchedule({ amount: 1000, startYear: 2026, growthRate: 0.03, growthType: 'fixed' });
     // Year 2: 1000 * 1.03 = 1030
-    expect(getScheduledAmount(item, 2026, 0.025)).toBeCloseTo(1030, 2);
+    expect(getScheduledAmount(item, 2027, 0.025)).toBeCloseTo(1030, 2);
     // Year 3: 1000 * 1.03^2 ≈ 1060.90
-    expect(getScheduledAmount(item, 2027, 0.025)).toBeCloseTo(1060.90, 2);
+    expect(getScheduledAmount(item, 2028, 0.025)).toBeCloseTo(1060.90, 2);
   });
 
   it('applies inflation growth rate', () => {
-    const item = makeTestSchedule({ amount: 1000, startYear: 2025, growthType: 'inflation' });
+    const item = makeTestSchedule({ amount: 1000, startYear: 2026, growthType: 'inflation' });
     // inflation = 0.025: 1000 * 1.025 = 1025
-    expect(getScheduledAmount(item, 2026, 0.025)).toBeCloseTo(1025, 2);
+    expect(getScheduledAmount(item, 2027, 0.025)).toBeCloseTo(1025, 2);
   });
 
   it('returns base amount for years before start (negative elapsed)', () => {
-    const item = makeTestSchedule({ amount: 1000, startYear: 2027 });
-    // yearsElapsed = 2025 - 2027 = -2, which is <= 0
-    expect(getScheduledAmount(item, 2025, 0.025)).toBe(1000);
+    const item = makeTestSchedule({ amount: 1000, startYear: 2028 });
+    // yearsElapsed = 2026 - 2028 = -2, which is <= 0
+    expect(getScheduledAmount(item, 2026, 0.025)).toBe(1000);
   });
 });
 
@@ -34,7 +34,7 @@ describe('scheduling integration', () => {
   it('savingsDeposit schedule applies and updates savingsEOY', () => {
     const scenario = makeTestScenario({
       scheduledItems: [
-        makeTestSchedule({ field: 'savingsDeposit', amount: 5000, startYear: 2025 }),
+        makeTestSchedule({ field: 'savingsDeposit', amount: 5000, startYear: 2026 }),
       ],
     });
 
@@ -50,7 +50,7 @@ describe('scheduling integration', () => {
     const scenario = makeTestScenario({
       openingBalances: { rrsp: 0, tfsa: 0, fhsa: 0, nonReg: 0, savings: 10000, lira: 0, resp: 0, li: 0 },
       scheduledItems: [
-        makeTestSchedule({ field: 'savingsWithdrawal', amount: 2000, startYear: 2025 }),
+        makeTestSchedule({ field: 'savingsWithdrawal', amount: 2000, startYear: 2026 }),
       ],
     });
 
@@ -63,17 +63,17 @@ describe('scheduling integration', () => {
   it('respects start/end year boundaries', () => {
     const scenario = makeTestScenario({
       scheduledItems: [
-        makeTestSchedule({ field: 'savingsDeposit', amount: 5000, startYear: 2026, endYear: 2030 }),
+        makeTestSchedule({ field: 'savingsDeposit', amount: 5000, startYear: 2027, endYear: 2031 }),
       ],
     });
 
     const result = compute(scenario);
-    // Year 2025: outside range, no deposit
-    expect(getYear(result.years, 2025)!.accounts.savingsEOY).toBe(0);
-    // Year 2026: in range
-    expect(getYear(result.years, 2026)!.accounts.savingsEOY).toBeGreaterThan(0);
-    // Year 2030: last year in range
-    expect(getYear(result.years, 2030)!.accounts.savingsEOY).toBeGreaterThan(0);
+    // Year 2026: outside range, no deposit
+    expect(getYear(result.years, 2026)!.accounts.savingsEOY).toBe(0);
+    // Year 2027: in range
+    expect(getYear(result.years, 2027)!.accounts.savingsEOY).toBeGreaterThan(0);
+    // Year 2031: last year in range
+    expect(getYear(result.years, 2031)!.accounts.savingsEOY).toBeGreaterThan(0);
   });
 
   it('schedule with growth rate compounds correctly', () => {
@@ -82,7 +82,7 @@ describe('scheduling integration', () => {
         makeTestSchedule({
           field: 'savingsDeposit',
           amount: 1000,
-          startYear: 2025,
+          startYear: 2026,
           growthRate: 0.03,
           growthType: 'fixed',
         }),
@@ -90,11 +90,11 @@ describe('scheduling integration', () => {
     });
 
     const result = compute(scenario);
-    // Year 0 (2025): deposit = 1000
-    // Year 1 (2026): deposit = 1000 * 1.03 = 1030
-    // Year 2 (2027): deposit = 1000 * 1.03^2 ≈ 1060.90
+    // Year 0 (2026): deposit = 1000
+    // Year 1 (2027): deposit = 1000 * 1.03 = 1030
+    // Year 2 (2028): deposit = 1000 * 1.03^2 ≈ 1060.90
     // With 0% savings return, EOY cumulates
-    const yr2 = getYear(result.years, 2027)!;
+    const yr2 = getYear(result.years, 2028)!;
     // Total deposited by year 2 = 1000 + 1030 + 1060.90 = 3090.90
     expect(yr2.accounts.savingsEOY).toBeCloseTo(3090.90, 0);
   });
@@ -102,7 +102,7 @@ describe('scheduling integration', () => {
   it('schedule skipped when user has manual (non-zero) value', () => {
     const scenario = makeTestScenario({
       scheduledItems: [
-        makeTestSchedule({ field: 'savingsDeposit', amount: 5000, startYear: 2025 }),
+        makeTestSchedule({ field: 'savingsDeposit', amount: 5000, startYear: 2026 }),
       ],
     });
     // Set year 0 savingsDeposit to 500 manually
@@ -116,9 +116,9 @@ describe('scheduling integration', () => {
   it('multiple fields scheduled together', () => {
     const scenario = makeTestScenario({
       scheduledItems: [
-        makeTestSchedule({ field: 'employmentIncome', amount: 100000, startYear: 2025 }),
-        makeTestSchedule({ field: 'rrspContribution', amount: 10000, startYear: 2025 }),
-        makeTestSchedule({ field: 'savingsDeposit', amount: 2000, startYear: 2025 }),
+        makeTestSchedule({ field: 'employmentIncome', amount: 100000, startYear: 2026 }),
+        makeTestSchedule({ field: 'rrspContribution', amount: 10000, startYear: 2026 }),
+        makeTestSchedule({ field: 'savingsDeposit', amount: 2000, startYear: 2026 }),
       ],
       openingCarryForwards: { rrspUnusedRoom: 50000, tfsaUnusedRoom: 0, capitalLossCF: 0, fhsaContribLifetime: 0 },
     });
@@ -136,7 +136,7 @@ describe('scheduling integration', () => {
   it('employment income schedule produces tax liability', () => {
     const scenario = makeTestScenario({
       scheduledItems: [
-        makeTestSchedule({ field: 'employmentIncome', amount: 80000, startYear: 2025 }),
+        makeTestSchedule({ field: 'employmentIncome', amount: 80000, startYear: 2026 }),
       ],
     });
 

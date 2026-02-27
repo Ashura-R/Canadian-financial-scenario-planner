@@ -229,6 +229,27 @@ export interface ComputedYear {
   // RESP CESG tracking
   respCESG?: number;              // CESG grant received this year
   respGrantsLifetime?: number;    // cumulative lifetime CESG
+  // Resolved assumptions for this year (after auto-indexing + overrides)
+  resolvedAssumptions?: {
+    federalBrackets: import('./scenario').TaxBracket[];
+    provincialBrackets: import('./scenario').TaxBracket[];
+    federalBPA: number;
+    provincialBPA: number;
+    cppYmpe: number;
+    cppYampe: number;
+    cppEmployeeRate: number;
+    cppCpp2Rate: number;
+    eiMaxInsurable: number;
+    eiRate: number;
+    rrspLimit: number;
+    tfsaAnnualLimit: number;
+    fhsaAnnualLimit: number;
+    fhsaLifetimeLimit: number;
+    capitalGainsInclusionRate: number;
+    oasClawbackThreshold: number;
+    federalEmploymentAmount: number;
+    inflationRate: number;
+  };
   // Warnings
   warnings: ValidationWarning[];
 }

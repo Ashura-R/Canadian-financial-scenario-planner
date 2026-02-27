@@ -104,7 +104,7 @@ const DEFAULT_GROUP_ORDER = [
   'Life Insurance',
   'Asset Allocation', 'Capital Loss', 'ACB Tracking', 'P&L Tracking',
   'EOY Overrides', 'Retirement (Computed)', 'Liabilities (Computed)', 'Rate Overrides',
-  'Contribution Room', 'Tax Results (Computed)',
+  'CRA Assumptions', 'Tax Results (Computed)',
 ];
 
 const GROUP_DEFAULTS: Record<string, boolean> = {
@@ -125,7 +125,7 @@ const GROUP_DEFAULTS: Record<string, boolean> = {
   'Retirement (Computed)': false,
   'Liabilities (Computed)': false,
   'Rate Overrides': false,
-  'Contribution Room': false,
+  'CRA Assumptions': false,
   'Tax Results (Computed)': true,
 };
 
@@ -188,13 +188,16 @@ const ROW_REGISTRY: RowEntry[] = [
   { rowId: 'rrspContribution', editable: true, group: 'RRSP' },
   { rowId: 'rrspDeductionClaimed', editable: true, group: 'RRSP' },
   { rowId: 'rrspWithdrawal', editable: true, group: 'RRSP' },
+  { rowId: '_computed_rrspRoom', editable: false, group: 'RRSP' },
   // TFSA
   { rowId: 'tfsaContribution', editable: true, group: 'TFSA' },
   { rowId: 'tfsaWithdrawal', editable: true, group: 'TFSA' },
+  { rowId: '_computed_tfsaRoom', editable: false, group: 'TFSA' },
   // FHSA
   { rowId: 'fhsaContribution', editable: true, group: 'FHSA' },
   { rowId: 'fhsaDeductionClaimed', editable: true, group: 'FHSA' },
   { rowId: 'fhsaWithdrawal', editable: true, group: 'FHSA' },
+  { rowId: '_computed_fhsaRoom', editable: false, group: 'FHSA' },
   // Non-Reg & Savings
   { rowId: 'nonRegContribution', editable: true, group: 'Non-Reg & Savings' },
   { rowId: 'nonRegWithdrawal', editable: true, group: 'Non-Reg & Savings' },
@@ -290,11 +293,33 @@ const ROW_REGISTRY: RowEntry[] = [
   { rowId: 'fixedIncomeReturnOverride', editable: true, group: 'Rate Overrides', pct: true, isOverride: true },
   { rowId: 'cashReturnOverride', editable: true, group: 'Rate Overrides', pct: true, isOverride: true },
   { rowId: 'savingsReturnOverride', editable: true, group: 'Rate Overrides', pct: true, isOverride: true },
-  // Contribution Room
-  { rowId: '_computed_rrspRoom', editable: false, group: 'Contribution Room' },
-  { rowId: '_computed_tfsaRoom', editable: false, group: 'Contribution Room' },
-  { rowId: '_computed_fhsaRoom', editable: false, group: 'Contribution Room' },
-  { rowId: '_computed_clCF', editable: false, group: 'Contribution Room' },
+  // CRA Assumptions
+  { rowId: '_cra_fedBracket0', editable: false, group: 'CRA Assumptions' },
+  { rowId: '_cra_fedBracket1', editable: false, group: 'CRA Assumptions' },
+  { rowId: '_cra_fedBracket2', editable: false, group: 'CRA Assumptions' },
+  { rowId: '_cra_fedBracket3', editable: false, group: 'CRA Assumptions' },
+  { rowId: '_cra_fedBracket4', editable: false, group: 'CRA Assumptions' },
+  { rowId: '_cra_fedBPA', editable: false, group: 'CRA Assumptions' },
+  { rowId: '_cra_fedEmpl', editable: false, group: 'CRA Assumptions' },
+  { rowId: '_cra_provBracket0', editable: false, group: 'CRA Assumptions' },
+  { rowId: '_cra_provBracket1', editable: false, group: 'CRA Assumptions' },
+  { rowId: '_cra_provBracket2', editable: false, group: 'CRA Assumptions' },
+  { rowId: '_cra_provBracket3', editable: false, group: 'CRA Assumptions' },
+  { rowId: '_cra_provBracket4', editable: false, group: 'CRA Assumptions' },
+  { rowId: '_cra_provBPA', editable: false, group: 'CRA Assumptions' },
+  { rowId: '_cra_cppYmpe', editable: false, group: 'CRA Assumptions' },
+  { rowId: '_cra_cppYampe', editable: false, group: 'CRA Assumptions' },
+  { rowId: '_cra_cppRate', editable: false, group: 'CRA Assumptions' },
+  { rowId: '_cra_cpp2Rate', editable: false, group: 'CRA Assumptions' },
+  { rowId: '_cra_eiMax', editable: false, group: 'CRA Assumptions' },
+  { rowId: '_cra_eiRate', editable: false, group: 'CRA Assumptions' },
+  { rowId: '_cra_rrspLimit', editable: false, group: 'CRA Assumptions' },
+  { rowId: '_cra_tfsaLimit', editable: false, group: 'CRA Assumptions' },
+  { rowId: '_cra_fhsaAnnual', editable: false, group: 'CRA Assumptions' },
+  { rowId: '_cra_fhsaLifetime', editable: false, group: 'CRA Assumptions' },
+  { rowId: '_cra_cgRate', editable: false, group: 'CRA Assumptions' },
+  { rowId: '_cra_oasClawback', editable: false, group: 'CRA Assumptions' },
+  { rowId: '_cra_inflation', editable: false, group: 'CRA Assumptions' },
   // Tax Results
   { rowId: '_computed_netTaxable', editable: false, group: 'Tax Results (Computed)' },
   { rowId: '_computed_fedTax', editable: false, group: 'Tax Results (Computed)' },
@@ -897,6 +922,7 @@ export function TimelinePage() {
             {renderRow('Contribution', 'rrspContribution')}
             {renderRow('Deduction Claimed', 'rrspDeductionClaimed')}
             {renderRow('Withdrawal', 'rrspWithdrawal')}
+            {renderComputedRow('_computed_rrspRoom', 'Unused Room', i => { const v = computed[i]?.rrspUnusedRoom ?? 0; return fmtVal(v); })}
           </>
         );
 
@@ -905,6 +931,7 @@ export function TimelinePage() {
           <>
             {renderRow('Contribution', 'tfsaContribution')}
             {renderRow('Withdrawal', 'tfsaWithdrawal')}
+            {renderComputedRow('_computed_tfsaRoom', 'Unused Room', i => { const v = computed[i]?.tfsaUnusedRoom ?? 0; return fmtVal(v); })}
           </>
         );
 
@@ -914,6 +941,7 @@ export function TimelinePage() {
             {renderRow('Contribution', 'fhsaContribution')}
             {renderRow('Deduction Claimed', 'fhsaDeductionClaimed')}
             {renderRow('Withdrawal', 'fhsaWithdrawal')}
+            {renderComputedRow('_computed_fhsaRoom', 'Unused Room', i => { const v = computed[i]?.fhsaUnusedRoom ?? 0; return fmtVal(v); })}
           </>
         );
 
@@ -1135,15 +1163,62 @@ export function TimelinePage() {
           </>
         );
 
-      case 'Contribution Room':
+      case 'CRA Assumptions': {
+        const fmtShort = (v: number): string => {
+          if (v >= 1000000) return '$' + (v / 1000000).toFixed(1) + 'M';
+          if (v >= 1000) return '$' + Math.round(v / 1000) + 'k';
+          return '$' + Math.round(v);
+        };
+        const fmtBracket = (i: number, idx: number, type: 'federal' | 'provincial'): string => {
+          const ra = computed[i]?.resolvedAssumptions;
+          if (!ra) return '—';
+          const brackets = type === 'federal' ? ra.federalBrackets : ra.provincialBrackets;
+          const b = brackets[idx];
+          if (!b) return '—';
+          const maxStr = b.max !== null ? fmtShort(b.max) : '∞';
+          return `${fmtShort(b.min)}–${maxStr} @${(b.rate * 100).toFixed(b.rate < 0.1 ? 2 : 1)}%`;
+        };
+        const fmtPct = (v: number): string => (v * 100).toFixed(2) + '%';
+        // Determine max bracket counts across all years
+        const maxFedBrackets = Math.max(...computed.map(c => c.resolvedAssumptions?.federalBrackets?.length ?? 0), 5);
+        const maxProvBrackets = Math.max(...computed.map(c => c.resolvedAssumptions?.provincialBrackets?.length ?? 0), 5);
         return (
           <>
-            {renderComputedRow('_computed_rrspRoom', 'RRSP Unused Room', i => { const v = computed[i]?.rrspUnusedRoom ?? 0; return fmtVal(v); })}
-            {renderComputedRow('_computed_tfsaRoom', 'TFSA Unused Room', i => { const v = computed[i]?.tfsaUnusedRoom ?? 0; return fmtVal(v); })}
-            {renderComputedRow('_computed_fhsaRoom', 'FHSA Unused Room', i => { const v = computed[i]?.fhsaUnusedRoom ?? 0; return fmtVal(v); })}
-            {renderComputedRow('_computed_clCF', 'Capital Loss C/F', i => { const v = computed[i]?.capitalLossCF ?? 0; return fmtVal(v); })}
+            {/* Sub-header: Federal Tax Brackets */}
+            <tr><td colSpan={years.length + 1} className="sticky left-0 bg-app-accent-light/30 py-0.5 pl-2 text-[9px] font-semibold text-app-accent border-b border-app-border">Federal Tax Brackets</td></tr>
+            {Array.from({ length: maxFedBrackets }, (_, idx) =>
+              renderComputedRow(`_cra_fedBracket${idx}`, `  Bracket ${idx + 1}`, i => fmtBracket(i, idx, 'federal'))
+            )}
+            {renderComputedRow('_cra_fedBPA', 'Federal BPA', i => fmtVal(computed[i]?.resolvedAssumptions?.federalBPA ?? 0))}
+            {renderComputedRow('_cra_fedEmpl', 'Employment Amount', i => fmtVal(computed[i]?.resolvedAssumptions?.federalEmploymentAmount ?? 0))}
+            {/* Sub-header: Provincial Tax Brackets */}
+            <tr><td colSpan={years.length + 1} className="sticky left-0 bg-app-accent-light/30 py-0.5 pl-2 text-[9px] font-semibold text-app-accent border-b border-app-border">Provincial Tax Brackets</td></tr>
+            {Array.from({ length: maxProvBrackets }, (_, idx) =>
+              renderComputedRow(`_cra_provBracket${idx}`, `  Bracket ${idx + 1}`, i => fmtBracket(i, idx, 'provincial'))
+            )}
+            {renderComputedRow('_cra_provBPA', 'Provincial BPA', i => fmtVal(computed[i]?.resolvedAssumptions?.provincialBPA ?? 0))}
+            {/* Sub-header: CPP & EI */}
+            <tr><td colSpan={years.length + 1} className="sticky left-0 bg-app-accent-light/30 py-0.5 pl-2 text-[9px] font-semibold text-app-accent border-b border-app-border">CPP &amp; EI</td></tr>
+            {renderComputedRow('_cra_cppYmpe', 'CPP YMPE', i => fmtVal(computed[i]?.resolvedAssumptions?.cppYmpe ?? 0))}
+            {renderComputedRow('_cra_cppYampe', 'CPP YAMPE', i => fmtVal(computed[i]?.resolvedAssumptions?.cppYampe ?? 0))}
+            {renderComputedRow('_cra_cppRate', 'CPP Rate', i => { const ra = computed[i]?.resolvedAssumptions; return ra ? fmtPct(ra.cppEmployeeRate) : '—'; })}
+            {renderComputedRow('_cra_cpp2Rate', 'CPP2 Rate', i => { const ra = computed[i]?.resolvedAssumptions; return ra ? fmtPct(ra.cppCpp2Rate) : '—'; })}
+            {renderComputedRow('_cra_eiMax', 'EI Max Insurable', i => fmtVal(computed[i]?.resolvedAssumptions?.eiMaxInsurable ?? 0))}
+            {renderComputedRow('_cra_eiRate', 'EI Rate', i => { const ra = computed[i]?.resolvedAssumptions; return ra ? fmtPct(ra.eiRate) : '—'; })}
+            {/* Sub-header: Account Limits */}
+            <tr><td colSpan={years.length + 1} className="sticky left-0 bg-app-accent-light/30 py-0.5 pl-2 text-[9px] font-semibold text-app-accent border-b border-app-border">Account Limits</td></tr>
+            {renderComputedRow('_cra_rrspLimit', 'RRSP Limit', i => fmtVal(computed[i]?.resolvedAssumptions?.rrspLimit ?? 0))}
+            {renderComputedRow('_cra_tfsaLimit', 'TFSA Annual', i => fmtVal(computed[i]?.resolvedAssumptions?.tfsaAnnualLimit ?? 0))}
+            {renderComputedRow('_cra_fhsaAnnual', 'FHSA Annual', i => fmtVal(computed[i]?.resolvedAssumptions?.fhsaAnnualLimit ?? 0))}
+            {renderComputedRow('_cra_fhsaLifetime', 'FHSA Lifetime', i => fmtVal(computed[i]?.resolvedAssumptions?.fhsaLifetimeLimit ?? 0))}
+            {/* Sub-header: Other */}
+            <tr><td colSpan={years.length + 1} className="sticky left-0 bg-app-accent-light/30 py-0.5 pl-2 text-[9px] font-semibold text-app-accent border-b border-app-border">Other</td></tr>
+            {renderComputedRow('_cra_cgRate', 'CG Inclusion Rate', i => { const ra = computed[i]?.resolvedAssumptions; return ra ? fmtPct(ra.capitalGainsInclusionRate) : '—'; })}
+            {renderComputedRow('_cra_oasClawback', 'OAS Clawback Thresh', i => fmtVal(computed[i]?.resolvedAssumptions?.oasClawbackThreshold ?? 0))}
+            {renderComputedRow('_cra_inflation', 'Inflation Rate', i => { const ra = computed[i]?.resolvedAssumptions; return ra ? fmtPct(ra.inflationRate) : '—'; })}
           </>
         );
+      }
 
       case 'Tax Results (Computed)': {
         const taxRows = [

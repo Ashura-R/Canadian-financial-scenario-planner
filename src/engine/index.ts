@@ -8,6 +8,7 @@ import { computeAnalytics } from './analyticsEngine';
 import { validateYear } from './validationEngine';
 import { computeACB, computeInsuranceACB } from './acbEngine';
 import { resolveAssumptions } from './assumptionResolver';
+import { computeAccumulatedTfsaRoom } from './tfsaRoom';
 
 // CRA RRIF minimum withdrawal factors by age
 const RRIF_FACTORS: Record<number, number> = {
@@ -487,6 +488,14 @@ export function compute(scenario: Scenario): ComputedScenario {
   let fhsaContribLifetime = ocf?.fhsaContribLifetime ?? 0;
   let fhsaUnusedRoom = 0;
   let tfsaUnusedRoom = ocf?.tfsaUnusedRoom ?? 0;
+
+  // Auto-calculate TFSA room when birthYear is set AND user hasn't manually specified room or balance
+  if (assumptions.birthYear && tfsaUnusedRoom === 0 && openingBalances.tfsa === 0) {
+    tfsaUnusedRoom = computeAccumulatedTfsaRoom(
+      assumptions.birthYear, assumptions.startYear, assumptions.tfsaAnnualLimit,
+    );
+  }
+
   let prevYearTfsaWithdrawals = 0;
   let inflationFactor = 1;
   let fhsaDisposed = false;
@@ -741,6 +750,28 @@ export function compute(scenario: Scenario): ComputedScenario {
       computedYear.hbpRepaymentMade = hbpRepaymentMade;
       computedYear.hbpTaxableShortfall = hbpTaxableShortfall;
     }
+
+    // Store resolved assumptions on computed year for Timeline display
+    computedYear.resolvedAssumptions = {
+      federalBrackets: resolvedAssumptions.federalBrackets,
+      provincialBrackets: resolvedAssumptions.provincialBrackets,
+      federalBPA: resolvedAssumptions.federalBPA,
+      provincialBPA: resolvedAssumptions.provincialBPA,
+      cppYmpe: resolvedAssumptions.cpp.ympe,
+      cppYampe: resolvedAssumptions.cpp.yampe,
+      cppEmployeeRate: resolvedAssumptions.cpp.employeeRate,
+      cppCpp2Rate: resolvedAssumptions.cpp.cpp2Rate,
+      eiMaxInsurable: resolvedAssumptions.ei.maxInsurableEarnings,
+      eiRate: resolvedAssumptions.ei.employeeRate,
+      rrspLimit: resolvedAssumptions.rrspLimit,
+      tfsaAnnualLimit: resolvedAssumptions.tfsaAnnualLimit,
+      fhsaAnnualLimit: resolvedAssumptions.fhsaAnnualLimit,
+      fhsaLifetimeLimit: resolvedAssumptions.fhsaLifetimeLimit,
+      capitalGainsInclusionRate: resolvedAssumptions.capitalGainsInclusionRate,
+      oasClawbackThreshold: resolvedAssumptions.oasClawbackThreshold ?? 93454,
+      federalEmploymentAmount: resolvedAssumptions.federalEmploymentAmount,
+      inflationRate: resolvedAssumptions.inflationRate,
+    };
 
     // Compute liabilities
     if (liabilities.length > 0) {
