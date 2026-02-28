@@ -567,8 +567,8 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => vo
           <ChartSection title={diffMode ? 'Net Worth: Nominal vs Real' : realMode ? 'Real Net Worth Over Time' : 'Net Worth Over Time'}>
             <HeroNetWorthChart years={chartYears} realMode={realMode} diffMode={diffMode} />
           </ChartSection>
-          <ChartSection title={diffMode ? 'Gross Income: Nominal vs Real' : 'Income Breakdown'}>
-            <IncomeBreakdownChart years={chartYears} rawYears={chartRawYears} diffMode={diffMode} modern />
+          <ChartSection title={diffMode ? 'Gross Income: Nominal vs Real' : realMode ? 'Real Income Breakdown' : 'Income Breakdown'}>
+            <IncomeBreakdownChart years={chartYears} rawYears={chartRawYears} diffMode={diffMode} realMode={realMode} modern />
           </ChartSection>
           <ChartSection title={diffMode ? 'Cash Flow: Nominal vs Real' : realMode ? 'Real Cash Flow' : 'Cash Flow (Annual + Cumulative)'}>
             <CumulativeCashFlowChart computed={chartComputed} realMode={realMode} diffMode={diffMode} modern />

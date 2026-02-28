@@ -15,6 +15,7 @@ interface Props {
   years: ComputedYear[];
   rawYears: import('../../../types/scenario').YearData[];
   diffMode?: boolean;
+  realMode?: boolean;
   modern?: boolean;
 }
 
@@ -48,7 +49,7 @@ function ModernTooltipContent({ active, payload, label }: any) {
   );
 }
 
-export function IncomeBreakdownChart({ years, rawYears, diffMode, modern }: Props) {
+export function IncomeBreakdownChart({ years, rawYears, diffMode, realMode, modern }: Props) {
   const cc = useChartColors();
   const barRadius: [number, number, number, number] = modern ? [3, 3, 0, 0] : [0, 0, 0, 0];
   const TooltipComp = modern ? ModernTooltipContent : undefined;
@@ -75,16 +76,19 @@ export function IncomeBreakdownChart({ years, rawYears, diffMode, modern }: Prop
     );
   }
 
-  const data = years.map((y, i) => ({
-    year: y.year,
-    Employment: Math.round(safe(rawYears[i]?.employmentIncome ?? 0)),
-    'Self-Empl.': Math.round(safe(rawYears[i]?.selfEmploymentIncome ?? 0)),
-    'Elig. Div.': Math.round(safe(rawYears[i]?.eligibleDividends ?? 0)),
-    'Non-Elig. Div.': Math.round(safe(rawYears[i]?.nonEligibleDividends ?? 0)),
-    Interest: Math.round(safe(rawYears[i]?.interestIncome ?? 0)),
-    'Cap. Gains': Math.round(safe(rawYears[i]?.capitalGainsRealized ?? 0)),
-    Other: Math.round(safe(rawYears[i]?.otherTaxableIncome ?? 0)),
-  }));
+  const data = years.map((y, i) => {
+    const f = realMode ? y.inflationFactor : 1;
+    return {
+      year: y.year,
+      Employment: Math.round(safe((rawYears[i]?.employmentIncome ?? 0) / f)),
+      'Self-Empl.': Math.round(safe((rawYears[i]?.selfEmploymentIncome ?? 0) / f)),
+      'Elig. Div.': Math.round(safe((rawYears[i]?.eligibleDividends ?? 0) / f)),
+      'Non-Elig. Div.': Math.round(safe((rawYears[i]?.nonEligibleDividends ?? 0) / f)),
+      Interest: Math.round(safe((rawYears[i]?.interestIncome ?? 0) / f)),
+      'Cap. Gains': Math.round(safe((rawYears[i]?.capitalGainsRealized ?? 0) / f)),
+      Other: Math.round(safe((rawYears[i]?.otherTaxableIncome ?? 0) / f)),
+    };
+  });
 
   return (
     <ResponsiveContainer width="100%" height="100%">
