@@ -362,8 +362,9 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => vo
   const afterTaxIncome = realMode ? yr.realAfterTaxIncome : waterfall.afterTaxIncome;
   const netWorth = realMode ? yr.realNetWorth : accounts.netWorth;
   const netCashFlow = realMode ? yr.realNetCashFlow : waterfall.netCashFlow;
-  const totalTax = tax.totalIncomeTax + cpp.totalCPPPaid + ei.totalEI;
-  const effRate = waterfall.grossIncome > 0 ? totalTax / waterfall.grossIncome : 0;
+  const totalTaxNom = tax.totalIncomeTax + cpp.totalCPPPaid + ei.totalEI;
+  const totalTax = realMode ? totalTaxNom / yr.inflationFactor : totalTaxNom;
+  const effRate = waterfall.grossIncome > 0 ? totalTaxNom / waterfall.grossIncome : 0;
 
   // KPI sub-text: Gross Income — largest income source
   const rawYd = displayComputed.effectiveYears[selectedYearIdx];
@@ -383,7 +384,7 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => vo
 
   // KPI sub-text: Net Cash Flow — expenses spent
   const expensesSub = waterfall.totalLivingExpenses > 0
-    ? `${formatShort(waterfall.totalLivingExpenses)} on expenses`
+    ? `${formatShort(realMode ? waterfall.totalLivingExpenses / yr.inflationFactor : waterfall.totalLivingExpenses)} on expenses`
     : undefined;
 
   // KPI sub-text: Net Worth — YoY % change
@@ -400,7 +401,7 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => vo
   const baseYr = activeComputed.years[selectedYearIdx] ?? activeComputed.years[activeComputed.years.length - 1];
   const baseNW = baseYr ? (realMode ? baseYr.realNetWorth : baseYr.accounts.netWorth) : 0;
   const baseAfterTax = baseYr ? (realMode ? baseYr.realAfterTaxIncome : baseYr.waterfall.afterTaxIncome) : 0;
-  const baseTotalTax = baseYr ? (baseYr.tax.totalIncomeTax + baseYr.cpp.totalCPPPaid + baseYr.ei.totalEI) : 0;
+  const baseTotalTax = baseYr ? ((baseYr.tax.totalIncomeTax + baseYr.cpp.totalCPPPaid + baseYr.ei.totalEI) / (realMode ? baseYr.inflationFactor : 1)) : 0;
   const baseCF = baseYr ? (realMode ? baseYr.realNetCashFlow : baseYr.waterfall.netCashFlow) : 0;
   const baseGross = baseYr ? (realMode ? baseYr.realGrossIncome : baseYr.waterfall.grossIncome) : 0;
 
@@ -411,7 +412,7 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => vo
   };
   const prevNW = prevYr ? (realMode ? prevYr.realNetWorth : prevYr.accounts.netWorth) : undefined;
   const prevAfterTax = prevYr ? (realMode ? prevYr.realAfterTaxIncome : prevYr.waterfall.afterTaxIncome) : undefined;
-  const prevTotalTax = prevYr ? (prevYr.tax.totalIncomeTax + prevYr.cpp.totalCPPPaid + prevYr.ei.totalEI) : undefined;
+  const prevTotalTax = prevYr ? ((prevYr.tax.totalIncomeTax + prevYr.cpp.totalCPPPaid + prevYr.ei.totalEI) / (realMode ? prevYr.inflationFactor : 1)) : undefined;
   const prevCF = prevYr ? (realMode ? prevYr.realNetCashFlow : prevYr.waterfall.netCashFlow) : undefined;
   const prevGross = prevYr ? (realMode ? prevYr.realGrossIncome : prevYr.waterfall.grossIncome) : undefined;
 
@@ -425,7 +426,7 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => vo
   const sparkYears = sliceByRange(years, chartRange);
   const sparkNW = sparkYears.map(y => realMode ? y.realNetWorth : y.accounts.netWorth);
   const sparkAT = sparkYears.map(y => realMode ? y.realAfterTaxIncome : y.waterfall.afterTaxIncome);
-  const sparkTax = sparkYears.map(y => y.tax.totalIncomeTax + y.cpp.totalCPPPaid + y.ei.totalEI);
+  const sparkTax = sparkYears.map(y => (y.tax.totalIncomeTax + y.cpp.totalCPPPaid + y.ei.totalEI) / (realMode ? y.inflationFactor : 1));
   const sparkCF = sparkYears.map(y => realMode ? y.realNetCashFlow : y.waterfall.netCashFlow);
   const sparkGross = sparkYears.map(y => realMode ? y.realGrossIncome : y.waterfall.grossIncome);
 
@@ -521,7 +522,7 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => vo
         <div className="grid grid-cols-4 gap-3">
           {[
             { label: 'Gross Income', value: grossIncome, change: grossChange, spark: sparkGross, color: PALETTE.positive, sub: realMode ? `Nominal: ${formatShort(waterfall.grossIncome)}` : grossSub, delta: isWhatIfMode ? grossIncome - baseGross : 0 },
-            { label: 'Total Tax', value: totalTax, change: taxChange, spark: sparkTax, color: PALETTE.negative, invert: true, sub: `${formatPct(effRate)} eff. rate`, delta: isWhatIfMode ? totalTax - baseTotalTax : 0 },
+            { label: 'Total Tax', value: totalTax, change: taxChange, spark: sparkTax, color: PALETTE.negative, invert: true, sub: realMode ? `Nominal: ${formatShort(totalTaxNom)}` : `${formatPct(effRate)} eff. rate`, delta: isWhatIfMode ? totalTax - baseTotalTax : 0 },
             { label: 'Net Cash Flow', value: netCashFlow, change: cfChange, spark: sparkCF, color: netCashFlow >= 0 ? PALETTE.positive : PALETTE.negative, sub: expensesSub, delta: isWhatIfMode ? netCashFlow - baseCF : 0 },
             { label: 'Net Worth', value: netWorth, change: nwChange, spark: sparkNW, color: PALETTE.accounts.rrsp, sub: realMode ? `Nominal: ${formatShort(accounts.netWorth)}` : nwSub, subCls: realMode ? undefined : nwSubCls, delta: isWhatIfMode ? netWorth - baseNW : 0 },
           ].map(kpi => (
