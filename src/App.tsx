@@ -15,9 +15,9 @@ import { ExpensesPage } from './pages/ExpensesPage';
 import { WarningsPage } from './pages/WarningsPage';
 import { usePersistedState } from './utils/usePersistedState';
 import type { Page } from './components/PageNav/PageNav';
+import { VALID_PAGES } from './components/PageNav/PageNav';
 
 const PAGE_STORAGE_KEY = 'cdn-tax-active-page';
-const VALID_PAGES: Page[] = ['overview', 'warnings', 'timeline', 'tax-detail', 'accounts', 'expenses', 'scheduling', 'analysis', 'assumptions'];
 
 function loadPage(): Page {
   try {

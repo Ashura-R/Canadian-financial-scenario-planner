@@ -8,9 +8,11 @@ export interface PDFSections {
   overview: boolean;
   taxDetail: boolean;
   accounts: boolean;
+  expenses: boolean;
   timeline: boolean;
   scheduling: boolean;
   analysis: boolean;
+  warnings: boolean;
   settings: boolean;
 }
 
@@ -500,6 +502,153 @@ function addAccountsSection(doc: jsPDF, scenario: Scenario, computed: ComputedSc
       1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' },
       4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right' },
       7: { halign: 'right' }, 8: { halign: 'right', fontStyle: 'bold' },
+    },
+  });
+}
+
+// ── Section: Expenses ──────────────────────────────────────────────
+
+function addExpensesSection(doc: jsPDF, scenario: Scenario, computed: ComputedScenario, margin: number, contentWidth: number, startY: number) {
+  let y = startY;
+
+  const effYears = computed.effectiveYears;
+  const cyears = computed.years;
+
+  // Expense categories
+  const categories = [
+    { key: 'housingExpense', label: 'Housing' },
+    { key: 'groceriesExpense', label: 'Groceries' },
+    { key: 'transportationExpense', label: 'Transportation' },
+    { key: 'utilitiesExpense', label: 'Utilities' },
+    { key: 'insuranceExpense', label: 'Insurance' },
+    { key: 'entertainmentExpense', label: 'Entertainment' },
+    { key: 'personalExpense', label: 'Personal' },
+    { key: 'otherLivingExpense', label: 'Other' },
+  ];
+
+  // Summary table: all years
+  y = subTitle(doc, 'Living Expenses by Year', margin, y);
+  autoTable(doc, {
+    startY: y,
+    margin: { left: margin, right: margin },
+    theme: 'striped',
+    styles: { fontSize: 7, cellPadding: 1.5, textColor: TEXT_DARK },
+    headStyles: { fillColor: HEADER_BG, textColor: WHITE, fontStyle: 'bold', fontSize: 7 },
+    head: [['Year', ...categories.map(c => c.label), 'Total', 'After-Tax', 'After Expenses']],
+    body: cyears.map((cy, i) => {
+      const yd = effYears[i] ?? scenario.years[i];
+      if (!yd) return [String(cy.year)];
+      const vals = categories.map(c => formatCAD((yd as any)[c.key] ?? 0));
+      return [
+        String(cy.year),
+        ...vals,
+        formatCAD(cy.waterfall.totalLivingExpenses),
+        formatCAD(cy.waterfall.afterTaxIncome),
+        formatCAD(cy.waterfall.afterExpenses),
+      ];
+    }),
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 14 },
+      ...Object.fromEntries(categories.map((_, i) => [i + 1, { halign: 'right' as const }])),
+      [categories.length + 1]: { halign: 'right' as const, fontStyle: 'bold' as const },
+      [categories.length + 2]: { halign: 'right' as const },
+      [categories.length + 3]: { halign: 'right' as const },
+    },
+  });
+  y = getY(doc) + 6;
+
+  // Budget summary for last year
+  const lastIdx = cyears.length - 1;
+  const lastYd = effYears[lastIdx] ?? scenario.years[lastIdx];
+  const lastCy = cyears[lastIdx];
+  if (lastYd && lastCy && lastCy.waterfall.totalLivingExpenses > 0) {
+    y = subTitle(doc, `Expense Breakdown — Year ${lastCy.year}`, margin, y);
+    const total = lastCy.waterfall.totalLivingExpenses;
+    autoTable(doc, {
+      startY: y,
+      margin: { left: margin, right: margin },
+      theme: 'grid',
+      styles: { fontSize: 8, cellPadding: 2, textColor: TEXT_DARK },
+      headStyles: { fillColor: HEADER_BG, textColor: WHITE, fontStyle: 'bold', fontSize: 8 },
+      head: [['Category', 'Amount', '% of Total']],
+      body: categories
+        .map(c => {
+          const amt = (lastYd as any)[c.key] ?? 0;
+          return [c.label, formatCAD(amt), amt > 0 ? formatPct(amt / total) : '—'];
+        })
+        .concat([['Total', formatCAD(total), '100%']]),
+      columnStyles: {
+        0: { fontStyle: 'bold', cellWidth: contentWidth * 0.45 },
+        1: { halign: 'right' as const },
+        2: { halign: 'right' as const },
+      },
+    });
+  }
+}
+
+// ── Section: Warnings ─────────────────────────────────────────────
+
+function addWarningsSection(doc: jsPDF, _scenario: Scenario, computed: ComputedScenario, margin: number, _contentWidth: number, startY: number) {
+  let y = startY;
+
+  const allWarnings: { year: number; severity: string; field: string; message: string }[] = [];
+  for (const cy of computed.years) {
+    for (const w of cy.warnings) {
+      allWarnings.push({ year: cy.year, severity: w.severity, field: w.field, message: w.message });
+    }
+  }
+
+  if (allWarnings.length === 0) {
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...TEXT_MED);
+    doc.text('No validation issues found. All checks passed.', margin, y);
+    return;
+  }
+
+  const errors = allWarnings.filter(w => w.severity === 'error');
+  const warnings = allWarnings.filter(w => w.severity === 'warning');
+
+  // Summary
+  y = subTitle(doc, `${errors.length} error${errors.length !== 1 ? 's' : ''}, ${warnings.length} warning${warnings.length !== 1 ? 's' : ''} across ${new Set(allWarnings.map(w => w.year)).size} years`, margin, y);
+
+  // Deduplicate
+  const seen = new Set<string>();
+  const unique = allWarnings.filter(w => {
+    const key = `${w.year}:${w.field}:${w.message}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+
+  // Sort: errors first, then by year
+  unique.sort((a, b) => {
+    if (a.severity !== b.severity) return a.severity === 'error' ? -1 : 1;
+    return a.year - b.year;
+  });
+
+  autoTable(doc, {
+    startY: y,
+    margin: { left: margin, right: margin },
+    theme: 'striped',
+    styles: { fontSize: 7.5, cellPadding: 2, textColor: TEXT_DARK },
+    headStyles: { fillColor: HEADER_BG, textColor: WHITE, fontStyle: 'bold', fontSize: 7.5 },
+    head: [['', 'Year', 'Field', 'Message']],
+    body: unique.map(w => [
+      w.severity === 'error' ? 'ERROR' : 'WARN',
+      String(w.year),
+      w.field.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase()).trim(),
+      w.message,
+    ]),
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 14, textColor: [220, 38, 38] as [number, number, number] },
+      1: { cellWidth: 14 },
+      2: { cellWidth: 35 },
+    },
+    didParseCell(data: any) {
+      if (data.column.index === 0 && data.cell.raw === 'WARN') {
+        data.cell.styles.textColor = [217, 119, 6];
+      }
     },
   });
 }
@@ -1065,8 +1214,8 @@ function addSettingsSection(doc: jsPDF, scenario: Scenario, margin: number, cont
 
 export function generatePDFReport({ scenario, computed, sections }: ReportInput) {
   const sec: PDFSections = sections ?? {
-    overview: true, taxDetail: true, accounts: true,
-    timeline: true, scheduling: true, analysis: true, settings: true,
+    overview: true, taxDetail: true, accounts: true, expenses: true,
+    timeline: true, scheduling: true, analysis: true, warnings: true, settings: true,
   };
 
   const doc = new jsPDF('portrait', 'mm', 'letter');
@@ -1098,6 +1247,7 @@ export function generatePDFReport({ scenario, computed, sections }: ReportInput)
     { key: 'overview', fn: () => addOverviewSection(doc, scenario, computed, margin, contentWidth, startSection('Overview')) },
     { key: 'taxDetail', fn: () => addTaxDetailSection(doc, scenario, computed, margin, contentWidth, startSection('Tax Detail')) },
     { key: 'accounts', fn: () => addAccountsSection(doc, scenario, computed, margin, contentWidth, startSection('Accounts')) },
+    { key: 'expenses', fn: () => addExpensesSection(doc, scenario, computed, margin, contentWidth, startSection('Expenses')) },
     { key: 'timeline', fn: () => {
       // Timeline needs landscape. If it's the first section, the header page is portrait — add landscape after it.
       // If not first, startSection already added a portrait page we need to replace.
@@ -1114,6 +1264,7 @@ export function generatePDFReport({ scenario, computed, sections }: ReportInput)
     }},
     { key: 'scheduling', fn: () => addSchedulingSection(doc, scenario, computed, margin, contentWidth, startSection('Scheduling')) },
     { key: 'analysis', fn: () => addAnalysisSection(doc, scenario, computed, margin, contentWidth, startSection('Analysis')) },
+    { key: 'warnings', fn: () => addWarningsSection(doc, scenario, computed, margin, contentWidth, startSection('Validation Warnings')) },
     { key: 'settings', fn: () => addSettingsSection(doc, scenario, margin, contentWidth, startSection('Settings & Assumptions')) },
   ];
 

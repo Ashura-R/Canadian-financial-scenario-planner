@@ -1,19 +1,8 @@
 import React from 'react';
+import { PAGE_TABS } from '../PageNav/PageNav';
 import type { Page } from '../PageNav/PageNav';
 import { useTheme } from '../../hooks/useTheme';
 import { useWhatIf } from '../../store/ScenarioContext';
-
-const PAGE_TABS: { id: Page; label: string }[] = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'timeline', label: 'Timeline' },
-  { id: 'tax-detail', label: 'Tax Detail' },
-  { id: 'accounts', label: 'Accounts' },
-  { id: 'expenses', label: 'Expenses' },
-  { id: 'scheduling', label: 'Scheduling' },
-  { id: 'analysis', label: 'Analysis' },
-  { id: 'warnings', label: 'Warnings' },
-  { id: 'assumptions', label: 'Settings' },
-];
 
 interface Props {
   onCompare: () => void;

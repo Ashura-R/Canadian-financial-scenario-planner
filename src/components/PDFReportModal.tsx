@@ -13,20 +13,22 @@ const SECTION_LABELS: { key: keyof PDFSections; label: string }[] = [
   { key: 'overview', label: 'Overview' },
   { key: 'taxDetail', label: 'Tax Detail' },
   { key: 'accounts', label: 'Accounts' },
+  { key: 'expenses', label: 'Expenses' },
   { key: 'timeline', label: 'Timeline' },
   { key: 'scheduling', label: 'Scheduling' },
   { key: 'analysis', label: 'Analysis' },
+  { key: 'warnings', label: 'Warnings' },
   { key: 'settings', label: 'Settings' },
 ];
 
 const allTrue = (): PDFSections => ({
-  overview: true, taxDetail: true, accounts: true,
-  timeline: true, scheduling: true, analysis: true, settings: true,
+  overview: true, taxDetail: true, accounts: true, expenses: true,
+  timeline: true, scheduling: true, analysis: true, warnings: true, settings: true,
 });
 
 const allFalse = (): PDFSections => ({
-  overview: false, taxDetail: false, accounts: false,
-  timeline: false, scheduling: false, analysis: false, settings: false,
+  overview: false, taxDetail: false, accounts: false, expenses: false,
+  timeline: false, scheduling: false, analysis: false, warnings: false, settings: false,
 });
 
 export function PDFReportModal({ scenario, computed, onClose }: Props) {
