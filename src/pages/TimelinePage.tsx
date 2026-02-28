@@ -1256,10 +1256,15 @@ export function TimelinePage() {
       }
 
       case 'Tax Results (Computed)': {
+        const isQC = activeScenario?.assumptions.province === 'QC';
+        const isON = activeScenario?.assumptions.province === 'ON';
         const taxRows = [
           { rowId: '_computed_netTaxable', label: 'Net Taxable Income', fn: (i: number) => computed[i]?.tax.netTaxableIncome ?? 0, cls: 'text-app-text2' },
+          { rowId: '_computed_fedTaxBeforeCredits', label: 'Federal Tax Before Credits', fn: (i: number) => computed[i]?.tax.federalTaxBeforeCredits ?? 0, cls: 'text-red-400' },
+          ...(isQC ? [{ rowId: '_computed_qcAbatement', label: 'QC Abatement (16.5%)', fn: (i: number) => -(computed[i]?.tax.quebecAbatement ?? 0), cls: 'text-emerald-600' }] : []),
           { rowId: '_computed_fedTax', label: 'Federal Tax', fn: (i: number) => computed[i]?.tax.federalTaxPayable ?? 0, cls: 'text-red-600' },
           { rowId: '_computed_provTax', label: 'Provincial Tax', fn: (i: number) => computed[i]?.tax.provincialTaxPayable ?? 0, cls: 'text-red-600' },
+          ...(isON ? [{ rowId: '_computed_onSurtax', label: 'ON Surtax (incl.)', fn: (i: number) => computed[i]?.tax.ontarioSurtax ?? 0, cls: 'text-red-400' }] : []),
           { rowId: '_computed_totalTax', label: 'Total Income Tax', fn: (i: number) => (computed[i]?.tax.federalTaxPayable ?? 0) + (computed[i]?.tax.provincialTaxPayable ?? 0), cls: 'text-red-700 font-semibold' },
           { rowId: '_computed_cppPaid', label: 'CPP Paid', fn: (i: number) => computed[i]?.cpp.totalCPPPaid ?? 0, cls: 'text-amber-600' },
           { rowId: '_computed_eiPaid', label: 'EI Paid', fn: (i: number) => computed[i]?.ei.totalEI ?? 0, cls: 'text-amber-600' },
