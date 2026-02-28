@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect, useCallback, useState, useMemo } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback, useState, useMemo, useRef } from 'react';
 import type { Scenario, AssumptionOverrides } from '../types/scenario';
 import type { ComputedScenario } from '../types/computed';
 import { compute } from '../engine';
@@ -204,14 +204,25 @@ export function ScenarioProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initialState);
 
   // What-If state (NOT persisted to localStorage)
+  // Two copies: immediate (for UI) and debounced (for compute)
   const [whatIfAdjustments, setWhatIfAdj] = useState<WhatIfAdjustments>(DEFAULT_WHATIF);
+  const [debouncedAdj, setDebouncedAdj] = useState<WhatIfAdjustments>(DEFAULT_WHATIF);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   const setWhatIfAdjustments = useCallback((partial: Partial<WhatIfAdjustments>) => {
-    setWhatIfAdj(prev => ({ ...prev, ...partial }));
+    setWhatIfAdj(prev => {
+      const next = { ...prev, ...partial };
+      // Debounce the compute-triggering state by 150ms
+      clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => setDebouncedAdj(next), 150);
+      return next;
+    });
   }, []);
 
   const resetWhatIf = useCallback(() => {
+    clearTimeout(debounceRef.current);
     setWhatIfAdj(DEFAULT_WHATIF);
+    setDebouncedAdj(DEFAULT_WHATIF);
   }, []);
 
   useEffect(() => {
@@ -229,15 +240,15 @@ export function ScenarioProvider({ children }: { children: React.ReactNode }) {
   const isActive = isWhatIfActive(whatIfAdjustments);
 
   const whatIfComputed = useMemo(() => {
-    if (!isActive || !activeScenario) return null;
+    if (!isWhatIfActive(debouncedAdj) || !activeScenario) return null;
     try {
-      const modified = applyWhatIfAdjustments(activeScenario, whatIfAdjustments);
+      const modified = applyWhatIfAdjustments(activeScenario, debouncedAdj);
       return compute(modified);
     } catch (e) {
       console.error('What-If compute error', e);
       return null;
     }
-  }, [isActive, activeScenario, whatIfAdjustments]);
+  }, [debouncedAdj, activeScenario]);
 
   return (
     <ScenarioContext.Provider value={{
