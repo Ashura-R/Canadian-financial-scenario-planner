@@ -365,6 +365,37 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => vo
   const totalTax = tax.totalIncomeTax + cpp.totalCPPPaid + ei.totalEI;
   const effRate = waterfall.grossIncome > 0 ? totalTax / waterfall.grossIncome : 0;
 
+  // KPI sub-text: Gross Income — largest income source
+  const rawYd = displayComputed.effectiveYears[selectedYearIdx];
+  const incomeSources = rawYd ? [
+    { label: 'employment', amount: rawYd.employmentIncome },
+    { label: 'self-employment', amount: Math.max(0, rawYd.selfEmploymentIncome - (rawYd.selfEmploymentExpenses ?? 0)) },
+    { label: 'dividends', amount: rawYd.eligibleDividends + rawYd.nonEligibleDividends },
+    { label: 'capital gains', amount: rawYd.capitalGainsRealized + rawYd.nonRegRealizedGains },
+    { label: 'rental', amount: Math.max(0, rawYd.rentalGrossIncome - rawYd.rentalExpenses) },
+    { label: 'pension', amount: rawYd.pensionIncome + (yr.retirement.cppIncome ?? 0) + (yr.retirement.oasIncome ?? 0) },
+    { label: 'other', amount: rawYd.interestIncome + rawYd.foreignIncome + rawYd.otherTaxableIncome + rawYd.rrspWithdrawal + rawYd.lifWithdrawal },
+  ] : [];
+  const topSource = incomeSources.sort((a, b) => b.amount - a.amount)[0];
+  const grossSub = topSource && waterfall.grossIncome > 0 && topSource.amount > 0
+    ? `${Math.round(topSource.amount / waterfall.grossIncome * 100)}% from ${topSource.label}`
+    : undefined;
+
+  // KPI sub-text: Net Cash Flow — expenses spent
+  const expensesSub = waterfall.totalLivingExpenses > 0
+    ? `${formatShort(waterfall.totalLivingExpenses)} on expenses`
+    : undefined;
+
+  // KPI sub-text: Net Worth — YoY % change
+  const nwYoY = prevYr
+    ? (netWorth - (realMode ? prevYr.realNetWorth : prevYr.accounts.netWorth))
+      / Math.abs(realMode ? prevYr.realNetWorth : prevYr.accounts.netWorth)
+    : null;
+  const nwSub = nwYoY !== null && isFinite(nwYoY)
+    ? `${nwYoY >= 0 ? '+' : ''}${(nwYoY * 100).toFixed(1)}% from last year`
+    : undefined;
+  const nwSubCls = nwYoY !== null ? (nwYoY >= 0 ? 'text-emerald-500' : 'text-red-500') : undefined;
+
   // What-If delta computation for KPIs
   const baseYr = activeComputed.years[selectedYearIdx] ?? activeComputed.years[activeComputed.years.length - 1];
   const baseNW = baseYr ? (realMode ? baseYr.realNetWorth : baseYr.accounts.netWorth) : 0;
@@ -489,10 +520,10 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => vo
         {/* ── Hero KPIs ──────────────────────────────────────────────── */}
         <div className="grid grid-cols-4 gap-3">
           {[
-            { label: 'Gross Income', value: grossIncome, change: grossChange, spark: sparkGross, color: PALETTE.positive, sub: realMode ? `Nominal: ${formatShort(waterfall.grossIncome)}` : undefined, delta: isWhatIfMode ? grossIncome - baseGross : 0 },
+            { label: 'Gross Income', value: grossIncome, change: grossChange, spark: sparkGross, color: PALETTE.positive, sub: realMode ? `Nominal: ${formatShort(waterfall.grossIncome)}` : grossSub, delta: isWhatIfMode ? grossIncome - baseGross : 0 },
             { label: 'Total Tax', value: totalTax, change: taxChange, spark: sparkTax, color: PALETTE.negative, invert: true, sub: `${formatPct(effRate)} eff. rate`, delta: isWhatIfMode ? totalTax - baseTotalTax : 0 },
-            { label: 'Net Cash Flow', value: netCashFlow, change: cfChange, spark: sparkCF, color: netCashFlow >= 0 ? PALETTE.positive : PALETTE.negative, delta: isWhatIfMode ? netCashFlow - baseCF : 0 },
-            { label: 'Net Worth', value: netWorth, change: nwChange, spark: sparkNW, color: PALETTE.accounts.rrsp, sub: realMode ? `Nominal: ${formatShort(accounts.netWorth)}` : undefined, delta: isWhatIfMode ? netWorth - baseNW : 0 },
+            { label: 'Net Cash Flow', value: netCashFlow, change: cfChange, spark: sparkCF, color: netCashFlow >= 0 ? PALETTE.positive : PALETTE.negative, sub: expensesSub, delta: isWhatIfMode ? netCashFlow - baseCF : 0 },
+            { label: 'Net Worth', value: netWorth, change: nwChange, spark: sparkNW, color: PALETTE.accounts.rrsp, sub: realMode ? `Nominal: ${formatShort(accounts.netWorth)}` : nwSub, subCls: realMode ? undefined : nwSubCls, delta: isWhatIfMode ? netWorth - baseNW : 0 },
           ].map(kpi => (
             <div
               key={kpi.label}
@@ -508,7 +539,7 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => vo
                 </span>
                 {isWhatIfMode && <DeltaBadge diff={kpi.delta} />}
               </div>
-              {kpi.sub && <div className="text-[9px] text-app-text4 mt-0.5">{kpi.sub}</div>}
+              {kpi.sub && <div className={`text-[9px] mt-0.5 ${kpi.subCls ?? 'text-app-text4'}`}>{kpi.sub}</div>}
               <div className="mt-1.5">
                 <MiniSparkline data={kpi.spark} color={kpi.color} width={72} height={26} />
               </div>
