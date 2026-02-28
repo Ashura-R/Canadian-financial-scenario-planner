@@ -18,7 +18,7 @@ import type { DeferralScenario } from '../engine/retirementAnalysis';
 import type { SensitivityAnalysis } from '../engine/sensitivityEngine';
 import type { MonteCarloResult, MonteCarloPercentileBands } from '../engine/monteCarloEngine';
 import type { WithdrawalStrategy } from '../engine/optimizerEngine';
-import type { ComputedYear, ComputedScenario } from '../types/computed';
+import type { ComputedYear, ComputedScenario, ComputedAccounts } from '../types/computed';
 import type { Assumptions, MonteCarloConfig } from '../types/scenario';
 
 // ── Shared styles ────────────────────────────────────────────────────
@@ -797,6 +797,203 @@ function MonteCarloSection({ result, years }: { result: MonteCarloResult; years:
   );
 }
 
+// ── Account definitions for Investment Projection ────────────────────
+const ACCT_DEFS: { key: string; label: string; color: string; eoyField: keyof ComputedAccounts }[] = [
+  { key: 'rrsp', label: 'RRSP', color: '#2563eb', eoyField: 'rrspEOY' },
+  { key: 'tfsa', label: 'TFSA', color: '#059669', eoyField: 'tfsaEOY' },
+  { key: 'fhsa', label: 'FHSA', color: '#0891b2', eoyField: 'fhsaEOY' },
+  { key: 'nonReg', label: 'Non-Reg', color: '#d97706', eoyField: 'nonRegEOY' },
+  { key: 'savings', label: 'Savings', color: '#7c3aed', eoyField: 'savingsEOY' },
+  { key: 'lira', label: 'LIRA', color: '#dc2626', eoyField: 'liraEOY' },
+  { key: 'resp', label: 'RESP', color: '#ec4899', eoyField: 'respEOY' },
+  { key: 'li', label: 'Life Ins', color: '#64748b', eoyField: 'liCashValueEOY' },
+];
+
+function computeAfterTaxBalance(key: string, balance: number, yr: ComputedYear): number {
+  if (balance <= 0) return 0;
+  const mr = yr.tax.marginalCombinedRate;
+  switch (key) {
+    case 'rrsp':
+    case 'lira':
+      return balance * (1 - mr);
+    case 'tfsa':
+    case 'fhsa':
+      return balance;
+    case 'nonReg': {
+      const gain = yr.pnl?.nonReg.gain ?? 0;
+      const cgRate = yr.resolvedAssumptions?.capitalGainsInclusionRate ?? 0.5;
+      return balance - Math.max(0, gain) * cgRate * mr;
+    }
+    case 'resp':
+      return balance * 0.9;
+    default: // savings, li
+      return balance;
+  }
+}
+
+function computeCAGR(initial: number, final: number, years: number): number {
+  if (years <= 0 || initial <= 0 || final <= 0) return 0;
+  return Math.pow(final / initial, 1 / years) - 1;
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// Section 5b: Investment Projection
+// ══════════════════════════════════════════════════════════════════════
+function InvestmentProjectionSection({ computed }: { computed: ComputedScenario }) {
+  const { years } = computed;
+  const chartColors = useChartColors();
+  const [range, setRange] = usePersistedState<ChartRange>('cdn-tax-chart-range-invest', 'all');
+  const [showReal, setShowReal] = usePersistedState('cdn-tax-invest-real', false);
+  const [showAfterTax, setShowAfterTax] = usePersistedState('cdn-tax-invest-aftertax', false);
+
+  const getAcctBal = (accounts: ComputedAccounts, field: keyof ComputedAccounts): number =>
+    accounts[field] as number;
+
+  // Filter to accounts that have a non-zero balance in at least one year
+  const activeAccts = useMemo(() =>
+    ACCT_DEFS.filter(a => years.some(yr => getAcctBal(yr.accounts, a.eoyField) > 0)),
+    [years]
+  );
+
+  // Build chart data
+  const chartData = useMemo(() =>
+    years.map(yr => {
+      const row: Record<string, number> = { year: yr.year };
+      let total = 0;
+      for (const a of activeAccts) {
+        let bal = getAcctBal(yr.accounts, a.eoyField);
+        if (showAfterTax) bal = computeAfterTaxBalance(a.key, bal, yr);
+        if (showReal && yr.inflationFactor > 0) bal = bal / yr.inflationFactor;
+        row[a.key] = Math.round(bal);
+        total += bal;
+      }
+      row._total = Math.round(total);
+      return row;
+    }),
+    [years, activeAccts, showReal, showAfterTax]
+  );
+
+  // Summary rows
+  const summaryRows = useMemo(() => {
+    if (chartData.length < 2) return [];
+    const first = chartData[0];
+    const last = chartData[chartData.length - 1];
+    const numYears = last.year - first.year;
+    return activeAccts.map(a => {
+      const initial = first[a.key];
+      const final = last[a.key];
+      return {
+        ...a,
+        finalBalance: final,
+        cagr: computeCAGR(initial, final, numYears),
+        netGrowth: final - initial,
+      };
+    });
+  }, [chartData, activeAccts]);
+
+  // KPIs
+  const finalNW = chartData.length > 0 ? chartData[chartData.length - 1]._total : 0;
+  const initialNW = chartData.length > 0 ? chartData[0]._total : 0;
+  const projYears = chartData.length > 1 ? chartData[chartData.length - 1].year - chartData[0].year : 0;
+  const nwCAGR = computeCAGR(initialNW, finalNW, projYears);
+  const totalGrowth = finalNW - initialNW;
+
+  const sliced = sliceByRange(chartData, range);
+
+  const label = (s: string) =>
+    s + (showReal ? ' (Real)' : '') + (showAfterTax ? ' (After-Tax)' : '');
+
+  return (
+    <section>
+      <SectionHeader title="Investment Projection">
+        <label className="flex items-center gap-1.5 text-[11px] text-app-text3">
+          <input type="checkbox" checked={showReal} onChange={e => setShowReal(e.target.checked)}
+            className="rounded border-app-border" />
+          Real (After-Inflation)
+        </label>
+        <label className="flex items-center gap-1.5 text-[11px] text-app-text3">
+          <input type="checkbox" checked={showAfterTax} onChange={e => setShowAfterTax(e.target.checked)}
+            className="rounded border-app-border" />
+          After-Tax
+        </label>
+      </SectionHeader>
+
+      {/* KPI cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <KPI label={label('Final Net Worth')} value={formatShort(finalNW)} />
+        <KPI label="NW CAGR" value={formatPct(nwCAGR)} />
+        <KPI label="Projection Years" value={`${chartData[0]?.year ?? '—'} – ${chartData[chartData.length - 1]?.year ?? '—'}`} />
+        <KPI label={label('Total Growth')} value={formatShort(totalGrowth)}
+          cls={totalGrowth >= 0 ? 'text-emerald-600' : 'text-red-600'} />
+      </div>
+
+      {/* Stacked Area Chart */}
+      <AnalysisChartCard title={label('Account Balances')} range={range} onRangeChange={setRange} height={280}>
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={sliced} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke={chartColors.gridStroke} />
+            <XAxis dataKey="year" tick={chartColors.axisTick} />
+            <YAxis tickFormatter={v => formatShort(v)} tick={chartColors.axisTick} />
+            <Tooltip contentStyle={chartColors.tooltipStyle} formatter={tooltipFmt} />
+            <Legend wrapperStyle={chartColors.legendStyle10} />
+            {activeAccts.map(a => (
+              <Area key={a.key} type="monotone" dataKey={a.key} stackId="1"
+                stroke={a.color} fill={a.color} fillOpacity={0.5} name={a.label} />
+            ))}
+          </AreaChart>
+        </ResponsiveContainer>
+      </AnalysisChartCard>
+
+      {/* Disclaimer */}
+      {showAfterTax && (
+        <div className="mt-2 text-[10px] text-app-text4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800/30 rounded px-3 py-1.5">
+          After-tax values are approximate: RRSP/LIRA use current marginal rate, Non-Reg uses unrealized gains &times; inclusion rate, RESP assumes ~10% tax.
+        </div>
+      )}
+
+      {/* Summary Table */}
+      {summaryRows.length > 0 && (
+        <div className="mt-3 bg-app-surface rounded-lg border border-app-border p-3 overflow-x-auto">
+          <table className="text-xs w-full">
+            <thead>
+              <tr className="border-b border-app-border">
+                <th className="text-left py-1.5 pr-3 text-app-text3 font-medium">Account</th>
+                <th className="text-right py-1.5 px-2 text-app-text3 font-medium">Final Balance</th>
+                <th className="text-right py-1.5 px-2 text-app-text3 font-medium">CAGR</th>
+                <th className="text-right py-1.5 px-2 text-app-text3 font-medium">Net Growth</th>
+              </tr>
+            </thead>
+            <tbody>
+              {summaryRows.map(r => (
+                <tr key={r.key} className="border-b border-app-border">
+                  <td className="py-1 pr-3 text-app-text2">
+                    <span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: r.color }} />
+                    {r.label}
+                  </td>
+                  <td className="py-1 px-2 text-right tabular-nums font-medium">{formatShort(r.finalBalance)}</td>
+                  <td className="py-1 px-2 text-right tabular-nums">{formatPct(r.cagr)}</td>
+                  <td className={`py-1 px-2 text-right tabular-nums ${r.netGrowth >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {formatShort(r.netGrowth)}
+                  </td>
+                </tr>
+              ))}
+              {/* Total row */}
+              <tr className="font-semibold">
+                <td className="py-1 pr-3 text-app-text">Total</td>
+                <td className="py-1 px-2 text-right tabular-nums">{formatShort(finalNW)}</td>
+                <td className="py-1 px-2 text-right tabular-nums">{formatPct(nwCAGR)}</td>
+                <td className={`py-1 px-2 text-right tabular-nums ${totalGrowth >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {formatShort(totalGrowth)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function AnalysisPage() {
   const { activeScenario, activeComputed } = useScenario();
   const { isActive: isWhatIfMode, computed: whatIfComputed, adjustments } = useWhatIf();
@@ -878,6 +1075,9 @@ export function AnalysisPage() {
 
       {/* Section 4: Sensitivity */}
       {sensitivity && <SensitivitySection analysis={sensitivity} years={displayComputed!.years} />}
+
+      {/* Section 5: Investment Projection */}
+      <InvestmentProjectionSection computed={displayComputed!} />
 
       {/* Section 6: Monte Carlo */}
       <section>
