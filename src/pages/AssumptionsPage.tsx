@@ -1,6 +1,6 @@
 import React, { useState, createContext, useContext } from 'react';
 import { useScenario, useUpdateScenario } from '../store/ScenarioContext';
-import { PROVINCIAL_BRACKETS, PROVINCIAL_BPA, PROVINCIAL_DIV_CREDITS, DEFAULT_ASSUMPTIONS } from '../store/defaults';
+import { PROVINCIAL_BRACKETS, PROVINCIAL_BPA, PROVINCIAL_DIV_CREDITS, DEFAULT_ASSUMPTIONS, makeDefaultYear } from '../store/defaults';
 import { formatCAD } from '../utils/formatters';
 import type { Province, TaxBracket, Assumptions, FHSADisposition, OpeningCarryForwards, ACBConfig, Liability, LiabilityType, AssumptionOverrides } from '../types/scenario';
 import { resolveAssumptions } from '../engine/assumptionResolver';
@@ -600,7 +600,19 @@ export function AssumptionsPage() {
                 </select>
               </FormRow>
               <FormRow label="Start Year">
-                <NumInput value={ass.startYear} onChange={v => setAss('startYear', Math.round(v))} />
+                <NumInput value={ass.startYear} onChange={v => {
+                  const newStart = Math.max(1990, Math.min(2100, Math.round(v)));
+                  update(s => {
+                    const n = s.assumptions.numYears;
+                    const oldYearMap = new Map(s.years.map(y => [y.year, y]));
+                    const newYears: import('../types/scenario').YearData[] = [];
+                    for (let i = 0; i < n; i++) {
+                      const yr = newStart + i;
+                      newYears.push(oldYearMap.get(yr) ?? makeDefaultYear(yr));
+                    }
+                    return { ...s, assumptions: { ...s.assumptions, startYear: newStart }, years: newYears };
+                  });
+                }} />
               </FormRow>
               <FormRow label="# Years">
                 <NumInput value={ass.numYears} onChange={v => {

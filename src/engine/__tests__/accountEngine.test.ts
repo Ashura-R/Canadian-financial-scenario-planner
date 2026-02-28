@@ -12,7 +12,7 @@ const zeroTax = {
   totalIncomeBeforeDeductions: 0, netTaxableIncome: 0,
   federalTaxBeforeCredits: 0, federalCredits: 0, federalTaxPayable: 0, quebecAbatement: 0,
   provincialTaxBeforeCredits: 0, provincialCredits: 0, provincialTaxPayable: 0,
-  ontarioSurtax: 0, oasClawback: 0, foreignTaxCredit: 0, cwbCredit: 0,
+  ontarioSurtax: 0, ontarioHealthPremium: 0, oasClawback: 0, foreignTaxCredit: 0, cwbCredit: 0,
   amtTax: 0, amtAdditional: 0, totalIncomeTax: 0,
   marginalFederalRate: 0, marginalProvincialRate: 0, marginalCombinedRate: 0,
   avgIncomeTaxRate: 0, avgAllInRate: 0,

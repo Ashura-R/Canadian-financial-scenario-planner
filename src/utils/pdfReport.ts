@@ -308,6 +308,7 @@ function addTaxDetailSection(doc: jsPDF, scenario: Scenario, computed: ComputedS
       ['Provincial Tax Before Credits', formatCAD(yr.tax.provincialTaxBeforeCredits)],
       ['Provincial Credits', formatCAD(yr.tax.provincialCredits)],
       ['Ontario Surtax', formatCAD(yr.tax.ontarioSurtax)],
+      ['ON Health Premium', formatCAD(yr.tax.ontarioHealthPremium)],
       ['Provincial Tax Payable', formatCAD(yr.tax.provincialTaxPayable)],
     ],
     columnStyles: { 0: { fontStyle: 'bold', cellWidth: contentWidth * 0.55 }, 1: { halign: 'right' } },

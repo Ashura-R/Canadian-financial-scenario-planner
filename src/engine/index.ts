@@ -9,6 +9,7 @@ import { validateYear } from './validationEngine';
 import { computeACB, computeInsuranceACB } from './acbEngine';
 import { resolveAssumptions } from './assumptionResolver';
 import { computeAccumulatedTfsaRoom } from './tfsaRoom';
+import { HISTORICAL_ASSUMPTIONS } from '../data/historicalAssumptions';
 
 // CRA RRIF minimum withdrawal factors by age
 const RRIF_FACTORS: Record<number, number> = {
@@ -532,6 +533,18 @@ export function compute(scenario: Scenario): ComputedScenario {
   const CESG_MATCH_LIMIT = 2500;
   const CESG_LIFETIME_MAX = 7200;
 
+  // Merge historical CRA data under user overrides (user overrides take precedence)
+  const mergedOverrides: Record<number, import('../types/scenario').AssumptionOverrides> = { ...HISTORICAL_ASSUMPTIONS };
+  if (scenario.assumptionOverrides) {
+    for (const [yr, ov] of Object.entries(scenario.assumptionOverrides)) {
+      const y = Number(yr);
+      mergedOverrides[y] = { ...(mergedOverrides[y] ?? {}), ...ov };
+    }
+  }
+
+  // Base year for inflation indexing — years at or before this use historical overrides directly
+  const baseYear = 2026;
+
   const computedYears: ComputedYear[] = [];
   const effectiveYears: YearData[] = [];
 
@@ -558,14 +571,22 @@ export function compute(scenario: Scenario): ComputedScenario {
           }
         : undefined;
 
-    // Resolve per-year assumptions (auto-index + manual overrides)
+    // For historical years (at or before base year), don't auto-index — historical
+    // overrides already have correct absolute values. Only compound inflation for future years.
+    const isHistorical = rawYd.year <= baseYear;
+    const effectiveInflationFactor = isHistorical ? 1 : inflationFactor;
+
+    // Resolve per-year assumptions (auto-index + manual/historical overrides)
     const resolvedAssumptions = resolveAssumptions(
-      assumptions, rawYd.year, inflationFactor, scenario.assumptionOverrides,
+      assumptions, rawYd.year, effectiveInflationFactor, mergedOverrides,
     );
 
     // Per-year inflation override: YearData override > assumption override > base
     const effectiveInflation = rawYd.inflationRateOverride ?? resolvedAssumptions.inflationRate;
-    inflationFactor *= (1 + effectiveInflation);
+    // Only start compounding inflation from years after the base year
+    if (!isHistorical) {
+      inflationFactor *= (1 + effectiveInflation);
+    }
 
     // FHSA disposition handling
     let ydWithFHSA = { ...rawYd };

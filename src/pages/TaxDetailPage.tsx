@@ -154,6 +154,9 @@ function SingleYearView({ yr, rawYd }: { yr: ComputedYear; rawYd: import('../typ
           {tax.ontarioSurtax > 0 && (
             <Row label="Ontario Surtax" value={formatCAD(tax.ontarioSurtax)} cls="text-red-600" />
           )}
+          {tax.ontarioHealthPremium > 0 && (
+            <Row label="ON Health Premium" value={formatCAD(tax.ontarioHealthPremium)} cls="text-red-600" />
+          )}
           <TotalRow label="Provincial Tax Payable" value={formatCAD(tax.provincialTaxPayable)} cls="text-red-600" />
         </div>
         {tax.oasClawback > 0 && (
@@ -235,6 +238,7 @@ function AllYearsView({ years, rawYears }: { years: ComputedYear[]; rawYears: im
     { group: 'Tax', label: 'Prov Credits', fn: yr => formatShort(yr.tax.provincialCredits), cls: 'text-emerald-600' },
     { group: 'Tax', label: 'Prov Tax Payable', fn: yr => formatShort(yr.tax.provincialTaxPayable), cls: 'text-red-600 font-semibold' },
     { group: 'Tax', label: 'Ontario Surtax', fn: yr => formatShort(yr.tax.ontarioSurtax), cls: 'text-red-600' },
+    { group: 'Tax', label: 'ON Health Premium', fn: yr => formatShort(yr.tax.ontarioHealthPremium), cls: 'text-red-600' },
     { group: 'Tax', label: 'OAS Clawback', fn: yr => formatShort(yr.tax.oasClawback), cls: 'text-red-600' },
     { group: 'Tax', label: 'Foreign Tax Credit', fn: yr => formatShort(yr.tax.foreignTaxCredit), cls: 'text-emerald-600' },
     { group: 'Tax', label: 'CWB Credit', fn: yr => formatShort(yr.tax.cwbCredit), cls: 'text-emerald-600' },

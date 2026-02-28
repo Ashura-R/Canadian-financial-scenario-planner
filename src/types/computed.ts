@@ -71,6 +71,7 @@ export interface ComputedTax {
   provincialCredits: number;
   provincialTaxPayable: number;
   ontarioSurtax: number;
+  ontarioHealthPremium: number;
   oasClawback: number;
   foreignTaxCredit: number;          // total FTC claimed (federal + provincial)
   cwbCredit: number;                 // Canada Workers Benefit (refundable)

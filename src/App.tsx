@@ -26,6 +26,24 @@ function loadPage(): Page {
   } catch { return 'overview'; }
 }
 
+function DisclaimerBanner() {
+  const [dismissed, setDismissed] = useState(() => {
+    try { return localStorage.getItem('cdn-tax-disclaimer-dismissed') === '1'; } catch { return false; }
+  });
+  if (dismissed) return null;
+  return (
+    <div className="bg-amber-50 dark:bg-amber-900/30 border-b border-amber-200 dark:border-amber-800 px-4 py-1.5 flex items-center justify-between gap-3">
+      <p className="text-[11px] text-amber-800 dark:text-amber-300">
+        <span className="font-semibold">Disclaimer:</span> This tool provides estimates for educational/planning purposes only. Results may not be completely accurate. Always verify with CRA resources, a certified accountant, or official tax software before filing.
+      </p>
+      <button
+        onClick={() => { setDismissed(true); try { localStorage.setItem('cdn-tax-disclaimer-dismissed', '1'); } catch {} }}
+        className="text-amber-600 dark:text-amber-400 hover:text-amber-800 dark:hover:text-amber-200 text-xs font-medium shrink-0"
+      >Dismiss</button>
+    </div>
+  );
+}
+
 export default function App() {
   const [compareOpen, setCompareOpen] = useState(false);
   const [page, setPageRaw] = useState<Page>(loadPage);
@@ -47,6 +65,7 @@ export default function App() {
           whatIfOpen={whatIfOpen}
           onWhatIfToggle={() => setWhatIfOpen(!whatIfOpen)}
         />
+        <DisclaimerBanner />
         <ScenarioBar onCompare={() => setCompareOpen(true)} />
         <div className="flex flex-1 min-h-0 overflow-hidden">
           <div className={`flex-1 min-h-0 min-w-0 overflow-hidden ${isSettings ? '' : 'page-scale'}`}>

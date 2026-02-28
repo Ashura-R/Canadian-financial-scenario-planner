@@ -329,6 +329,37 @@ export function computeTax(
     provincialTaxPayable += ontarioSurtax;
   }
 
+  // Ontario Health Premium (introduced 2004, thresholds NOT indexed)
+  let ontarioHealthPremium = 0;
+  if (prov === 'ON') {
+    const ti = netTaxableIncome;
+    if (ti <= 20000) {
+      ontarioHealthPremium = 0;
+    } else if (ti <= 25000) {
+      ontarioHealthPremium = 0.06 * (ti - 20000);
+    } else if (ti <= 36000) {
+      ontarioHealthPremium = 300;
+    } else if (ti <= 38500) {
+      ontarioHealthPremium = 300 + 0.06 * (ti - 36000);
+    } else if (ti <= 48000) {
+      ontarioHealthPremium = 450;
+    } else if (ti <= 48600) {
+      ontarioHealthPremium = 450 + 0.25 * (ti - 48000);
+    } else if (ti <= 72000) {
+      ontarioHealthPremium = 600;
+    } else if (ti <= 72600) {
+      ontarioHealthPremium = 600 + 0.25 * (ti - 72000);
+    } else if (ti <= 200000) {
+      ontarioHealthPremium = 750;
+    } else if (ti <= 200600) {
+      ontarioHealthPremium = 750 + 0.25 * (ti - 200000);
+    } else {
+      ontarioHealthPremium = 900;
+    }
+    ontarioHealthPremium = Math.round(ontarioHealthPremium);
+    provincialTaxPayable += ontarioHealthPremium;
+  }
+
   // OAS clawback (15% recovery tax on net income above threshold)
   const oasClawbackThreshold = ass.oasClawbackThreshold ?? 86912;
   let oasClawback = 0;
@@ -452,6 +483,7 @@ export function computeTax(
     provincialCredits,
     provincialTaxPayable,
     ontarioSurtax,
+    ontarioHealthPremium,
     oasClawback,
     foreignTaxCredit,
     cwbCredit,

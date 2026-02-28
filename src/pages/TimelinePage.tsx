@@ -1265,6 +1265,7 @@ export function TimelinePage() {
           { rowId: '_computed_fedTax', label: 'Federal Tax', fn: (i: number) => computed[i]?.tax.federalTaxPayable ?? 0, cls: 'text-red-600' },
           { rowId: '_computed_provTax', label: 'Provincial Tax', fn: (i: number) => computed[i]?.tax.provincialTaxPayable ?? 0, cls: 'text-red-600' },
           ...(isON ? [{ rowId: '_computed_onSurtax', label: 'ON Surtax (incl.)', fn: (i: number) => computed[i]?.tax.ontarioSurtax ?? 0, cls: 'text-red-400' }] : []),
+          ...(isON ? [{ rowId: '_computed_onHealthPrem', label: 'ON Health Premium (incl.)', fn: (i: number) => computed[i]?.tax.ontarioHealthPremium ?? 0, cls: 'text-red-400' }] : []),
           { rowId: '_computed_totalTax', label: 'Total Income Tax', fn: (i: number) => (computed[i]?.tax.federalTaxPayable ?? 0) + (computed[i]?.tax.provincialTaxPayable ?? 0), cls: 'text-red-700 font-semibold' },
           { rowId: '_computed_cppPaid', label: 'CPP Paid', fn: (i: number) => computed[i]?.cpp.totalCPPPaid ?? 0, cls: 'text-amber-600' },
           { rowId: '_computed_eiPaid', label: 'EI Paid', fn: (i: number) => computed[i]?.ei.totalEI ?? 0, cls: 'text-amber-600' },
