@@ -309,6 +309,7 @@ function getYoYCols(mode: ViewMode): { label: string; fn: (y: ComputedYear) => s
     },
     { label: 'Marg Rate', fn: y => formatPct(y.tax.marginalCombinedRate) },
     { label: real ? 'Real NW' : 'Net Worth', fn: y => formatShort(real ? y.realNetWorth : y.accounts.netWorth), cls: 'font-medium' },
+    ...(real ? [{ label: 'Inflate x', fn: (y: ComputedYear) => y.inflationFactor.toFixed(3), cls: 'text-app-text4' }] : []),
   ];
 }
 
@@ -481,6 +482,13 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => vo
                 What-If Active
               </span>
             )}
+            {realMode && (
+              <span className="text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 px-2 py-0.5 rounded-full font-medium tabular-nums">
+                {yr.inflationFactor > 1.001
+                  ? `Deflated ${yr.inflationFactor.toFixed(2)}x (${yr.year})`
+                  : `${yr.year} = base year (no deflation)`}
+              </span>
+            )}
           </div>
           <PillToggle options={RANGE_OPTIONS} value={chartRange} onChange={setChartRange} />
           <select
@@ -520,12 +528,15 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => vo
 
         {/* ── Hero KPIs ──────────────────────────────────────────────── */}
         <div className="grid grid-cols-4 gap-3">
-          {[
-            { label: 'Gross Income', value: grossIncome, change: grossChange, spark: sparkGross, color: PALETTE.positive, sub: realMode ? `Nominal: ${formatShort(waterfall.grossIncome)}` : grossSub, delta: isWhatIfMode ? grossIncome - baseGross : 0 },
-            { label: 'Total Tax', value: totalTax, change: taxChange, spark: sparkTax, color: PALETTE.negative, invert: true, sub: realMode ? `Nominal: ${formatShort(totalTaxNom)}` : `${formatPct(effRate)} eff. rate`, delta: isWhatIfMode ? totalTax - baseTotalTax : 0 },
-            { label: 'Net Cash Flow', value: netCashFlow, change: cfChange, spark: sparkCF, color: netCashFlow >= 0 ? PALETTE.positive : PALETTE.negative, sub: expensesSub, delta: isWhatIfMode ? netCashFlow - baseCF : 0 },
-            { label: 'Net Worth', value: netWorth, change: nwChange, spark: sparkNW, color: PALETTE.accounts.rrsp, sub: realMode ? `Nominal: ${formatShort(accounts.netWorth)}` : nwSub, subCls: realMode ? undefined : nwSubCls, delta: isWhatIfMode ? netWorth - baseNW : 0 },
-          ].map(kpi => (
+          {(() => {
+            const hasInflation = yr.inflationFactor > 1.001;
+            return [
+            { label: realMode ? 'Real Gross Income' : 'Gross Income', value: grossIncome, change: grossChange, spark: sparkGross, color: PALETTE.positive, sub: realMode && hasInflation ? `Nominal: ${formatShort(waterfall.grossIncome)}` : realMode ? `Base year — no deflation` : grossSub, delta: isWhatIfMode ? grossIncome - baseGross : 0 },
+            { label: realMode ? 'Real Total Tax' : 'Total Tax', value: totalTax, change: taxChange, spark: sparkTax, color: PALETTE.negative, invert: true, sub: realMode && hasInflation ? `Nominal: ${formatShort(totalTaxNom)}` : realMode ? `Base year — no deflation` : `${formatPct(effRate)} eff. rate`, delta: isWhatIfMode ? totalTax - baseTotalTax : 0 },
+            { label: realMode ? 'Real Net CF' : 'Net Cash Flow', value: netCashFlow, change: cfChange, spark: sparkCF, color: netCashFlow >= 0 ? PALETTE.positive : PALETTE.negative, sub: expensesSub, delta: isWhatIfMode ? netCashFlow - baseCF : 0 },
+            { label: realMode ? 'Real Net Worth' : 'Net Worth', value: netWorth, change: nwChange, spark: sparkNW, color: PALETTE.accounts.rrsp, sub: realMode && hasInflation ? `Nominal: ${formatShort(accounts.netWorth)}` : realMode ? `Base year — no deflation` : nwSub, subCls: realMode ? undefined : nwSubCls, delta: isWhatIfMode ? netWorth - baseNW : 0 },
+          ];
+          })().map(kpi => (
             <div
               key={kpi.label}
               className="bg-app-surface rounded-lg border border-app-border px-4 py-3"
@@ -602,16 +613,16 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => vo
           {/* Accounts EOY */}
           <div className="bg-app-surface rounded-lg border border-app-border overflow-hidden">
             <div className="px-4 pt-3 pb-1.5 flex items-center justify-between">
-              <div className="text-[10px] font-semibold uppercase tracking-widest text-app-text4">Account Balances</div>
-              <span className="text-[10px] font-medium text-app-text3">{formatShort(accounts.netWorth)} NW</span>
+              <div className="text-[10px] font-semibold uppercase tracking-widest text-app-text4">{realMode ? 'Real Account Balances' : 'Account Balances'}</div>
+              <span className="text-[10px] font-medium text-app-text3">{formatShort(netWorth)} NW</span>
             </div>
             <div className="px-4 pb-3 space-y-0.5">
-              <DKPI label="RRSP" value={formatShort(accounts.rrspEOY)} />
-              <DKPI label="TFSA" value={formatShort(accounts.tfsaEOY)} />
-              <DKPI label="FHSA" value={formatShort(accounts.fhsaEOY)} />
-              <DKPI label="Non-Registered" value={formatShort(accounts.nonRegEOY)} />
-              <DKPI label="Savings" value={formatShort(accounts.savingsEOY)} />
-              <DKPI label="Life Ins." value={formatShort(accounts.liCashValueEOY)} />
+              <DKPI label="RRSP" value={formatShort(realMode ? accounts.rrspEOY / yr.inflationFactor : accounts.rrspEOY)} />
+              <DKPI label="TFSA" value={formatShort(realMode ? accounts.tfsaEOY / yr.inflationFactor : accounts.tfsaEOY)} />
+              <DKPI label="FHSA" value={formatShort(realMode ? accounts.fhsaEOY / yr.inflationFactor : accounts.fhsaEOY)} />
+              <DKPI label="Non-Registered" value={formatShort(realMode ? accounts.nonRegEOY / yr.inflationFactor : accounts.nonRegEOY)} />
+              <DKPI label="Savings" value={formatShort(realMode ? accounts.savingsEOY / yr.inflationFactor : accounts.savingsEOY)} />
+              <DKPI label="Life Ins." value={formatShort(realMode ? accounts.liCashValueEOY / yr.inflationFactor : accounts.liCashValueEOY)} />
               <div className="border-t border-app-border my-1" />
               <DKPI label={realMode ? 'Real Net Worth' : 'Net Worth'} value={formatShort(netWorth)} cls="font-bold" />
             </div>
@@ -636,8 +647,8 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => vo
               <DKPI label="Capital Loss C/F" value={formatShort(yr.capitalLossCF)} />
               <div className="border-t border-app-border my-1" />
               <div className="text-[10px] text-app-text4 uppercase tracking-wider font-semibold mb-0.5">Lifetime</div>
-              <DKPI label="Lifetime Tax" value={formatShort(analytics.lifetimeTotalTax)} cls="text-red-600" />
-              <DKPI label="Lifetime After-Tax" value={formatShort(analytics.lifetimeAfterTaxIncome)} cls="text-emerald-600" />
+              <DKPI label={realMode ? 'Real Lifetime Tax' : 'Lifetime Tax'} value={formatShort(realMode ? analytics.lifetimeTotalTax / yr.inflationFactor : analytics.lifetimeTotalTax)} cls="text-red-600" />
+              <DKPI label={realMode ? 'Real Lifetime AT' : 'Lifetime After-Tax'} value={formatShort(realMode ? analytics.lifetimeAfterTaxIncome / yr.inflationFactor : analytics.lifetimeAfterTaxIncome)} cls="text-emerald-600" />
               <DKPI label="Avg Tax Rate" value={formatPct(analytics.lifetimeAvgTaxRate)} />
             </div>
           </div>
