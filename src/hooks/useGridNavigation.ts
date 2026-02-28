@@ -202,19 +202,10 @@ export function useGridNavigation(
       setEditing(false);
       setInitialKey(null);
     } else {
-      const rows = activeRowsRef.current;
-      const row = rows.find(r => r.rowId === rowId);
       setFocusedCell(cell);
       setAnchor(null);
-      // Single-click on editable cell → enter edit mode immediately
-      if (row?.editable) {
-        selectionAtEditStartRef.current = null;
-        setEditing(true);
-        setInitialKey(null);
-      } else {
-        setEditing(false);
-        setInitialKey(null);
-      }
+      setEditing(false);
+      setInitialKey(null);
     }
   }, []);
 
