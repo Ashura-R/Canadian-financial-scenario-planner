@@ -1173,7 +1173,7 @@ export function AssumptionsPage() {
                     checked={!!activeScenario.acbConfig}
                     onChange={e => {
                       if (e.target.checked) {
-                        update(s => ({ ...s, acbConfig: { openingACB: s.openingBalances.nonReg, autoComputeGains: false } }));
+                        update(s => ({ ...s, acbConfig: { openingACB: s.openingBalances.nonReg } }));
                       } else {
                         update(s => {
                           const { acbConfig: _, ...rest } = s;
@@ -1196,18 +1196,14 @@ export function AssumptionsPage() {
                       }))}
                     />
                   </FormRow>
-                  <FormRow label="Auto-Compute Gains" hint="Replace manual CG/CL with ACB-derived values">
-                    <div className="flex justify-end items-center h-full">
-                      <input
-                        type="checkbox"
-                        checked={activeScenario.acbConfig.autoComputeGains ?? false}
-                        onChange={e => update(s => ({
-                          ...s,
-                          acbConfig: { ...(s.acbConfig ?? { openingACB: s.openingBalances.nonReg }), autoComputeGains: e.target.checked },
-                        }))}
-                        className="accent-[var(--app-accent)] w-4 h-4"
-                      />
-                    </div>
+                  <FormRow label="LI Opening ACB" hint="Opening cost basis for life insurance account">
+                    <NumInput
+                      value={activeScenario.acbConfig.liOpeningACB ?? ob.li}
+                      onChange={v => update(s => ({
+                        ...s,
+                        acbConfig: { ...(s.acbConfig ?? { openingACB: s.openingBalances.nonReg }), liOpeningACB: v },
+                      }))}
+                    />
                   </FormRow>
                 </>
               )}

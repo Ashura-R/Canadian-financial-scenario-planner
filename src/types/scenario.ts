@@ -181,6 +181,8 @@ export type ScheduledField =
   | 'interestIncome'
   | 'capitalGainsRealized'
   | 'capitalLossesRealized'
+  | 'nonRegRealizedGains'
+  | 'nonRegRealizedLosses'
   | 'otherTaxableIncome'
   | 'charitableDonations'
   | 'rrspContribution'
@@ -257,6 +259,8 @@ export interface YearData {
   interestIncome: number;
   capitalGainsRealized: number;
   capitalLossesRealized: number;
+  nonRegRealizedGains: number;    // gains from selling investments in non-reg account
+  nonRegRealizedLosses: number;   // losses from selling investments in non-reg account
   otherTaxableIncome: number;
   charitableDonations: number;
   rentalGrossIncome: number;
@@ -370,7 +374,8 @@ export interface OpeningCarryForwards {
 
 export interface ACBConfig {
   openingACB?: number;           // defaults to opening nonReg balance
-  autoComputeGains?: boolean;    // replace manual CG with ACB-computed
+  /** @deprecated No longer used — non-reg realized gains/losses are now explicit fields on YearData */
+  autoComputeGains?: boolean;
   liOpeningACB?: number;         // opening ACB for life insurance account
 }
 

@@ -163,6 +163,8 @@ const ROW_REGISTRY: RowEntry[] = [
   { rowId: 'interestIncome', editable: true, group: 'Income' },
   { rowId: 'capitalGainsRealized', editable: true, group: 'Income' },
   { rowId: 'capitalLossesRealized', editable: true, group: 'Income' },
+  { rowId: 'nonRegRealizedGains', editable: true, group: 'Income' },
+  { rowId: 'nonRegRealizedLosses', editable: true, group: 'Income' },
   { rowId: 'otherTaxableIncome', editable: true, group: 'Income' },
   { rowId: 'rentalGrossIncome', editable: true, group: 'Income' },
   { rowId: 'pensionIncome', editable: true, group: 'Income' },
@@ -872,6 +874,8 @@ export function TimelinePage() {
             {renderRow('Interest', 'interestIncome')}
             {renderRow('Capital Gains', 'capitalGainsRealized')}
             {renderRow('Capital Losses', 'capitalLossesRealized')}
+            {renderRow('Non-Reg Gains', 'nonRegRealizedGains')}
+            {renderRow('Non-Reg Losses', 'nonRegRealizedLosses')}
             {renderRow('Other Taxable', 'otherTaxableIncome')}
             {renderRow('Rental Gross', 'rentalGrossIncome')}
             {renderRow('Pension Income', 'pensionIncome')}

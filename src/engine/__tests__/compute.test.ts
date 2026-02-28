@@ -357,7 +357,7 @@ describe('compute', () => {
   it('insurance surrender gain flows into taxable income with ACB', () => {
     const scenario = makeTestScenario({
       openingBalances: { rrsp: 0, tfsa: 0, fhsa: 0, nonReg: 0, savings: 0, lira: 0, resp: 0, li: 50000 },
-      acbConfig: { autoComputeGains: true, openingACB: 0, liOpeningACB: 20000 },
+      acbConfig: { openingACB: 0, liOpeningACB: 20000 },
       scheduledItems: [
         makeTestSchedule({ field: 'employmentIncome', amount: 50000, startYear: 2026 }),
         makeTestSchedule({ field: 'liWithdrawal', amount: 10000, startYear: 2026, endYear: 2026 }),

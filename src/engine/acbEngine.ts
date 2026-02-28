@@ -5,12 +5,15 @@ import type { ComputedACB, ComputedInsuranceACB } from '../types/computed';
  *
  * ACB tracks the cost basis of investments in non-reg accounts:
  * - Contributions add to ACB at cost (1:1)
- * - Withdrawals remove proportional ACB based on withdrawal fraction
- * - Capital gain = proceeds (withdrawal amount) - proportional ACB removed
+ * - Withdrawals remove proportional ACB (taking cash out removes proportional cost basis)
+ * - Realized gains/losses are user-specified from actual investment dispositions
+ * - computedCapitalGain reflects user-specified realized gains minus losses
  */
 export function computeACB(
   nonRegContribution: number,
   nonRegWithdrawal: number,
+  realizedGains: number,
+  realizedLosses: number,
   prevACB: number,
   prevNonRegBalance: number,
   nonRegEOY: number,
@@ -29,16 +32,20 @@ export function computeACB(
   const balanceBeforeWithdrawal = prevNonRegBalance + nonRegContribution +
     (nonRegEOY - prevNonRegBalance - nonRegContribution + nonRegWithdrawal);
 
-  // Proportional ACB removed on withdrawal
+  // Proportional ACB removed on withdrawal (cash out removes proportional cost basis)
   let acbRemoved = 0;
-  let computedCapitalGain = 0;
-  const dispositionProceeds = nonRegWithdrawal;
-
   if (nonRegWithdrawal > 0 && balanceBeforeWithdrawal > 0) {
     const withdrawalFraction = Math.min(1, nonRegWithdrawal / balanceBeforeWithdrawal);
     acbRemoved = acbBeforeWithdrawal * withdrawalFraction;
-    computedCapitalGain = dispositionProceeds - acbRemoved;
   }
+
+  // Capital gain is based on user-specified realized gains/losses, not withdrawal math
+  const computedCapitalGain = realizedGains - realizedLosses;
+
+  // Disposition proceeds derived from cost basis of sold portion + realized gain
+  const dispositionProceeds = realizedGains > 0 || realizedLosses > 0
+    ? acbRemoved + computedCapitalGain
+    : nonRegWithdrawal;
 
   const closingACB = Math.max(0, acbBeforeWithdrawal - acbRemoved);
   const perUnitACB = nonRegEOY > 0 ? closingACB / nonRegEOY : 0;

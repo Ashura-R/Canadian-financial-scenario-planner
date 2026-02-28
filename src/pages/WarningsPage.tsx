@@ -50,6 +50,8 @@ const FIELD_LABELS: Record<string, string> = {
   otherDeductions: 'Other Deductions',
   foreignTaxPaid: 'Foreign Tax Paid',
   studentLoanInterest: 'Student Loan Interest',
+  nonRegRealizedGains: 'Non-Reg Realized Gains',
+  nonRegRealizedLosses: 'Non-Reg Realized Losses',
 };
 
 function fieldLabel(field: string): string {

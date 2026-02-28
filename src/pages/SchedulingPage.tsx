@@ -11,6 +11,8 @@ const SCHEDULED_FIELD_OPTIONS: { value: ScheduledField; label: string; group: st
   { value: 'interestIncome', label: 'Interest Income', group: 'Income' },
   { value: 'capitalGainsRealized', label: 'Capital Gains Realized', group: 'Income' },
   { value: 'capitalLossesRealized', label: 'Capital Losses Realized', group: 'Income' },
+  { value: 'nonRegRealizedGains', label: 'Non-Reg Realized Gains', group: 'Income' },
+  { value: 'nonRegRealizedLosses', label: 'Non-Reg Realized Losses', group: 'Income' },
   { value: 'otherTaxableIncome', label: 'Other Taxable Income', group: 'Income' },
   { value: 'rentalGrossIncome', label: 'Rental Gross Income', group: 'Income' },
   { value: 'rentalExpenses', label: 'Rental Expenses', group: 'Income' },

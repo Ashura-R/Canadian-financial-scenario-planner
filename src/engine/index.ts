@@ -238,7 +238,7 @@ function computeOneYear(
   fhsaDisposed: boolean = false,
   acbEnabled: boolean = false,
   prevACB: number = 0,
-  autoComputeGains: boolean = false,
+  _autoComputeGainsDeprecated: boolean = false,
   priorYearEarnedIncome: number = 0,
   fhsaOpeningYear: number | null = null,
   respCESG: number = 0,
@@ -340,14 +340,24 @@ function computeOneYear(
   // Compute accounts FIRST (needed for ACB)
   const accounts = computeAccounts(ydEffective, assumptions, prevBalances, returnOverrides, respCESG);
 
+  // Combine global + per-account realized gains/losses for tax purposes
+  let ydForTax = { ...ydEffective, capitalLossApplied: lossApplied };
+  ydForTax.capitalGainsRealized = ydEffective.capitalGainsRealized + ydEffective.nonRegRealizedGains;
+  ydForTax.capitalLossesRealized = ydEffective.capitalLossesRealized + ydEffective.nonRegRealizedLosses;
+  // Recompute loss tracking with combined values
+  lossCFBeforeApply = capitalLossCF + ydForTax.capitalLossesRealized;
+  lossApplied = Math.min(ydForTax.capitalLossApplied, lossCFBeforeApply);
+  ydForTax = { ...ydForTax, capitalLossApplied: lossApplied };
+
   // ACB tracking
   let nonRegACB: ComputedACB | undefined;
   let insuranceACBResult: ComputedInsuranceACB | undefined;
-  let ydForTax = { ...ydEffective, capitalLossApplied: lossApplied };
   if (acbEnabled) {
     nonRegACB = computeACB(
       ydEffective.nonRegContribution,
       ydEffective.nonRegWithdrawal,
+      ydEffective.nonRegRealizedGains,
+      ydEffective.nonRegRealizedLosses,
       prevACB,
       prevBalances.nonReg,
       accounts.nonRegEOY,
@@ -363,25 +373,10 @@ function computeOneYear(
         accounts.liCashValueEOY,
       );
     }
-    // When auto-compute gains: replace manual CG/CL with ACB-computed values
-    if (autoComputeGains) {
-      // Include insurance surrender gain in taxable income
-      const insuranceSurrenderGain = insuranceACBResult?.computedSurrenderGain ?? 0;
-      if (nonRegACB.computedCapitalGain > 0) {
-        ydForTax = { ...ydForTax, capitalGainsRealized: nonRegACB.computedCapitalGain, capitalLossesRealized: 0 };
-      } else if (nonRegACB.computedCapitalGain < 0) {
-        ydForTax = { ...ydForTax, capitalGainsRealized: 0, capitalLossesRealized: Math.abs(nonRegACB.computedCapitalGain) };
-      } else {
-        ydForTax = { ...ydForTax, capitalGainsRealized: 0, capitalLossesRealized: 0 };
-      }
-      // Insurance surrender gain is taxed as regular income (not capital gains)
-      if (insuranceSurrenderGain > 0) {
-        ydForTax = { ...ydForTax, otherTaxableIncome: (ydForTax.otherTaxableIncome || 0) + insuranceSurrenderGain };
-      }
-      // Recompute loss tracking with ACB-derived values
-      lossCFBeforeApply = capitalLossCF + ydForTax.capitalLossesRealized;
-      lossApplied = Math.min(ydForTax.capitalLossApplied, lossCFBeforeApply);
-      ydForTax = { ...ydForTax, capitalLossApplied: lossApplied };
+    // Insurance surrender gain is taxed as regular income (not capital gains)
+    const insuranceSurrenderGain = insuranceACBResult?.computedSurrenderGain ?? 0;
+    if (insuranceSurrenderGain > 0) {
+      ydForTax = { ...ydForTax, otherTaxableIncome: (ydForTax.otherTaxableIncome || 0) + insuranceSurrenderGain };
     }
   }
 
@@ -481,7 +476,6 @@ export function compute(scenario: Scenario): ComputedScenario {
   const fhsaSettings = assumptions.fhsa;
   const acbConfig = scenario.acbConfig;
   const acbEnabled = !!acbConfig;
-  const autoComputeGains = acbConfig?.autoComputeGains ?? false;
 
   const ocf = scenario.openingCarryForwards;
   let prevBalances: OpeningBalances = { ...openingBalances };
@@ -710,7 +704,7 @@ export function compute(scenario: Scenario): ComputedScenario {
       capitalLossCF, rrspUnusedRoom, fhsaContribLifetime, fhsaUnusedRoom,
       tfsaUnusedRoom, tfsaRoomGenerated,
       inflationFactor, returnOverrides, fhsaDisposed,
-      acbEnabled, prevACB, autoComputeGains,
+      acbEnabled, prevACB, false,
       priorYearEarnedIncome, fhsaOpeningYear, cESGThisYear, prevLiACB,
     );
 
@@ -738,7 +732,7 @@ export function compute(scenario: Scenario): ComputedScenario {
           capitalLossCF, rrspUnusedRoom, fhsaContribLifetime, fhsaUnusedRoom,
           tfsaUnusedRoom, tfsaRoomGenerated,
           inflationFactor, returnOverrides, fhsaDisposed,
-          acbEnabled, prevACB, autoComputeGains,
+          acbEnabled, prevACB, false,
           priorYearEarnedIncome, fhsaOpeningYear, cESGThisYear, prevLiACB,
         );
       }

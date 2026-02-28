@@ -82,6 +82,8 @@ export function makeDefaultYear(year: number): YearData {
     interestIncome: 0,
     capitalGainsRealized: 0,
     capitalLossesRealized: 0,
+    nonRegRealizedGains: 0,
+    nonRegRealizedLosses: 0,
     otherTaxableIncome: 0,
     charitableDonations: 0,
     rentalGrossIncome: 0,
