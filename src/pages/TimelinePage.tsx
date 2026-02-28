@@ -201,7 +201,6 @@ const ROW_REGISTRY: RowEntry[] = [
   { rowId: 'tfsaWithdrawal', editable: true, group: 'TFSA' },
   { rowId: '_computed_tfsaNewRoom', editable: false, group: 'TFSA' },
   { rowId: '_computed_tfsaRoom', editable: false, group: 'TFSA' },
-  { rowId: '_computed_tfsaTotalRoom', editable: false, group: 'TFSA' },
   // FHSA
   { rowId: 'fhsaContribution', editable: true, group: 'FHSA' },
   { rowId: 'fhsaDeductionClaimed', editable: true, group: 'FHSA' },
@@ -496,10 +495,14 @@ export function TimelinePage() {
   const updateCellsRef = useRef(updateCells);
   updateCellsRef.current = updateCells;
 
-  function warningFields(yearIdx: number): Set<string> {
-    const s = new Set<string>();
-    computed[yearIdx]?.warnings.forEach(w => s.add(w.field));
-    return s;
+  function warningFields(yearIdx: number): Map<string, string[]> {
+    const m = new Map<string, string[]>();
+    computed[yearIdx]?.warnings.forEach(w => {
+      const arr = m.get(w.field);
+      if (arr) arr.push(w.message);
+      else m.set(w.field, [w.message]);
+    });
+    return m;
   }
 
   function openFill(key: YDKey, pct: boolean) {
@@ -747,6 +750,7 @@ export function TimelinePage() {
                   onChange={v => updateYear(i, key, v)}
                   pct={opts.pct}
                   hasWarning={warns.has(key as string)}
+                  warningMessages={warns.get(key as string)}
                   hasOverride={key.endsWith('Override') && displayVal !== 0}
                   readOnly={opts.readOnly}
                   scheduledValue={schedVal}
@@ -934,7 +938,7 @@ export function TimelinePage() {
             {renderRow('Deduction Claimed', 'rrspDeductionClaimed')}
             {renderRow('Withdrawal', 'rrspWithdrawal')}
             {renderComputedRow('_computed_rrspNewRoom', 'Annual Limit', i => { const v = computed[i]?.resolvedAssumptions?.rrspLimit ?? 0; return fmtVal(v); })}
-            {renderComputedRow('_computed_rrspRoom', 'Total Room', i => { const v = computed[i]?.rrspUnusedRoom ?? 0; return fmtVal(v); })}
+            {renderComputedRow('_computed_rrspRoom', 'Remaining Room', i => { const v = computed[i]?.rrspUnusedRoom ?? 0; return fmtVal(v); })}
           </>
         );
 
@@ -944,8 +948,7 @@ export function TimelinePage() {
             {renderRow('Contribution', 'tfsaContribution')}
             {renderRow('Withdrawal', 'tfsaWithdrawal')}
             {renderComputedRow('_computed_tfsaNewRoom', 'New Room', i => { const v = computed[i]?.tfsaRoomGenerated ?? 0; return fmtVal(v); })}
-            {renderComputedRow('_computed_tfsaRoom', 'Carry-Forward', i => { const v = computed[i]?.tfsaUnusedRoom ?? 0; return fmtVal(v); })}
-            {renderComputedRow('_computed_tfsaTotalRoom', 'Total Room', i => { const c = computed[i]; return fmtVal((c?.tfsaUnusedRoom ?? 0) + (c?.tfsaRoomGenerated ?? 0)); })}
+            {renderComputedRow('_computed_tfsaRoom', 'Remaining Room', i => { const v = computed[i]?.tfsaUnusedRoom ?? 0; return fmtVal(v); })}
           </>
         );
 
@@ -978,8 +981,8 @@ export function TimelinePage() {
                 );
               })}
             </tr>
-            {renderComputedRow('_computed_fhsaRoom', 'Carry-Forward', i => { const v = computed[i]?.fhsaUnusedRoom ?? 0; return fmtVal(v); })}
-            {renderComputedRow('_computed_fhsaTotalRoom', 'Total Room', i => { const c = computed[i]; const annual = c?.resolvedAssumptions?.fhsaAnnualLimit ?? 8000; const cf = c?.fhsaUnusedRoom ?? 0; return fmtVal(annual + Math.min(cf, annual)); })}
+            {renderComputedRow('_computed_fhsaRoom', 'Remaining Room', i => { const v = computed[i]?.fhsaUnusedRoom ?? 0; return fmtVal(v); })}
+            {renderComputedRow('_computed_fhsaTotalRoom', 'Total Room', i => { const c = computed[i]; const annual = c?.resolvedAssumptions?.fhsaAnnualLimit ?? 8000; const cf = c?.fhsaOpeningRoom ?? 0; return fmtVal(annual + Math.min(cf, annual)); })}
           </>
         );
 

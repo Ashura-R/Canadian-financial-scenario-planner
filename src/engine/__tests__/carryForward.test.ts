@@ -118,11 +118,11 @@ describe('FHSA carry-forward', () => {
     }
 
     const result = compute(scenario);
-    // After 3 years of no contributions:
+    // Values are end-of-year (after contributions applied):
     // Year 0: unused = min(0 + 8000 - 0, 8000) = 8000
     // Year 1: unused = min(8000 + 8000 - 0, 8000) = 8000 (capped!)
     // Year 2: unused = min(8000 + 8000 - 0, 8000) = 8000 (capped!)
-    expect(result.years[0].fhsaUnusedRoom).toBe(0); // opening unused room = 0
+    expect(result.years[0].fhsaUnusedRoom).toBe(8000); // end-of-year unused room
     expect(result.years[1].fhsaUnusedRoom).toBe(8000);
     expect(result.years[2].fhsaUnusedRoom).toBe(8000); // capped at $8k
   });
@@ -150,13 +150,14 @@ describe('FHSA carry-forward', () => {
     }
 
     const result = compute(scenario);
-    // Year 0: fhsaUnusedRoom = 0, after year 0: unused = min(0+8000-0, 8000) = 8000
-    // Year 1: fhsaUnusedRoom = 8000, contribution allowed = 8000 + 8000 = $16k
-    // After year 1: unused = min(8000+8000-16000, 8000) = 0
-    expect(result.years[1].fhsaUnusedRoom).toBe(8000);
-    // Lifetime contribs after year 1: 100 + 0 + 16000 = 16100
-    expect(result.years[1].fhsaContribLifetime).toBe(100);
-    // Year 2 lifetime should be 100 + 16000 = 16100
+    // Values are end-of-year:
+    // Year 0: unused = min(0+8000-0, 8000) = 8000, lifetime = 100+0 = 100
+    // Year 1: unused = min(8000+8000-16000, 8000) = 0, lifetime = 100+16000 = 16100
+    expect(result.years[0].fhsaUnusedRoom).toBe(8000);
+    expect(result.years[1].fhsaUnusedRoom).toBe(0);
+    // Lifetime contribs end-of-year 1: 100 + 16000 = 16100
+    expect(result.years[1].fhsaContribLifetime).toBe(16100);
+    // Year 2 end-of-year lifetime: 16100 + 0 = 16100
     expect(result.years[2].fhsaContribLifetime).toBe(16100);
   });
 
@@ -181,12 +182,11 @@ describe('FHSA carry-forward', () => {
     }
 
     const result = compute(scenario);
-    // Lifetime starts at 32000. Max is 40000. Only $8000 more allowed.
-    // Year 0 contributes $8000 → lifetime = 40000.
-    // Year 1 should trigger a warning (over lifetime limit)
-    expect(result.years[0].fhsaContribLifetime).toBe(32000);
-    // After year 0: 32000 + 8000 = 40000
-    expect(result.years[1].fhsaContribLifetime).toBe(40000);
+    // End-of-year values: lifetime starts at 32000, each year contributes 8000
+    // Year 0 end-of-year: 32000 + 8000 = 40000
+    // Year 1 end-of-year: 40000 + 8000 = 48000 (over limit → warning)
+    expect(result.years[0].fhsaContribLifetime).toBe(40000);
+    expect(result.years[1].fhsaContribLifetime).toBe(48000);
   });
 });
 

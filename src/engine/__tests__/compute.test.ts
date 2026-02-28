@@ -53,13 +53,13 @@ describe('compute', () => {
     });
 
     const result = compute(scenario);
-    // rrspUnusedRoom in ComputedYear = room available AT START of that year
-    // Year 0: opening room = 20000 (before new room generation)
-    expect(result.years[0].rrspUnusedRoom).toBe(20000);
-    // Year 1: 20000 + min(60000*0.18, 31560) = 20000 + 10800 = 30800
-    expect(result.years[1].rrspUnusedRoom).toBeCloseTo(30800, 0);
-    // Year 2: 30800 + 10800 = 41600
-    expect(result.years[2].rrspUnusedRoom).toBeCloseTo(41600, 0);
+    // rrspUnusedRoom in ComputedYear = room at END of year (after new room + deductions)
+    // Year 0: 20000 + min(60000*0.18, rrspLimit) - 0 deductions = 20000 + 10800 = 30800
+    expect(result.years[0].rrspUnusedRoom).toBeCloseTo(30800, 0);
+    // Year 1: 30800 + 10800 = 41600
+    expect(result.years[1].rrspUnusedRoom).toBeCloseTo(41600, 0);
+    // Year 2: 41600 + 10800 = 52400
+    expect(result.years[2].rrspUnusedRoom).toBeCloseTo(52400, 0);
   });
 
   it('TFSA room carries forward correctly', () => {
@@ -317,15 +317,18 @@ describe('compute', () => {
     scenario.years = scenario.years.slice(0, 10);
 
     const result = compute(scenario);
-    // With auto-index off and same income, RRSP room generated each year should be the same (base limit)
-    // Room accumulates linearly since limit doesn't change
+    // End-of-year values: room generated each year = baseLimit (200K*18%=36K capped)
+    // Room accumulates linearly since limit doesn't change and no deductions
     const baseLimit = scenario.assumptions.rrspLimit;
-    // Year 1 room = baseLimit (from priorYearEarnedIncome 200K * 18% = 36K capped at baseLimit)
+    // Year 0 end-of-year: 0 + baseLimit = baseLimit (from priorYearEarnedIncome 200K)
+    const yr0Room = result.years[0].rrspUnusedRoom;
+    expect(yr0Room).toBeCloseTo(baseLimit, 0);
+    // Year 1 end-of-year: baseLimit + baseLimit = 2 * baseLimit
     const yr1Room = result.years[1].rrspUnusedRoom;
-    expect(yr1Room).toBeCloseTo(baseLimit, 0);
-    // Year 2 should be 2 * baseLimit
+    expect(yr1Room).toBeCloseTo(2 * baseLimit, 0);
+    // Year 2 end-of-year: 2*baseLimit + baseLimit = 3 * baseLimit
     const yr2Room = result.years[2].rrspUnusedRoom;
-    expect(yr2Room).toBeCloseTo(2 * baseLimit, 0);
+    expect(yr2Room).toBeCloseTo(3 * baseLimit, 0);
   });
 
   it('life insurance cash value tracks across years', () => {

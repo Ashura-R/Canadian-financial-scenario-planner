@@ -19,6 +19,7 @@ interface Props {
   onEditCommit?: (direction: 'down' | 'right', value?: number) => void;
   onEditCancel?: () => void;
   longNumbers?: boolean;
+  warningMessages?: string[];
 }
 
 export const TimelineCell = React.memo(function TimelineCell({
@@ -26,7 +27,7 @@ export const TimelineCell = React.memo(function TimelineCell({
   onNext, scheduledValue,
   isFocused, isSelected, isEditing, initialEditKey,
   onCellClick, onCellDblClick, onEditCommit, onEditCancel,
-  longNumbers,
+  longNumbers, warningMessages,
 }: Props) {
   const [localEditing, setLocalEditing] = useState(false);
   const [raw, setRaw] = useState('');
@@ -194,7 +195,8 @@ export const TimelineCell = React.memo(function TimelineCell({
       onClick={handleClick}
       onDoubleClick={handleDblClick}
       title={
-        hasWarning ? '⚠ Validation warning'
+        hasWarning
+          ? (warningMessages?.length ? '⚠ ' + warningMessages.join('\n⚠ ') : '⚠ Validation warning')
         : isScheduleFilling ? '⚡ From schedule rule — click to override'
         : isUserOverride ? '✎ Manual override — click ✕ to revert to schedule'
         : hasOverride ? 'EOY Override active'

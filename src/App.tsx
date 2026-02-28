@@ -12,11 +12,12 @@ import { SchedulingPage } from './pages/SchedulingPage';
 import { AssumptionsPage } from './pages/AssumptionsPage';
 import { AnalysisPage } from './pages/AnalysisPage';
 import { ExpensesPage } from './pages/ExpensesPage';
+import { WarningsPage } from './pages/WarningsPage';
 import { usePersistedState } from './utils/usePersistedState';
 import type { Page } from './components/PageNav/PageNav';
 
 const PAGE_STORAGE_KEY = 'cdn-tax-active-page';
-const VALID_PAGES: Page[] = ['overview', 'timeline', 'tax-detail', 'accounts', 'expenses', 'scheduling', 'analysis', 'assumptions'];
+const VALID_PAGES: Page[] = ['overview', 'warnings', 'timeline', 'tax-detail', 'accounts', 'expenses', 'scheduling', 'analysis', 'assumptions'];
 
 function loadPage(): Page {
   try {
@@ -50,6 +51,7 @@ export default function App() {
         <div className="flex flex-1 min-h-0 overflow-hidden">
           <div className={`flex-1 min-h-0 min-w-0 overflow-hidden ${isSettings ? '' : 'page-scale'}`}>
             {page === 'overview' && <OverviewPage onNavigate={(p) => { if (VALID_PAGES.includes(p as Page)) setPage(p as Page); }} />}
+            {page === 'warnings' && <WarningsPage onNavigate={(p) => { if (VALID_PAGES.includes(p as Page)) setPage(p as Page); }} />}
             {page === 'tax-detail' && <TaxDetailPage />}
             {page === 'accounts' && <AccountsPage />}
             {page === 'expenses' && <ExpensesPage />}

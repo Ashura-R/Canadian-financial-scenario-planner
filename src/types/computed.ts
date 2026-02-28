@@ -207,6 +207,9 @@ export interface ComputedYear {
   rrspUnusedRoom: number;
   fhsaContribLifetime: number;
   fhsaUnusedRoom: number;
+  // Opening (start-of-year) values for display
+  fhsaOpeningRoom: number;
+  rrspOpeningRoom: number;
   // ACB tracking (optional)
   acb?: {
     nonReg: ComputedACB;

@@ -408,6 +408,19 @@ function computeOneYear(
 
   const newTfsaUnusedRoom = Math.max(0, tfsaUnusedRoom + tfsaRoomGenerated - ydEffective.tfsaContribution);
 
+  const newCapitalLossCF = Math.max(0, lossCFBeforeApply - lossApplied);
+
+  const newRrspRoom = isRRIF
+    ? 0
+    : Math.min(priorYearEarnedIncome * assumptions.rrspPctEarnedIncome, assumptions.rrspLimit);
+  const newRrspUnusedRoom = Math.max(0, rrspUnusedRoom + newRrspRoom - ydEffective.rrspDeductionClaimed);
+
+  const newFhsaContribLifetime = fhsaContribLifetime + ydEffective.fhsaContribution;
+  const newFhsaUnusedRoom = Math.min(
+    fhsaUnusedRoom + assumptions.fhsaAnnualLimit - ydEffective.fhsaContribution,
+    assumptions.fhsaAnnualLimit
+  );
+
   const computedYear: ComputedYear = {
     year: ydEffective.year,
     cpp,
@@ -424,10 +437,12 @@ function computeOneYear(
     realNetCashFlow,
     tfsaUnusedRoom: newTfsaUnusedRoom,
     tfsaRoomGenerated,
-    capitalLossCF: Math.max(0, lossCFBeforeApply - lossApplied),
-    rrspUnusedRoom,
-    fhsaContribLifetime,
-    fhsaUnusedRoom,
+    capitalLossCF: newCapitalLossCF,
+    rrspUnusedRoom: newRrspUnusedRoom,
+    fhsaContribLifetime: newFhsaContribLifetime,
+    fhsaUnusedRoom: newFhsaUnusedRoom,
+    fhsaOpeningRoom: fhsaUnusedRoom,
+    rrspOpeningRoom: rrspUnusedRoom,
     acb: nonRegACB ? {
       nonReg: nonRegACB,
       insurance: insuranceACBResult,
@@ -435,19 +450,6 @@ function computeOneYear(
     } : undefined,
     warnings,
   };
-
-  const newCapitalLossCF = Math.max(0, lossCFBeforeApply - lossApplied);
-
-  const newRrspRoom = isRRIF
-    ? 0
-    : Math.min(priorYearEarnedIncome * assumptions.rrspPctEarnedIncome, assumptions.rrspLimit);
-  const newRrspUnusedRoom = Math.max(0, rrspUnusedRoom + newRrspRoom - ydEffective.rrspDeductionClaimed);
-
-  const newFhsaContribLifetime = fhsaContribLifetime + ydEffective.fhsaContribution;
-  const newFhsaUnusedRoom = Math.min(
-    fhsaUnusedRoom + assumptions.fhsaAnnualLimit - ydEffective.fhsaContribution,
-    assumptions.fhsaAnnualLimit
-  );
 
   const newBalances: OpeningBalances = {
     rrsp: accounts.rrspEOY,

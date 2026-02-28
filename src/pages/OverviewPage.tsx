@@ -472,10 +472,10 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (page: string) => vo
               <div className="text-xs font-semibold text-red-700 dark:text-red-400">Validation Issues ({warnings.length})</div>
               {onNavigate && (
                 <button
-                  onClick={() => onNavigate('scheduling')}
+                  onClick={() => onNavigate('warnings')}
                   className="text-[11px] text-red-600 dark:text-red-400 hover:text-red-800 underline underline-offset-2 transition-colors"
                 >
-                  View all in Scheduling
+                  View all warnings
                 </button>
               )}
             </div>
