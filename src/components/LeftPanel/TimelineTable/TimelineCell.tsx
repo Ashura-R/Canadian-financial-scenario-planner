@@ -137,6 +137,8 @@ export const TimelineCell = React.memo(function TimelineCell({
         ref={inputRef}
         className="w-full text-right text-[10px] px-1 py-px bg-app-accent-light border border-app-accent rounded outline-none text-app-text"
         value={raw}
+        onMouseDown={e => e.stopPropagation()}
+        onClick={e => e.stopPropagation()}
         onChange={e => setRaw(e.target.value)}
         onBlur={() => {
           if (gridMode) {

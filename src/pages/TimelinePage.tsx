@@ -12,6 +12,12 @@ import { buildTimelineCSV, downloadCSV } from '../utils/exportCSV';
 
 type YDKey = keyof YearData;
 
+const PROVINCE_NAMES: Record<string, string> = {
+  AB: 'Alberta', BC: 'British Columbia', MB: 'Manitoba', NB: 'New Brunswick',
+  NL: 'Newfoundland', NS: 'Nova Scotia', NT: 'NWT', NU: 'Nunavut',
+  ON: 'Ontario', PE: 'PEI', QC: 'Quebec', SK: 'Saskatchewan', YT: 'Yukon',
+};
+
 interface CellChange {
   yearIdx: number;
   key: YDKey;
@@ -100,16 +106,17 @@ function buildScheduleOverlay(
 
 // Default group order
 const DEFAULT_GROUP_ORDER = [
-  'Income', 'Expenses & Deductions', 'RRSP', 'TFSA', 'FHSA', 'Non-Reg & Savings', 'LIRA/LIF', 'RESP',
+  'Income', 'Deductions', 'Expenses', 'RRSP', 'TFSA', 'FHSA', 'Non-Reg & Savings', 'LIRA/LIF', 'RESP',
   'Life Insurance',
-  'Asset Allocation', 'Capital Loss', 'ACB Tracking', 'P&L Tracking',
+  'Asset Allocation', 'ACB Tracking', 'P&L Tracking',
   'EOY Overrides', 'Retirement (Computed)', 'Liabilities (Computed)', 'Rate Overrides',
   'CRA Assumptions', 'Tax Results (Computed)',
 ];
 
 const GROUP_DEFAULTS: Record<string, boolean> = {
   'Income': true,
-  'Expenses & Deductions': false,
+  'Deductions': false,
+  'Expenses': false,
   'RRSP': true,
   'TFSA': true,
   'FHSA': true,
@@ -118,7 +125,6 @@ const GROUP_DEFAULTS: Record<string, boolean> = {
   'RESP': false,
   'Life Insurance': false,
   'Asset Allocation': false,
-  'Capital Loss': false,
   'ACB Tracking': false,
   'P&L Tracking': false,
   'EOY Overrides': false,
@@ -163,27 +169,27 @@ const ROW_REGISTRY: RowEntry[] = [
   { rowId: 'foreignIncome', editable: true, group: 'Income' },
   { rowId: '_summary_grossIncome', editable: false, group: 'Income' },
   // Expenses & Deductions
-  { rowId: 'rentalExpenses', editable: true, group: 'Expenses & Deductions' },
-  { rowId: 'foreignTaxPaid', editable: true, group: 'Expenses & Deductions' },
-  { rowId: 'charitableDonations', editable: true, group: 'Expenses & Deductions' },
-  { rowId: 'selfEmploymentExpenses', editable: true, group: 'Expenses & Deductions' },
-  { rowId: 'childCareExpenses', editable: true, group: 'Expenses & Deductions' },
-  { rowId: 'unionDues', editable: true, group: 'Expenses & Deductions' },
-  { rowId: 'movingExpenses', editable: true, group: 'Expenses & Deductions' },
-  { rowId: 'otherDeductions', editable: true, group: 'Expenses & Deductions' },
-  { rowId: 'medicalExpenses', editable: true, group: 'Expenses & Deductions' },
-  { rowId: 'studentLoanInterest', editable: true, group: 'Expenses & Deductions' },
-  { rowId: 'otherNonRefundableCredits', editable: true, group: 'Expenses & Deductions' },
-  { rowId: 'lcgeClaimAmount', editable: true, group: 'Expenses & Deductions' },
+  { rowId: 'rentalExpenses', editable: true, group: 'Deductions' },
+  { rowId: 'foreignTaxPaid', editable: true, group: 'Deductions' },
+  { rowId: 'charitableDonations', editable: true, group: 'Deductions' },
+  { rowId: 'selfEmploymentExpenses', editable: true, group: 'Deductions' },
+  { rowId: 'childCareExpenses', editable: true, group: 'Deductions' },
+  { rowId: 'unionDues', editable: true, group: 'Deductions' },
+  { rowId: 'movingExpenses', editable: true, group: 'Deductions' },
+  { rowId: 'otherDeductions', editable: true, group: 'Deductions' },
+  { rowId: 'medicalExpenses', editable: true, group: 'Deductions' },
+  { rowId: 'studentLoanInterest', editable: true, group: 'Deductions' },
+  { rowId: 'otherNonRefundableCredits', editable: true, group: 'Deductions' },
+  { rowId: 'lcgeClaimAmount', editable: true, group: 'Deductions' },
   // Living Expenses
-  { rowId: 'housingExpense', editable: true, group: 'Living Expenses' },
-  { rowId: 'groceriesExpense', editable: true, group: 'Living Expenses' },
-  { rowId: 'transportationExpense', editable: true, group: 'Living Expenses' },
-  { rowId: 'utilitiesExpense', editable: true, group: 'Living Expenses' },
-  { rowId: 'insuranceExpense', editable: true, group: 'Living Expenses' },
-  { rowId: 'entertainmentExpense', editable: true, group: 'Living Expenses' },
-  { rowId: 'personalExpense', editable: true, group: 'Living Expenses' },
-  { rowId: 'otherLivingExpense', editable: true, group: 'Living Expenses' },
+  { rowId: 'housingExpense', editable: true, group: 'Expenses' },
+  { rowId: 'groceriesExpense', editable: true, group: 'Expenses' },
+  { rowId: 'transportationExpense', editable: true, group: 'Expenses' },
+  { rowId: 'utilitiesExpense', editable: true, group: 'Expenses' },
+  { rowId: 'insuranceExpense', editable: true, group: 'Expenses' },
+  { rowId: 'entertainmentExpense', editable: true, group: 'Expenses' },
+  { rowId: 'personalExpense', editable: true, group: 'Expenses' },
+  { rowId: 'otherLivingExpense', editable: true, group: 'Expenses' },
   // RRSP
   { rowId: 'rrspContribution', editable: true, group: 'RRSP' },
   { rowId: 'rrspDeductionClaimed', editable: true, group: 'RRSP' },
@@ -247,15 +253,11 @@ const ROW_REGISTRY: RowEntry[] = [
   { rowId: 'liEquityPct', editable: true, group: 'Asset Allocation', pct: true },
   { rowId: 'liFixedPct', editable: true, group: 'Asset Allocation', pct: true },
   { rowId: 'liCashPct', editable: true, group: 'Asset Allocation', pct: true },
-  // Capital Loss
-  { rowId: 'capitalLossApplied', editable: true, group: 'Capital Loss' },
-  { rowId: '_computed_capitalLossCF', editable: false, group: 'Capital Loss' },
   // ACB Tracking
   { rowId: '_computed_acbOpening', editable: false, group: 'ACB Tracking' },
   { rowId: '_computed_acbAdded', editable: false, group: 'ACB Tracking' },
   { rowId: '_computed_acbRemoved', editable: false, group: 'ACB Tracking' },
   { rowId: '_computed_acbClosing', editable: false, group: 'ACB Tracking' },
-  { rowId: '_computed_acbPerUnit', editable: false, group: 'ACB Tracking' },
   { rowId: '_computed_acbCG', editable: false, group: 'ACB Tracking' },
   { rowId: '_computed_liAcbOpening', editable: false, group: 'ACB Tracking' },
   { rowId: '_computed_liAcbPremiums', editable: false, group: 'ACB Tracking' },
@@ -329,8 +331,12 @@ const ROW_REGISTRY: RowEntry[] = [
   { rowId: '_computed_netTaxable', editable: false, group: 'Tax Results (Computed)' },
   { rowId: '_computed_fedTax', editable: false, group: 'Tax Results (Computed)' },
   { rowId: '_computed_provTax', editable: false, group: 'Tax Results (Computed)' },
+  { rowId: '_computed_totalTax', editable: false, group: 'Tax Results (Computed)' },
   { rowId: '_computed_cppPaid', editable: false, group: 'Tax Results (Computed)' },
   { rowId: '_computed_eiPaid', editable: false, group: 'Tax Results (Computed)' },
+  { rowId: '_computed_totalTaxCppEi', editable: false, group: 'Tax Results (Computed)' },
+  { rowId: 'capitalLossApplied', editable: true, group: 'Tax Results (Computed)' },
+  { rowId: '_computed_capitalLossCF', editable: false, group: 'Tax Results (Computed)' },
   { rowId: '_computed_afterTax', editable: false, group: 'Tax Results (Computed)' },
   { rowId: '_computed_netCash', editable: false, group: 'Tax Results (Computed)' },
   { rowId: '_computed_netWorth', editable: false, group: 'Tax Results (Computed)' },
@@ -889,7 +895,7 @@ export function TimelinePage() {
           </>
         );
 
-      case 'Expenses & Deductions':
+      case 'Deductions':
         return (
           <>
             {renderRow('Rental Expenses', 'rentalExpenses')}
@@ -907,7 +913,7 @@ export function TimelinePage() {
           </>
         );
 
-      case 'Living Expenses':
+      case 'Expenses':
         return (
           <>
             {renderRow('Housing', 'housingExpense' as YDKey)}
@@ -1076,16 +1082,6 @@ export function TimelinePage() {
           </>
         );
 
-      case 'Capital Loss':
-        return (
-          <>
-            {renderRow('Loss Applied', 'capitalLossApplied')}
-            {renderComputedRow('_computed_capitalLossCF', 'Loss C/F Balance',
-              i => computed[i] ? '$' + Math.round(computed[i].capitalLossCF).toLocaleString() : '—'
-            )}
-          </>
-        );
-
       case 'ACB Tracking': {
         const acbOn = !!activeScenario?.acbConfig;
         const fmtACB = (v: number) => fmtVal(v);
@@ -1109,7 +1105,6 @@ export function TimelinePage() {
             {renderComputedRow('_computed_acbAdded', '  ACB Added', i => fmtACB(computed[i]?.acb?.nonReg?.acbAdded ?? 0))}
             {renderComputedRow('_computed_acbRemoved', '  ACB Removed', i => fmtACB(computed[i]?.acb?.nonReg?.acbRemoved ?? 0))}
             {renderComputedRow('_computed_acbClosing', '  Closing ACB', i => fmtACB(computed[i]?.acb?.nonReg?.closingACB ?? 0))}
-            {renderComputedRow('_computed_acbPerUnit', '  Per-Unit ACB', i => { const v = computed[i]?.acb?.nonReg?.perUnitACB ?? 0; return v > 0 ? '$' + v.toFixed(4) : '—'; })}
             {renderComputedRow('_computed_acbCG', '  Computed CG', i => fmtVal(computed[i]?.acb?.nonReg?.computedCapitalGain ?? 0))}
             {hasInsurance && (
               <>
@@ -1196,6 +1191,7 @@ export function TimelinePage() {
         );
 
       case 'CRA Assumptions': {
+        const provName = PROVINCE_NAMES[activeScenario?.assumptions.province ?? ''] ?? 'Provincial';
         const fmtShort = (v: number): string => {
           if (v >= 1000000) return '$' + (v / 1000000).toFixed(1) + 'M';
           if (v >= 1000) return '$' + Math.round(v / 1000) + 'k';
@@ -1224,11 +1220,11 @@ export function TimelinePage() {
             {renderComputedRow('_cra_fedBPA', 'Federal BPA', i => fmtVal(computed[i]?.resolvedAssumptions?.federalBPA ?? 0))}
             {renderComputedRow('_cra_fedEmpl', 'Employment Amount', i => fmtVal(computed[i]?.resolvedAssumptions?.federalEmploymentAmount ?? 0))}
             {/* Sub-header: Provincial Tax Brackets */}
-            <tr><td colSpan={years.length + 1} className="sticky left-0 bg-app-accent-light/30 py-0.5 pl-2 text-[9px] font-semibold text-app-accent border-b border-app-border">Provincial Tax Brackets</td></tr>
+            <tr><td colSpan={years.length + 1} className="sticky left-0 bg-app-accent-light/30 py-0.5 pl-2 text-[9px] font-semibold text-app-accent border-b border-app-border">{provName} Tax Brackets</td></tr>
             {Array.from({ length: maxProvBrackets }, (_, idx) =>
               renderComputedRow(`_cra_provBracket${idx}`, `  Bracket ${idx + 1}`, i => fmtBracket(i, idx, 'provincial'))
             )}
-            {renderComputedRow('_cra_provBPA', 'Provincial BPA', i => fmtVal(computed[i]?.resolvedAssumptions?.provincialBPA ?? 0))}
+            {renderComputedRow('_cra_provBPA', `${provName} BPA`, i => fmtVal(computed[i]?.resolvedAssumptions?.provincialBPA ?? 0))}
             {/* Sub-header: CPP & EI */}
             <tr><td colSpan={years.length + 1} className="sticky left-0 bg-app-accent-light/30 py-0.5 pl-2 text-[9px] font-semibold text-app-accent border-b border-app-border">CPP &amp; EI</td></tr>
             {renderComputedRow('_cra_cppYmpe', 'CPP YMPE', i => fmtVal(computed[i]?.resolvedAssumptions?.cppYmpe ?? 0))}
@@ -1257,11 +1253,10 @@ export function TimelinePage() {
           { rowId: '_computed_netTaxable', label: 'Net Taxable Income', fn: (i: number) => computed[i]?.tax.netTaxableIncome ?? 0, cls: 'text-app-text2' },
           { rowId: '_computed_fedTax', label: 'Federal Tax', fn: (i: number) => computed[i]?.tax.federalTaxPayable ?? 0, cls: 'text-red-600' },
           { rowId: '_computed_provTax', label: 'Provincial Tax', fn: (i: number) => computed[i]?.tax.provincialTaxPayable ?? 0, cls: 'text-red-600' },
+          { rowId: '_computed_totalTax', label: 'Total Income Tax', fn: (i: number) => (computed[i]?.tax.federalTaxPayable ?? 0) + (computed[i]?.tax.provincialTaxPayable ?? 0), cls: 'text-red-700 font-semibold' },
           { rowId: '_computed_cppPaid', label: 'CPP Paid', fn: (i: number) => computed[i]?.cpp.totalCPPPaid ?? 0, cls: 'text-amber-600' },
           { rowId: '_computed_eiPaid', label: 'EI Paid', fn: (i: number) => computed[i]?.ei.totalEI ?? 0, cls: 'text-amber-600' },
-          { rowId: '_computed_afterTax', label: 'After-Tax Income', fn: (i: number) => computed[i]?.waterfall.afterTaxIncome ?? 0, cls: 'text-emerald-600' },
-          { rowId: '_computed_netCash', label: 'Net Cash Flow', fn: (i: number) => computed[i]?.waterfall.netCashFlow ?? 0 },
-          { rowId: '_computed_netWorth', label: 'Net Worth (EOY)', fn: (i: number) => computed[i]?.accounts.netWorth ?? 0, cls: 'text-app-accent' },
+          { rowId: '_computed_totalTaxCppEi', label: 'Total Tax + CPP/EI', fn: (i: number) => (computed[i]?.tax.federalTaxPayable ?? 0) + (computed[i]?.tax.provincialTaxPayable ?? 0) + (computed[i]?.cpp.totalCPPPaid ?? 0) + (computed[i]?.ei.totalEI ?? 0), cls: 'text-red-700 font-semibold' },
         ];
         return (
           <>
@@ -1287,6 +1282,39 @@ export function TimelinePage() {
                 })}
               </tr>
             ))}
+            {renderRow('Capital Loss Applied', 'capitalLossApplied')}
+            {renderComputedRow('_computed_capitalLossCF', 'Capital Loss C/F',
+              i => computed[i] ? fmtVal(computed[i].capitalLossCF) : '—'
+            )}
+            {(() => {
+              const bottomRows = [
+                { rowId: '_computed_afterTax', label: 'After-Tax Income', fn: (i: number) => computed[i]?.waterfall.afterTaxIncome ?? 0, cls: 'text-emerald-600' },
+                { rowId: '_computed_netCash', label: 'Net Cash Flow', fn: (i: number) => computed[i]?.waterfall.netCashFlow ?? 0 },
+                { rowId: '_computed_netWorth', label: 'Net Worth (EOY)', fn: (i: number) => computed[i]?.accounts.netWorth ?? 0, cls: 'text-app-accent' },
+              ];
+              return bottomRows.map(({ rowId, label, fn, cls }) => (
+                <tr key={rowId} className="border-b border-app-border">
+                  <td className="sticky left-0 bg-app-surface z-10 py-0.5 pl-3 pr-2 text-[10px] text-app-text3 whitespace-nowrap border-r border-app-border" style={{ minWidth: LABEL_WIDTH }}>{label}</td>
+                  {years.map((_, i) => {
+                    const v = fn(i);
+                    const color = cls ?? (v >= 0 ? 'text-emerald-600' : 'text-red-600');
+                    const focused = grid.isFocused(rowId, i);
+                    const selected = grid.isSelected(rowId, i);
+                    return (
+                      <td
+                        key={i}
+                        className={`py-0.5 px-0.5 text-right text-[10px] font-medium ${color} rounded ${focused ? 'ring-2 ring-app-accent ring-inset' : ''} ${selected && !focused ? 'bg-app-accent-light' : ''}`}
+                        data-row={rowId}
+                        data-col={i}
+                        onClick={(e) => onCellClick(rowId, i, e.shiftKey)}
+                      >
+                        {fmtVal(v)}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ));
+            })()}
           </>
         );
       }
@@ -1378,7 +1406,7 @@ export function TimelinePage() {
       </div>
       <div style={{ zoom }}>
         <table className="w-full text-xs border-collapse" style={{ minWidth: LABEL_WIDTH + years.length * YEAR_WIDTH }}>
-          <thead className="sticky top-0 z-30">
+          <thead className="sticky z-30" style={{ top: `${33 / zoom}px` }}>
             <tr className="bg-app-surface2 border-b border-app-border">
               <th
                 className="sticky left-0 bg-app-surface2 z-40 py-2 pl-3 pr-2 text-left text-[10px] text-app-text3 font-semibold uppercase tracking-wide border-r border-app-border"
